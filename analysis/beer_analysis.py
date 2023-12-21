@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 from data.mongodb import get_mongo_table
 from utils.actions import show_data
