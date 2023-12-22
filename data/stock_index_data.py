@@ -8,7 +8,6 @@ from utils.tool import mongo_bulk_write_data
 def index_data(dict_list=None):
     if dict_list is None:
         stock_zh_index_spot_df = try_get_action(ak.stock_zh_index_spot,try_count=3)
-        print(stock_zh_index_spot_df)
         if stock_zh_index_spot_df is not None:
             index_table = get_mongo_table(database='stock', collection='index_data')
             for index in tqdm(stock_zh_index_spot_df.index):
@@ -46,14 +45,9 @@ def index_data(dict_list=None):
 
 
 
-def get_data():
+def create_index():
     index_table = get_mongo_table(database='stock', collection='index_data')
     index_table.create_index([("date",1),("code",1)],unique=True,background=True)
-
-
-def get_us_index_data():
-    hf_sp_500_df = ak.hf_sp_500(year="2022")
-    print(hf_sp_500_df)
 
 
 if __name__ == '__main__':
