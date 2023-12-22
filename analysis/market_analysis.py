@@ -556,6 +556,7 @@ if __name__ == '__main__':
     # code_dict = {'A020O0923_yd': '医药制造业营业收入累计增长率'}
     # code_dict = {'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入累计增长率'}
     code_dict = {'A02090901_yd': '白酒（折65度，商品量）产量当期值(万千升)'}
+    #code_dict = {'A02090A01_yd': '啤酒产量当期值(万千升)'}
     cn_st_month_market_analysis(code_dict=code_dict)
     # cn_st_month_industry_revene_rate_analysis()
     #board_st_month_market_analysis(name='干鲜瓜果及坚果',unit='万吨',title='干鲜瓜果及坚果进口',data_type='import_goods_detail',val_key='month_volume')
