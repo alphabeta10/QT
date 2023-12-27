@@ -557,17 +557,17 @@ if __name__ == '__main__':
     # code_dict = {'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入累计增长率'}
     code_dict = {'A02090901_yd': '白酒（折65度，商品量）产量当期值(万千升)'}
     #code_dict = {'A02090A01_yd': '啤酒产量当期值(万千升)'}
-    cn_st_month_market_analysis(code_dict=code_dict)
+    #cn_st_month_market_analysis(code_dict=code_dict)
     # cn_st_month_industry_revene_rate_analysis()
     #board_st_month_market_analysis(name='干鲜瓜果及坚果',unit='万吨',title='干鲜瓜果及坚果进口',data_type='import_goods_detail',val_key='month_volume')
     #cn_st_analysis_industry_goods_peak()
     # board_st_month_market_analysis(name='中药材',unit='吨',val_key='acc_month_volume_cyc')
     # board_st_month_market_analysis(name='中药材',unit='吨',val_key='month_volume_cyc')
     #energy_product_analysis()
-    # board_st_month_market_analysis(val_key='month_volume',name='尿素')
+    board_st_month_market_analysis(val_key='month_volume',name='大豆',data_type='import_goods_detail',title='大豆进口数据')
     # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '农用氮、磷、钾化学肥料（折纯）产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
     # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '啤酒产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
 
     #rate_gdb()
-    json_data = cn_st_gdp_cpi_add_rate() # GDP 增长率+ 通货膨胀率
-    print(json_data)
+    # json_data = cn_st_gdp_cpi_add_rate() # GDP 增长率+ 通货膨胀率
+    # print(json_data)

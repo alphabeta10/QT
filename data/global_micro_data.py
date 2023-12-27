@@ -47,10 +47,11 @@ def global_micro_data(arg_start_date_str = None):
 
 def find_data():
     news = get_mongo_table(database='stock', collection='common_seq_data')
-    for data in news.find({"data_type": "global_micro_data", "country": "美国", "time": {"$gt": "2023-12-01"}},
+    for data in news.find({"data_type": "global_micro_data", "country": "美国", "time": {"$gt": "2023-01-01"}},
                           projection={'_id': False}).sort("time"):
-        print(data)
+        if '大豆' in data['metric_code']:
+            print(data)
 
 
 if __name__ == '__main__':
-    pass
+    global_micro_data()

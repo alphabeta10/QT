@@ -1,6 +1,5 @@
 from analysis.analysis_tool import get_market_data, LR
 from utils.tool import get_data_from_mongo
-from utils.actions import show_data
 import pandas as pd
 import numpy as np
 import os
@@ -12,10 +11,10 @@ plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 warnings.filterwarnings('ignore')
 
-def main():
+def concept_beta_alpha_analysis(start_day_str = None):
     # 获取指数数据，相当于市场走势数据
-    start_day_str = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-    start_day_str = '2015-01-01'
+    if start_day_str is None:
+        start_day_str = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
     condition = {"code": {"$in": ["sh000001"]},
                  "date": {"$gte": f"{start_day_str}"}}
     market_data = get_market_data(condition=condition)
@@ -57,7 +56,7 @@ def main():
 
     now_str = datetime.now().strftime("%Y%m%d")
 
-    start_time_str = '2015-01-01'
+    start_time_str = start_day_str
     end_time_str = (datetime.strptime(start_time_str, '%Y-%m-%d') + timedelta(days=40)).strftime("%Y-%m-%d")
 
     alpha_change_list = []
@@ -72,7 +71,6 @@ def main():
                 concept_values = time_range_concept_data[name].values
                 isnan = True in np.isnan(concept_values)
                 if len != concept_values.shape[0] or isnan:
-                    #print(f"{name} 包含nan或者没有足够的数据")
                     continue
                 beta, alpha = LR(time_range_market_val, concept_values)
                 combine_data = [end_time_str,name,alpha[0],beta[0][0]]
@@ -82,14 +80,5 @@ def main():
     alpha_change_pd = pd.DataFrame(alpha_change_list,columns=['time','name','alpha','beta'])
     alpha_change_pd.to_csv("alpha_beta.csv",index=False)
 
-
-    # alpha_change_pd['time'] = pd.to_datetime(alpha_change_pd['time'])
-    # alpha_pd = pd.pivot_table(alpha_change_pd,values='alpha',index='time',columns='name')
-    # alpha_pd.sort_index(inplace=True)
-    # #print(alpha_pd['2023-12-18'].sort_values())
-    # alpha_pd.plot(kind='line', title="alpha", rot=45, figsize=(15, 8), fontsize=10)
-    # plt.show()
-    # beta_pd = pd.pivot_table(alpha_change_pd,values='beta',index='time',columns='name')
-    # beta_pd.sort_index(inplace=True)
-    # beta_pd.plot(kind='line', title="beta", rot=45, figsize=(15, 8), fontsize=10)
-    # plt.show()
+if __name__ == '__main__':
+    concept_beta_alpha_analysis(start_day_str='2020-01-01')

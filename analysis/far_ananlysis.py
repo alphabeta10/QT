@@ -17,13 +17,14 @@ def handle_future_data():
 
     futures_foreign_hist_df = ak.futures_foreign_hist(symbol="S")
     show_data(futures_foreign_hist_df)
-    futures_foreign_hist_df = futures_foreign_hist_df[['date','close']]
-    futures_foreign_hist_df.set_index(keys='date',inplace=True)
+    futures_foreign_hist_df = futures_foreign_hist_df[['date', 'close']]
+    futures_foreign_hist_df.set_index(keys='date', inplace=True)
     futures_foreign_hist_df = futures_foreign_hist_df.resample("M").mean()
-
 
     futures_foreign_hist_df.plot(kind='line', title='豆类', rot=45, figsize=(15, 8), fontsize=10)
     plt.show()
+    macro_euro_lme_holding_df = ak.macro_euro_lme_stock()
+    show_data(macro_euro_lme_holding_df)
 
 
 def get_goods_data(codes=None):
@@ -40,7 +41,7 @@ def get_goods_data(codes=None):
 
 
 def analysis_gooods_price():
-    pd_data = get_goods_data(codes=['大豆', '豆粕','大豆油'])
+    pd_data = get_goods_data(codes=['大豆', '豆粕', '大豆油'])
     pd_data['time'] = pd.to_datetime(pd_data['time'])
     pd_data = pd.pivot_table(pd_data, index='time', values='value', columns='name')
     print(pd_data)
@@ -48,8 +49,8 @@ def analysis_gooods_price():
     for index in pd_data.index:
         dict_data = dict(pd_data.loc[index])
         index = str(index)
-        print(index,dict_data)
-    #print(pd_data)
+        print(index, dict_data)
+    # print(pd_data)
     pd_data.plot(kind='line', title='豆类', rot=45, figsize=(15, 8), fontsize=10)
     plt.show()
 
@@ -72,9 +73,37 @@ def find_area_code():
             state_list.append(mcode)
     print(state_list)
 
+def get_main_import_country_beans_data_from_board():
+    file_name = '../go/beans_future_data/中国进口大豆数据.txt'
+    pd_data = pd.read_csv(file_name,encoding='utf8')
+    st_bean_by_country = {}
+    total = 0
+    for index in pd_data.index:
+        ele = dict(pd_data.loc[index])
+        country = ele['贸易伙伴名称']
+        rmb = ele['人民币']
+        if country not in st_bean_by_country.keys():
+            st_bean_by_country[country] = 0
+        st_bean_by_country[country] += float(rmb.replace(",",""))
+        total += float(rmb.replace(",",""))
+    sort_dict = sort_dict_data_by(st_bean_by_country,by='value',reverse=True)
+    print(sort_dict)
+    new_list_data = []
+    for k,v in sort_dict.items():
+        dict_ele = {"country":k,"rmb":v}
+        dict_ele['rate'] = round(v/total,4)
+        new_list_data.append(dict_ele)
+    new_df = pd.DataFrame(data=new_list_data)
+    new_df.sort_values(by='rate',inplace=True)
+    new_df.set_index(keys='country',inplace=True)
+    new_df['rate'].plot(kind='bar', title='中国2023年1-11月进口大豆，国家占比', rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
 
-def get_main_country_production():
-    file_name = '/Users/alpha/Downloads/Production_Crops_Livestock_E_All_Data/Production_Crops_Livestock_E_All_Data.csv'
+
+
+def get_main_country_production(file_name=None, year='Y2021', item_code=None):
+    if file_name is None:
+        file_name = '/Users/alpha/Downloads/Production_Crops_Livestock_E_All_Data/Production_Crops_Livestock_E_All_Data.csv'
     pd_data = pd.read_csv(file_name, encoding='latin-1')
     """
     Barley 大麦  俄罗斯，澳大利亚，法国，德国
@@ -84,8 +113,9 @@ def get_main_country_production():
     Wheat 小麦 中国，印度，俄罗斯，美国
     Rice 稻谷 中国，印度
     """
-    item_code = {"Rice": "稻谷", "Wheat": "小麦", "Sorghum": "高粱", "Maize (corn)": "玉米", "Soya beans": "大豆",
-                 "Barley": "大麦"}
+    if item_code is None:
+        item_code = {"Rice": "稻谷", "Wheat": "小麦", "Sorghum": "高粱", "Maize (corn)": "玉米", "Soya beans": "大豆",
+                     "Barley": "大麦"}
     get_area_codes = ["'004", "'008", "'012", "'024", "'028", "'032", "'051", "'036", "'040", "'031", "'044", "'048",
                       "'050", "'052", "'112", "'056", "'058", "'084", "'204", "'064", "'068", "'070", "'072", "'076",
                       "'096", "'100", "'854", "'108", "'132", "'116", "'120", "'124", "'140", "'148", "'152", "'159",
@@ -110,12 +140,18 @@ def get_main_country_production():
         data = pd_data[
             ((pd_data['Item'] == k) & (pd_data['Element'] == 'Production') & (
                 pd_data['Area Code (M49)'].isin(get_area_codes)))]
-        data = data[['Area Code', 'Area', 'Y2021']]
+        data = data[['Area Code', 'Area', year, 'Unit']]
+        unit = data['Unit'].head(1).values[0]
         data.dropna(inplace=True)
-        data.sort_values(by="Y2021", inplace=True)
+        data.sort_values(by=year, inplace=True)
+        data.set_index(keys='Area', inplace=True)
+        if unit=='t':
+            unit = '吨'
+        title = year[1:] + f"年{cname}产量 单位{unit}"
+        data[year].tail(10).plot(kind='bar', title=title, rot=45, figsize=(15, 8), fontsize=10)
+        plt.show()
         show_data(data.tail(10))
 
 
 if __name__ == '__main__':
-    macro_euro_lme_holding_df = ak.macro_euro_lme_stock()
-    show_data(macro_euro_lme_holding_df)
+    get_main_import_country_beans_data_from_board()

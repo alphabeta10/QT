@@ -124,13 +124,14 @@ def analysis_gxb_news():
     date_time = datetime.now() - timedelta(days=365)
     today = date_time.strftime("%Y-%m-%d")
     dict_key_words = {"工信部": 0, "发改委": 0, "天气": 0}
+    dict_key_words = {"大豆":0,"巴西":0}
     key_words = dict_key_words.keys()
     dict_word_count = {}
     for ele in goods.find({"data_type": "cls_telegraph", "time": {"$gt": f"{today}"}}, projection={'_id': False}).sort(
             "time"):
         sentence = ele['content']
         title = ele['title']
-        if "工信部" in title:
+        if "巴西" in title and '大豆' in title:
             time = ele['time']
             cut_word_pseg_st(dict_word_count, sentence, stopwords=stopwords)
             is_ture, word = word_in_sentence(key_words, sentence)
@@ -215,4 +216,4 @@ def train(x_train, size=300):
 
 
 if __name__ == '__main__':
-    cluster_model()
+    analysis_gxb_news()

@@ -16,6 +16,34 @@ from sklearn.linear_model import LinearRegression
 from scipy.optimize import minimize
 
 
+def generate_month_and_day():
+    dates = pd.date_range('2023-01-01', '2023-12-31')
+    dates = {str(ele)[5:10]: 0 for ele in dates.values}
+    return dates
+
+
+def plot_year_seq_data(pd_data: pd.DataFrame, index_key='date', val_key='close', title='月分析数据'):
+    year_dict_data = {}
+    for index in pd_data.index:
+        ele = dict(pd_data.loc[index])
+        index_value = ele[index_key]
+        year = index_value[0:4]
+        if "-" in index_value:
+            month = index_value[5:10]
+        else:
+            month = index_value[4:6] + "-" + index_value[6:8]
+        if year not in year_dict_data.keys():
+            year_dict_data[year] = generate_month_and_day()
+        if month in year_dict_data[year].keys():
+            year_dict_data[year][month] = ele[val_key]
+    convert_pd_df_dict = {}
+    for year, combin_dict in year_dict_data.items():
+        convert_pd_df_dict[year] = list(combin_dict.values())
+    new_month_day_pd = pd.DataFrame(data=convert_pd_df_dict, index=list(generate_month_and_day().keys()))
+    new_month_day_pd.plot(kind='line', title=title, rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+
 def calc_regress_deg(y_arr, show=True):
     """
     计算y_arr序列的趋势
@@ -354,4 +382,4 @@ def stock_potfolio():
 
 
 if __name__ == '__main__':
-    stock_potfolio()
+    pass

@@ -449,7 +449,7 @@ def source_predict_jd(goods_name='小麦', qc_config=None):
 def source_predict_common(goods_name=None, config=None):
     if config is None:
         config = {"m11": ['20231101', '20231131'], "m12": ['20231201', '20231231']}
-        config = {"m11": ['20221201', '20221231'], "m12": ['20231201', '20231231']}
+        #config = {"m11": ['20221201', '20221231'], "m12": ['20231201', '20231231']}
     keys = list(config.keys())
     print(keys)
     goods = get_mongo_table(database='stock', collection='goods')
