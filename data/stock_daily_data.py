@@ -41,7 +41,7 @@ def get_stock_info_data():
 
 
 
-def handle_stock_daily_data(codes=None,start_date='20150101',end_date=datetime.now().strftime("%Y%m%d")):
+def handle_stock_daily_data(codes=None,start_date=datetime.now().strftime("%Y%m%01"),end_date=datetime.now().strftime("%Y%m%d")):
     if codes is None:
         codes = get_stock_info_data()
     tiker_daily = get_mongo_table(collection="ticker_daily")
@@ -106,7 +106,6 @@ def col_create_index():
     ticker_daily.create_index([("code", 1), ("time", 1)],unique=True,background=True)
 
 if __name__ == '__main__':
-    #col_create_index()
-    #save_stock_info_data()
+    save_stock_info_data()
     handle_stock_daily_data()
 

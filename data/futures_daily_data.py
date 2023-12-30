@@ -1,6 +1,6 @@
 import akshare as ak
 from pymongo import UpdateOne
-from utils.actions import show_data, try_get_action
+from utils.actions import try_get_action
 from utils.tool import mongo_bulk_write_data
 from data.mongodb import get_mongo_table
 
@@ -30,13 +30,9 @@ def handle_futures_daily_data(symbols=None):
 
 
 def col_create_index():
-    # futures_daily = get_mongo_table(database='futures', collection='futures_daily')
-    # futures_daily.drop()
-    # futures_daily.drop_index([("code", 1), ("time", 1)])
     futures_daily = get_mongo_table(database='futures', collection='futures_daily')
     futures_daily.create_index([("symbol", 1), ("date", 1)], unique=True, background=True)
 
 
 if __name__ == '__main__':
-    col_create_index()
     handle_futures_daily_data()
