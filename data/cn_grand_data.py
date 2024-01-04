@@ -63,7 +63,7 @@ def post_or_get_data(url, params=None, method="post"):
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=oGTz4O6BMTJjZmY3gmZjNWVlMYAxMTMuMjQ3LjE3Ni4xMw==; u=5; JSESSIONID=wwBgl2aotIGOcqtUWErRob4X4RVv2wcA2HT5fzl2EpWhZRq2RCpS!500701543"}
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMYE4MjE3ODmgZZIoJYAyNDA5Ojg5NTA6NTQ1OjI4ZjoxZDEzOjU1ZTk6ODBlMjo5MzBh; u=1; JSESSIONID=RDHDI8jciOyQUxagd_RHhBaoxOzHxCKckVX_6KkwBFyTGS7tsOrT!1543139491"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):
@@ -165,7 +165,7 @@ def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_typ
     else:
         meta_params['id'] = id
         if id not in ['A0203', 'A010C', 'A0204', 'A0206', 'A0207', 'A020M', 'A020L', 'A020N', 'A010A', 'A0109']:
-            meta_data_rs = post_or_get_data(url=get_comm_url, params=meta_params)
+            meta_data_rs = try_get_action(post_or_get_data,try_count=3,url=get_comm_url, params=meta_params)
             for ele_meta in meta_data_rs:
                 rec_get_data(ele_meta, meta_params, data_params, data_type, meta_info, data_info)
 
@@ -182,13 +182,13 @@ def handle_gov_yd_data():
     #ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     #ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
-    #ids = ['A03']
+    ids = ['A07']
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "yd"
     for id in ids:
         get_yd_meta_params["id"] = id
-        meta_data_list = post_or_get_data(url=get_comm_url, params=get_yd_meta_params)
+        meta_data_list = try_get_action(post_or_get_data,try_count=10,url=get_comm_url, params=get_yd_meta_params)
         for meta_data in meta_data_list:
             print(meta_data)
             id = meta_data['id']
@@ -212,7 +212,7 @@ def handle_gov_jd_data():
     data_type = "jd"
     for id in ids:
         get_jd_meta_params["id"] = id
-        meta_data_list = post_or_get_data(url=get_comm_url, params=get_jd_meta_params)
+        meta_data_list = try_get_action(post_or_get_data,4,url=get_comm_url, params=get_jd_meta_params)
         for meta_data in meta_data_list:
             print(meta_data)
             rec_get_data(meta_data, get_jd_meta_params, get_jd_data_params, data_type, meta_info, data_info)

@@ -16,6 +16,20 @@ from sklearn.linear_model import LinearRegression
 from scipy.optimize import minimize
 
 
+def plot_marker_line(data: pd.DataFrame, value_index, show_index, title, x_label=''):
+    data.plot(kind='line', rot=45, figsize=(15, 8), fontsize=10, marker='o')
+    for i in range(len(data)):
+        for col in data.columns:
+            plt.text(data.index[i], data[col].values[i], (data[col].values[i]), ha='center', va='bottom', fontsize=10)
+    plt.xticks(value_index, show_index)
+    ax = plt.gca()
+    ax.spines['right'].set_color("none")
+    ax.spines['top'].set_color("none")
+    plt.title(title, fontsize=15)
+    plt.xlabel(x_label)
+    plt.show()
+
+
 def generate_month_and_day():
     dates = pd.date_range('2023-01-01', '2023-12-31')
     dates = {str(ele)[5:10]: 0 for ele in dates.values}

@@ -2,12 +2,13 @@
 国家统计局数据分析
 """
 from utils.tool import get_data_from_mongo, sort_dict_data_by
-from utils.actions import show_data
+from analysis.analysis_tool import plot_marker_line
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from analysis.alg import judge_peak_lower
 from datetime import datetime
+
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -26,7 +27,7 @@ def cn_st_gdp_cpi_add_rate(time=None):
     # gdp数据有两个  "A010202_jd":"国内生产总值(不变价)累计值(亿元)" 和 "A010102_jd":"国内生产总值(现价)累计值(亿元)"
     code_dict = {'A01020101_yd': '居民消费价格指数(上年同期=100)', "A010202_jd": "国内生产总值(不变价)累计值(亿元)"}
     if time is None:
-        time = str(int(datetime.now().strftime("%Y"))-3)
+        time = str(int(datetime.now().strftime("%Y")) - 3)
     title = "国家统计局相关月频分析"
     code_list = {"$in": list(code_dict.keys())}
     condition = {"code": code_list, "time": {"$gte": time}}
@@ -111,23 +112,22 @@ def industry_cycle_analysis():
     condition = {"code": code_list, "time": {"$in": ['202308']}}
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
-    compared_rate = cn_st_gdp_cpi_add_rate()['202309']['add_value']*100
+    compared_rate = cn_st_gdp_cpi_add_rate()['202309']['add_value'] * 100
     print(compared_rate)
-    count_dict = {"lt":[],"gt":[]}
+    count_dict = {"lt": [], "gt": []}
     for index in data.index:
         ele = data.loc[index]
         code = ele['code']
         value = float(ele['data'])
-        if value>compared_rate:
-            count_dict['gt'].append({code_dict.get(code):value})
+        if value > compared_rate:
+            count_dict['gt'].append({code_dict.get(code): value})
         else:
-            count_dict['lt'].append({code_dict.get(code):value})
-    for k,v in count_dict.items():
-        print(k,v)
+            count_dict['lt'].append({code_dict.get(code): value})
+    for k, v in count_dict.items():
+        print(k, v)
 
 
-
-def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key="time"):
+def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key="time", plot_type=None):
     database = 'govstats'
     collection = 'data_info'
     projection = {'_id': False}
@@ -152,16 +152,21 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
         year = time[0:4]
         combine_key = f"{year}年{code}"
         if combine_key not in year_dict_data.keys():
-            year_dict_data[combine_key] = [0.0] * 12
+            year_dict_data[combine_key] = [None] * 12
             count_dict[combine_key] = 0
         year_dict_data[combine_key][count_dict.get(combine_key)] = val
         count_dict[combine_key] = count_dict[combine_key] + 1
-    convert_data = pd.DataFrame(data=year_dict_data,
-                                index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
-                                       '12月'])
-    convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
-    plt.show()
-
+    value_index = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    show_index = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+    if plot_type is None:
+        convert_data = pd.DataFrame(data=year_dict_data,
+                                    index=show_index)
+        convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+        plt.show()
+    if plot_type=='line':
+        convert_data = pd.DataFrame(data=year_dict_data,
+                                    index=value_index)
+        plot_marker_line(convert_data,value_index,show_index,title)
 
 def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=None, data_type=None):
     database = 'govstats'
@@ -345,55 +350,54 @@ def cn_st_analysis_industry_goods_peak():
     collection = 'data_info'
     projection = {'_id': False}
     sort_key = "time"
-    code_dict = {"A02090N01_yd":"农用氮、磷、钾化学肥料（折纯）产量当期值(万吨)"}
+    code_dict = {"A02090N01_yd": "农用氮、磷、钾化学肥料（折纯）产量当期值(万吨)"}
     code_list = {"$in": list(code_dict.keys())}
     condition = {"code": code_list}
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
-    cols = ['time','strdata']
+    cols = ['time', 'strdata']
     data = data[cols]
     combine_dict_data = {}
     for index in data.index:
         ele = data.loc[index]
         time = ele['time']
         strdata = ele['strdata']
-        if strdata=='':
+        if strdata == '':
             continue
         month = time[4:]
         year = time[0:4]
         if year not in combine_dict_data.keys():
-            combine_dict_data[year] = {"month":[],"data":[]}
+            combine_dict_data[year] = {"month": [], "data": []}
         combine_dict_data[year]['month'].append(month)
         combine_dict_data[year]['data'].append(float(strdata))
 
-    month_peak_low_st = {"lower":{},"peak":{}}
+    month_peak_low_st = {"lower": {}, "peak": {}}
 
-    def peak_st(month_peak_low_st,index_data,month_list):
-        for index,is_peak in index_data.items():
+    def peak_st(month_peak_low_st, index_data, month_list):
+        for index, is_peak in index_data.items():
             cur_month = month_list[index]
             if is_peak is True:
                 if cur_month not in month_peak_low_st['peak'].keys():
                     month_peak_low_st['peak'][cur_month] = 0
-                month_peak_low_st['peak'][cur_month]+= 1
+                month_peak_low_st['peak'][cur_month] += 1
             if is_peak is False:
                 if cur_month not in month_peak_low_st['lower'].keys():
                     month_peak_low_st['lower'][cur_month] = 0
-                month_peak_low_st['lower'][cur_month]+= 1
+                month_peak_low_st['lower'][cur_month] += 1
 
-
-    for year,month_data_list in combine_dict_data.items():
+    for year, month_data_list in combine_dict_data.items():
         data = month_data_list['data']
         month = month_data_list['month']
         index_data = judge_peak_lower(data)
-        print("*"*50)
+        print("*" * 50)
         print(data)
         print(index_data)
-        if len(data)==10:
+        if len(data) == 10:
             cur_month = month[9]
             cur_data = data[9]
             print(f"year={year},month={cur_month},data={cur_data}")
         print("*" * 50)
-        peak_st(month_peak_low_st,index_data,month)
+        peak_st(month_peak_low_st, index_data, month)
     print(month_peak_low_st)
 
     database = 'stock'
@@ -401,7 +405,7 @@ def cn_st_analysis_industry_goods_peak():
     projection = {'_id': False}
     sort_key = "time"
     code = '尿素'
-    condition = {"name":code,"data_type":"goods_price"}
+    condition = {"name": code, "data_type": "goods_price"}
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
     combine_dict_data = {}
@@ -411,7 +415,7 @@ def cn_st_analysis_industry_goods_peak():
         year = time[0:4]
         month = time[4:6]
         if year not in combine_dict_data.keys():
-            combine_dict_data[year] = {"month":[],"data":{}}
+            combine_dict_data[year] = {"month": [], "data": {}}
 
         if month not in combine_dict_data[year]['data'].keys():
             combine_dict_data[year]['data'][month] = []
@@ -419,22 +423,22 @@ def cn_st_analysis_industry_goods_peak():
             combine_dict_data[year]['month'].append(month)
         combine_dict_data[year]['data'][month].append(float(value))
 
-    month_peak_low_st = {"lower":{},"peak":{}}
-    for year,combine_data in combine_dict_data.items():
+    month_peak_low_st = {"lower": {}, "peak": {}}
+    for year, combine_data in combine_dict_data.items():
         month_list = combine_data['month']
         month_data = combine_data['data']
         print(month_list)
         month_values = []
-        for month,data_list in month_data.items():
-            print(month,np.mean(data_list))
+        for month, data_list in month_data.items():
+            print(month, np.mean(data_list))
             month_values.append(np.mean(data_list))
         index_data = judge_peak_lower(month_values)
-        peak_st(month_peak_low_st, index_data,month_list)
+        peak_st(month_peak_low_st, index_data, month_list)
     print(month_peak_low_st)
 
     database = 'stock'
     collection = 'ticker_daily'
-    projection = {'_id': False,'time':True,'close':True}
+    projection = {'_id': False, 'time': True, 'close': True}
     sort_key = "time"
     code = '000408'
     condition = {"code": code}
@@ -466,18 +470,18 @@ def cn_st_analysis_industry_goods_peak():
             print(month, np.mean(data_list))
             month_values.append(np.mean(data_list))
         index_data = judge_peak_lower(month_values)
-        peak_st(month_peak_low_st, index_data,month_list)
+        peak_st(month_peak_low_st, index_data, month_list)
     lower_rs = month_peak_low_st['lower']
     peak_rs = month_peak_low_st['peak']
     lower_rs = sort_dict_data_by(lower_rs)
 
     print(f"lower,{lower_rs}")
     print(f"peak,{peak_rs}")
-    for k,v in lower_rs.items():
+    for k, v in lower_rs.items():
         p = peak_rs.get(k)
         if p is None:
             p = 0
-        diff = abs(v-p)
+        diff = abs(v - p)
         print(f"month={k},lower={v},peak={p},diff={diff}")
 
 
@@ -498,28 +502,32 @@ def energy_product_analysis():
     dict_data = {"A090303_yd": "客运量同比增长_当期值"}  # 货运量同很重要
     dict_data = {"A070103_yd": "社会消费品零售总额同比增长_当期值"}  # 货运量同很重要
     dict_data = {'A020O0503_yd': '工业企业存货_增减', 'A020O0506_yd': '采矿业存货_增减',
-     'A020O0509_yd': '煤炭开采和洗选业存货_增减', 'A020O050C_yd': '石油和天然气开采业存货_增减',
-     'A020O050F_yd': '黑色金属矿采选业存货_增减', 'A020O050I_yd': '有色金属矿采选业存货_增减',
-     'A020O050L_yd': '非金属矿采选业存货_增减', 'A020O050O_yd': '开采专业及辅助性活动存货_增减',
-     'A020O050R_yd': '其他采矿业存货_增减', 'A020O050U_yd': '制造业存货_增减',
-     'A020O050X_yd': '农副食品加工业存货_增减', 'A020O0510_yd': '食品制造业存货_增减',
-     'A020O0513_yd': '酒、饮料和精制茶制造业存货_增减', 'A020O0516_yd': '烟草制品业存货_增减',
-     'A020O0519_yd': '纺织业存货_增减', 'A020O051C_yd': '纺织服装、服饰业存货_增减',
-     'A020O051F_yd': '皮革、毛皮、羽毛及其制品和制鞋业存货_增减',
-     'A020O051I_yd': '木材加工和木、竹、藤、棕、草制品业存货_增减', 'A020O051L_yd': '家具制造业存货_增减',
-     'A020O051O_yd': '造纸和纸制品业存货_增减', 'A020O051R_yd': '印刷和记录媒介复制业存货_增减',
-     'A020O051U_yd': '文教、工美、体育和娱乐用品制造业存货_增减', 'A020O051X_yd': '石油、煤炭及其他燃料加工业存货_增减',
-     'A020O0520_yd': '化学原料和化学制品制造业存货_增减', 'A020O0523_yd': '医药制造业存货_增减',
-     'A020O0526_yd': '化学纤维制造业存货_增减', 'A020O0529_yd': '橡胶和塑料制品业存货_增减',
-     'A020O052C_yd': '非金属矿物制品业存货_增减', 'A020O052F_yd': '黑色金属冶炼和压延加工业存货_增减',
-     'A020O052I_yd': '有色金属冶炼和压延加工业存货_增减', 'A020O052L_yd': '金属制品业存货_增减',
-     'A020O052O_yd': '通用设备制造业存货_增减', 'A020O052R_yd': '专用设备制造业存货_增减',
-     'A020O052U_yd': '汽车制造业存货_增减', 'A020O052X_yd': '铁路、船舶、航空航天和其他运输设备制造业存货_增减',
-     'A020O0530_yd': '电气机械和器材制造业存货_增减', 'A020O0533_yd': '计算机、通信和其他电子设备制造业存货_增减',
-     'A020O0536_yd': '仪器仪表制造业存货_增减', 'A020O0539_yd': '其他制造业存货_增减',
-     'A020O053C_yd': '废弃资源综合利用业存货_增减', 'A020O053F_yd': '金属制品、机械和设备修理业存货_增减',
-     'A020O053I_yd': '电力、热力、燃气及水生产和供应业存货_增减', 'A020O053L_yd': '电力、热力生产和供应业存货_增减',
-     'A020O053O_yd': '燃气生产和供应业存货_增减', 'A020O053R_yd': '水的生产和供应业存货_增减'}
+                 'A020O0509_yd': '煤炭开采和洗选业存货_增减', 'A020O050C_yd': '石油和天然气开采业存货_增减',
+                 'A020O050F_yd': '黑色金属矿采选业存货_增减', 'A020O050I_yd': '有色金属矿采选业存货_增减',
+                 'A020O050L_yd': '非金属矿采选业存货_增减', 'A020O050O_yd': '开采专业及辅助性活动存货_增减',
+                 'A020O050R_yd': '其他采矿业存货_增减', 'A020O050U_yd': '制造业存货_增减',
+                 'A020O050X_yd': '农副食品加工业存货_增减', 'A020O0510_yd': '食品制造业存货_增减',
+                 'A020O0513_yd': '酒、饮料和精制茶制造业存货_增减', 'A020O0516_yd': '烟草制品业存货_增减',
+                 'A020O0519_yd': '纺织业存货_增减', 'A020O051C_yd': '纺织服装、服饰业存货_增减',
+                 'A020O051F_yd': '皮革、毛皮、羽毛及其制品和制鞋业存货_增减',
+                 'A020O051I_yd': '木材加工和木、竹、藤、棕、草制品业存货_增减', 'A020O051L_yd': '家具制造业存货_增减',
+                 'A020O051O_yd': '造纸和纸制品业存货_增减', 'A020O051R_yd': '印刷和记录媒介复制业存货_增减',
+                 'A020O051U_yd': '文教、工美、体育和娱乐用品制造业存货_增减',
+                 'A020O051X_yd': '石油、煤炭及其他燃料加工业存货_增减',
+                 'A020O0520_yd': '化学原料和化学制品制造业存货_增减', 'A020O0523_yd': '医药制造业存货_增减',
+                 'A020O0526_yd': '化学纤维制造业存货_增减', 'A020O0529_yd': '橡胶和塑料制品业存货_增减',
+                 'A020O052C_yd': '非金属矿物制品业存货_增减', 'A020O052F_yd': '黑色金属冶炼和压延加工业存货_增减',
+                 'A020O052I_yd': '有色金属冶炼和压延加工业存货_增减', 'A020O052L_yd': '金属制品业存货_增减',
+                 'A020O052O_yd': '通用设备制造业存货_增减', 'A020O052R_yd': '专用设备制造业存货_增减',
+                 'A020O052U_yd': '汽车制造业存货_增减',
+                 'A020O052X_yd': '铁路、船舶、航空航天和其他运输设备制造业存货_增减',
+                 'A020O0530_yd': '电气机械和器材制造业存货_增减',
+                 'A020O0533_yd': '计算机、通信和其他电子设备制造业存货_增减',
+                 'A020O0536_yd': '仪器仪表制造业存货_增减', 'A020O0539_yd': '其他制造业存货_增减',
+                 'A020O053C_yd': '废弃资源综合利用业存货_增减', 'A020O053F_yd': '金属制品、机械和设备修理业存货_增减',
+                 'A020O053I_yd': '电力、热力、燃气及水生产和供应业存货_增减',
+                 'A020O053L_yd': '电力、热力生产和供应业存货_增减',
+                 'A020O053O_yd': '燃气生产和供应业存货_增减', 'A020O053R_yd': '水的生产和供应业存货_增减'}
 
     for k, v in dict_data.items():
         code_dict = {k: v}
@@ -529,45 +537,46 @@ def energy_product_analysis():
 
 
 def rate_gdb():
-    country_meta = pd.read_csv("../data/worldbankdata/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910/Metadata_Country_API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910.csv")
+    country_meta = pd.read_csv(
+        "../data/worldbankdata/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910/Metadata_Country_API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910.csv")
     countrys = ['世界']
     for index in country_meta.index:
         ele = dict(country_meta.loc[index])
         income_group = str(ele['Income_Group'])
-        if income_group!='nan':
+        if income_group != 'nan':
             countrys.append(ele['Country Name'])
     print(countrys)
 
-    pd_data = pd.read_csv("../data/worldbankdata/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910.csv",encoding='utf8')
-    #show_data(pd_data)
-    cols = ['Country Name','2022']
+    pd_data = pd.read_csv(
+        "../data/worldbankdata/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910/API_NY.GDP.MKTP.CD_DS2_zh_csv_v2_6000910.csv",
+        encoding='utf8')
+    # show_data(pd_data)
+    cols = ['Country Name', '2022']
     data = pd_data[cols]
     data = data[data['Country Name'].isin(countrys)]
     data = data.dropna()
-    total = data[data['Country Name']=='世界']['2022'].values[0]
-    data['2022_rank'] = round(data['2022']/total,8)
-    data.sort_values(by='2022_rank',inplace=True,ascending=False)
-
-
-
+    total = data[data['Country Name'] == '世界']['2022'].values[0]
+    data['2022_rank'] = round(data['2022'] / total, 8)
+    data.sort_values(by='2022_rank', inplace=True, ascending=False)
 
 
 if __name__ == '__main__':
     # code_dict = {'A020O0923_yd': '医药制造业营业收入累计增长率'}
     # code_dict = {'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入累计增长率'}
     code_dict = {'A02090901_yd': '白酒（折65度，商品量）产量当期值(万千升)'}
-    #code_dict = {'A02090A01_yd': '啤酒产量当期值(万千升)'}
-    #cn_st_month_market_analysis(code_dict=code_dict)
+    # code_dict = {'A02090A01_yd': '啤酒产量当期值(万千升)'}
+    # cn_st_month_market_analysis(code_dict=code_dict)
     # cn_st_month_industry_revene_rate_analysis()
-    #board_st_month_market_analysis(name='干鲜瓜果及坚果',unit='万吨',title='干鲜瓜果及坚果进口',data_type='import_goods_detail',val_key='month_volume')
-    #cn_st_analysis_industry_goods_peak()
+    # board_st_month_market_analysis(name='干鲜瓜果及坚果',unit='万吨',title='干鲜瓜果及坚果进口',data_type='import_goods_detail',val_key='month_volume')
+    # cn_st_analysis_industry_goods_peak()
     # board_st_month_market_analysis(name='中药材',unit='吨',val_key='acc_month_volume_cyc')
     # board_st_month_market_analysis(name='中药材',unit='吨',val_key='month_volume_cyc')
-    #energy_product_analysis()
-    board_st_month_market_analysis(val_key='month_volume',name='大豆',data_type='import_goods_detail',title='大豆进口数据')
+    # energy_product_analysis()
+    board_st_month_market_analysis(val_key='month_volume', name='大豆', data_type='import_goods_detail',
+                                   title='大豆进口数据')
     # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '农用氮、磷、钾化学肥料（折纯）产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
     # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '啤酒产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
 
-    #rate_gdb()
+    # rate_gdb()
     # json_data = cn_st_gdp_cpi_add_rate() # GDP 增长率+ 通货膨胀率
     # print(json_data)
