@@ -1,17 +1,20 @@
 from analysis.analysis_tool import get_market_data, LR
-from utils.tool import get_data_from_mongo
+from utils.tool import get_data_from_mongo, sort_dict_data_by
 import pandas as pd
 import numpy as np
 import os
 import akshare as ak
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-#设置中文显示不乱码
+
+# 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
+
 warnings.filterwarnings('ignore')
 
-def concept_beta_alpha_analysis(start_day_str = None):
+
+def concept_beta_alpha_analysis(start_day_str=None):
     # 获取指数数据，相当于市场走势数据
     if start_day_str is None:
         start_day_str = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -73,12 +76,75 @@ def concept_beta_alpha_analysis(start_day_str = None):
                 if len != concept_values.shape[0] or isnan:
                     continue
                 beta, alpha = LR(time_range_market_val, concept_values)
-                combine_data = [end_time_str,name,alpha[0],beta[0][0]]
+                combine_data = [end_time_str, name, alpha[0], beta[0][0]]
                 alpha_change_list.append(combine_data)
         start_time_str = (datetime.strptime(start_time_str, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
         end_time_str = (datetime.strptime(start_time_str, '%Y-%m-%d') + timedelta(days=40)).strftime("%Y-%m-%d")
-    alpha_change_pd = pd.DataFrame(alpha_change_list,columns=['time','name','alpha','beta'])
-    alpha_change_pd.to_csv("alpha_beta.csv",index=False)
+    alpha_change_pd = pd.DataFrame(alpha_change_list, columns=['time', 'name', 'alpha', 'beta'])
+    alpha_change_pd.to_csv("alpha_beta.csv", index=False)
+
+
+def concept_month_ret_analysis(start_day_str=None):
+    """
+    分析收益率是否符合周期性，结果是不一致的，看政策
+    :param start_day_str:
+    :return:
+    """
+    database = 'stock'
+    collection = 'concept_data'
+    projection = {"_id": False, "name": True, "close": True, "time": True}
+    sort_key = 'time'
+
+    tmp_board_concept_file_name = 'temp_board_concept_name.csv'
+    # 判断数据是否在本地存在
+    if os.path.exists(tmp_board_concept_file_name) is False:
+        concept_name_info = ak.stock_board_concept_name_ths()
+        concept_name_info.to_csv(tmp_board_concept_file_name, index=False)
+        print("get data from  net interface")
+    else:
+        concept_name_info = pd.read_csv(tmp_board_concept_file_name)
+        print("get data from local")
+
+    # 获取概念数据
+    code_name_mapping = {}
+    for index in concept_name_info.index:
+        ele = dict(concept_name_info.loc[index])
+        code = str(ele['代码'])
+        name = ele['概念名称']
+        code_name_mapping[code] = name
+
+    codes = list(code_name_mapping.keys())
+    condition = {"code": {"$in": codes},
+                 "time": {"$gte": f"{start_day_str}"}}
+
+    concept_seq_data = get_data_from_mongo(database=database, collection=collection, condition=condition,
+                                           projection=projection, sort_key=sort_key)
+    concept_seq_data['time'] = pd.to_datetime(concept_seq_data['time'])
+    concept_data = pd.pivot_table(concept_seq_data, values='close', index="time", columns='name')
+    concept_data = concept_data.pct_change()
+    df_month = (concept_data + 1).resample('M').prod() - 1
+    st_month_top = {}
+    for index in df_month.index:
+        dict_data = dict(df_month.loc[index])
+        day = str(index)[0:10]
+        month = day.split("-")[1]
+        dict_data = sort_dict_data_by(dict_data, by='value', reverse=True)
+        names = ",".join([ cdt[0] for i,cdt in enumerate(dict_data.items()) if i<21 ])
+        print(day,names)
+        if month not in st_month_top.keys():
+            st_month_top[month] = {}
+        limit = 0
+        for k, v in dict_data.items():
+            if limit<21:
+                if k not in st_month_top[month].keys():
+                    st_month_top[month][k] = 0
+                st_month_top[month][k] += 1
+            else:
+                break
+            limit += 1
+    for month,cd in st_month_top.items():
+        print(month,sort_dict_data_by(cd,by='value',reverse=True))
+
 
 if __name__ == '__main__':
-    concept_beta_alpha_analysis(start_day_str='2020-01-01')
+    concept_month_ret_analysis(start_day_str='2021-01-01')

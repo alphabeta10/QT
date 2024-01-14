@@ -63,7 +63,7 @@ def post_or_get_data(url, params=None, method="post"):
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMYE4MjE3ODmgZZIoJYAyNDA5Ojg5NTA6NTQ1OjI4ZjoxZDEzOjU1ZTk6ODBlMjo5MzBh; u=1; JSESSIONID=RDHDI8jciOyQUxagd_RHhBaoxOzHxCKckVX_6KkwBFyTGS7tsOrT!1543139491"}
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMYE4MjE3ODmgZZYq24AxMjQuMjMyLjE1MS4xMzM=; u=5; JSESSIONID=Yp7U1c3yPVJu7rb04-y9yP2VsMUeRZffGDPGAavwZ6mw064LwuST!-680104779"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):
@@ -182,7 +182,7 @@ def handle_gov_yd_data():
     #ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     #ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
-    ids = ['A07']
+    ids = ['A06']
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "yd"

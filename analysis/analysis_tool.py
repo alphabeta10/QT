@@ -16,6 +16,28 @@ from sklearn.linear_model import LinearRegression
 from scipy.optimize import minimize
 
 
+def convert_pd_data_to_month_data(data:pd.DataFrame,time_name,value_name,code_name,code_name_mapping=None,handle_year_month_fn=None):
+    year_dict_data = {}
+    for index in data.index:
+        ele = data.loc[index]
+        time = ele[time_name]
+        code = ele[code_name]
+        if code_name_mapping is not None:
+            code = code_name_mapping.get(code)
+        val = ele[value_name]
+        year = time[0:4]
+        month = int(time[4:6])
+        if handle_year_month_fn is not None:
+            year,month = handle_year_month_fn(time)
+        combine_key = f"{year}年{code}"
+        if combine_key not in year_dict_data.keys():
+            year_dict_data[combine_key] = [None] * 12
+        year_dict_data[combine_key][month-1] = val
+    convert_data = pd.DataFrame(data=year_dict_data,
+                                index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
+                                       '12月'])
+    return convert_data
+
 def plot_marker_line(data: pd.DataFrame, value_index, show_index, title, x_label=''):
     data.plot(kind='line', rot=45, figsize=(15, 8), fontsize=10, marker='o')
     for i in range(len(data)):

@@ -49,7 +49,7 @@ def col_create_index():
 
 
 if __name__ == '__main__':
-    start_year = 2023
+    start_year = 2024
     cur_year = int(datetime.now().strftime("%Y"))
     while start_year <= cur_year:
         print(f"handle year={start_year}")

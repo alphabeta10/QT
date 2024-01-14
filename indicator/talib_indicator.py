@@ -27,6 +27,8 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     data['rsi6'] = ta.RSI(data.close, timeperiod=6)
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
                                     slowd_period=5, slowd_matype=1)
+    data['atr14'] = ta.ATR(data.high,data.low,data.close,timeperiod=14)
+    data['ADOSC'] = ta.ADOSC(data.high,data.low,data.close,data.volume,fastperiod=3,slowperiod=10)
     addSignal(data,sign_type='mfi')
     addSignal(data,sign_type='KDJ')
     return data
@@ -50,7 +52,7 @@ def addSignal(data: pd.DataFrame, sign_type=None):
 def MFI_indicator():
     """stock"""
     condition = {"code": {"$in": ["sh000001"]}, "date": {"$gte": "2020-01-01"}}
-    condition = {"code": {"$in": ["000858"]}, "time": {"$gte": "2020-01-01"}}
+    #condition = {"code": {"$in": ["000858"]}, "time": {"$gte": "2020-01-01"}}
     database = 'stock'
     collection = 'ticker_daily'
     projection = {'_id': False}
@@ -63,11 +65,11 @@ def MFI_indicator():
     projection = {'_id': False}
     sort_key = "date"
     """futures"""
-    # condition = {"symbol": {"$in": ["B0"]}, "date": {"$gte": "2020-01-01"}}
-    # database = 'futures'
-    # collection = 'futures_daily'
-    # projection = {'_id': False}
-    # sort_key = "date"
+    condition = {"symbol": {"$in": ["RB0"]}, "date": {"$gte": "2020-01-01"}}
+    database = 'futures'
+    collection = 'futures_daily'
+    projection = {'_id': False}
+    sort_key = "date"
 
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
@@ -88,6 +90,8 @@ def MFI_indicator():
 
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
                                     slowd_period=5, slowd_matype=1)
+    data['ma20'] = ta.SMA(data.close,timeperiod=20)
+    data['ma55'] = ta.SMA(data.close,timeperiod=55)
 
     """ADX 低于25时，震荡行情，不明确的行情 大于25是，趋势强，但不能判断上涨还是下降 要结合+DI和-DI以及OBV指标
         信号如下判断
@@ -101,17 +105,37 @@ def MFI_indicator():
     data['plus_di'] = ta.PLUS_DI(data.high,data.low,data.close,timeperiod=14)
     data['obv'] = ta.OBV(data.close,data.volume)
     data['avg100obv'] = ta.SMA(data.obv,timeperiod=100)
+    data['atr14'] = ta.ATR(data.high,data.low,data.close,timeperiod=26)
+    data['natr14'] = ta.NATR(data.high,data.low,data.close,timeperiod=26)
+    data['TRANGE'] = ta.TRANGE(data.high,data.low,data.close)
 
+    data['ADXR'] = ta.ADXR(data.high,data.low,data.close,timeperiod=14)
+    # apo = slowma(price) - fastma(price)
+    data['APO'] = ta.APO(data.close,fastperiod=12,slowperiod=26)
+    #up 0-100 70-100上升趋势，0-30弱势
+    data['aroon_down'],data['aroon_up'] = ta.AROON(data.high,data.low,timeperiod=20)
     # plt.figure(figsize=(16, 14))
     # plt.subplot(211)
     # data['close'].plot(color='r')
     # plt.xlabel("")
     # plt.title("上证走势", fontsize=15)
+    data['BOP'] = ta.BOP(data.open,data.high,data.low,data.close)
+    #多空双方的博弈
+    data['AD'] = ta.AD(data.high,data.low,data.close,data.volume)
+    #real = EMA(AD,fastperiod)-EMA(AD,slowperiod) 由负转正买入，由正转负，卖出
+    data['ADOSC'] = ta.ADOSC(data.high,data.low,data.close,data.volume,fastperiod=12,slowperiod=16)
+    # 'open', 'high', 'low', 'close'
+    data['CDL2CROWS'] = ta.CDL2CROWS(data.open,data.high,data.low,data.close)
+    data['CDL3BLACKCROWS'] = ta.CDL3BLACKCROWS(data.open,data.high,data.low,data.close)
 
-    fig, axes = plt.subplots(3, 1)
-    data[['close']].loc['2022-01-01':].plot(ax=axes[0], grid=True, title='上证走势')
-    data[['avg100obv','obv']].loc['2022-01-01':].plot(ax=axes[1], grid=True)
-    data[['minus_di','plus_di','ADX']].loc['2022-01-01':].plot(ax=axes[2], grid=True)
+
+    fig, axes = plt.subplots(4, 1)
+    data[['close','ma20','ma55']].loc['2023-03-01':].plot(ax=axes[0], grid=True, title='上证走势')
+    data[['avg100obv','obv']].loc['2023-03-01':].plot(ax=axes[1], grid=True)
+    data[['minus_di','plus_di','ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
+    #data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
+    #data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
+    data[['CDL3BLACKCROWS']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
     plt.legend(loc='best', shadow=True)
 
     # plt.subplot(212)
