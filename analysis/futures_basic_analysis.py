@@ -8,7 +8,7 @@ plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 warnings.filterwarnings('ignore')
 
-def analysis_futrues_by_plot_year_day_data(condition=None):
+def analysis_futures_by_plot_year_day_data(condition=None):
     if condition is None:
         condition = {"symbol": 'B0', "date": {"$gt": '2023-01-01', "$lt": "2023-12-31"}}
     database = 'futures'
@@ -20,8 +20,58 @@ def analysis_futrues_by_plot_year_day_data(condition=None):
 
     plot_year_seq_data(data, index_key='date', val_key='close')
 
+def analysis_future_delivery_receipt_data(receipt_condition=None,warehouse_receipt_condition=None,delivery_condition=None):
+    #注册仓单
+    if receipt_condition is None:
+        receipt_condition = {"code": 'FG', "date": {"$gt": '20240101'},"data_type":"futures_receipt"}
+    database = 'futures'
+    collection = 'futures_basic_info'
+    projection = {'_id': False}
+    sort_key = "date"
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=receipt_condition,
+                               sort_key=sort_key)
 
-def analysis_futrues_by_plot_year_month_data(condition=None,title=None):
+    data['receipt_value'] = data['value']
+    cols = ['date', 'receipt_value']
+    receipt_data = data[cols]
+    #仓单日报数据
+    if warehouse_receipt_condition is None:
+        warehouse_receipt_condition = {"code": 'FG', "date": {"$gt": '20240101'},"data_type":"futures_warehouse_receipt"}
+    database = 'futures'
+    collection = 'futures_basic_info'
+    projection = {'_id': False}
+    sort_key = "date"
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=warehouse_receipt_condition,
+                               sort_key=sort_key)
+
+    #交割数据
+    data['warehouse_receipt_value'] = data['value']
+    cols = ['date', 'warehouse_receipt_value']
+    warehouse_receipt_data = data[cols]
+
+    if delivery_condition is None:
+        delivery_condition = {"code": '平板玻璃', "date": {"$gt": '20240101'},"data_type":"futures_delivery"}
+    database = 'futures'
+    collection = 'futures_basic_info'
+    projection = {'_id': False}
+    sort_key = "date"
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=delivery_condition,
+                               sort_key=sort_key)
+    cols = ['date','delivery_volume']
+    data['code'] = receipt_condition['code']
+    delivery_data = data[cols]
+
+    pd_data = pd.merge(receipt_data, warehouse_receipt_data, on=['date'], how='outer')
+    pd_data = pd.merge(pd_data,delivery_data,on=['date'],how='outer')
+    return pd_data
+
+
+
+
+
+
+
+def analysis_futures_by_plot_year_month_data(condition=None,title=None):
     if condition is None:
         condition = {"symbol": 'B0', "date": {"$gt": '2023-01-01', "$lt": "2023-12-31"}}
     if title is None:
@@ -59,4 +109,4 @@ def analysis_futrues_by_plot_year_month_data(condition=None,title=None):
 
 
 if __name__ == '__main__':
-    analysis_futrues_by_plot_year_month_data()
+    analysis_futures_by_plot_year_month_data()

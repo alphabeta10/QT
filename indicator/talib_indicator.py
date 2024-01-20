@@ -27,32 +27,35 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     data['rsi6'] = ta.RSI(data.close, timeperiod=6)
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
                                     slowd_period=5, slowd_matype=1)
-    data['atr14'] = ta.ATR(data.high,data.low,data.close,timeperiod=14)
-    data['ADOSC'] = ta.ADOSC(data.high,data.low,data.close,data.volume,fastperiod=3,slowperiod=10)
-    addSignal(data,sign_type='mfi')
-    addSignal(data,sign_type='KDJ')
+    data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=14)
+    data['ADOSC'] = ta.ADOSC(data.high, data.low, data.close, data.volume, fastperiod=3, slowperiod=10)
+    addSignal(data, sign_type='mfi')
+    addSignal(data, sign_type='KDJ')
     return data
 
 
 def addSignal(data: pd.DataFrame, sign_type=None):
-
     if sign_type is None:
         return
-    if sign_type=='mfi':
+    if sign_type == 'mfi':
         data['pre_mfi'] = data['mfi'].shift(1)
-        data['buy_mfi'] = data.apply(lambda row:1 if row['pre_mfi']<20 and row['mfi']>20 else 0,axis=1)
-        data['sell_mfi'] = data.apply(lambda row:1 if row['pre_mfi']>80 and row['mfi']<80 else 0,axis=1)
-    if sign_type=='KDJ':
+        data['buy_mfi'] = data.apply(lambda row: 1 if row['pre_mfi'] < 20 and row['mfi'] > 20 else 0, axis=1)
+        data['sell_mfi'] = data.apply(lambda row: 1 if row['pre_mfi'] > 80 and row['mfi'] < 80 else 0, axis=1)
+    if sign_type == 'KDJ':
         data['pre_K'] = data['K'].shift(1)
         data['pre_D'] = data['D'].shift(1)
-        data['buy_kdj'] = data.apply(lambda row:1 if row['D']<20 and row['K']<20 and row['K']>row['D'] and row['pre_K']<row['pre_D'] else 0,axis=1)
-        data['sell_kdj'] = data.apply(lambda row:1 if row['D']>80 and row['K']>80 and row['K']<row['D'] and row['pre_K']>row['pre_D'] else 0,axis=1)
+        data['buy_kdj'] = data.apply(
+            lambda row: 1 if row['D'] < 20 and row['K'] < 20 and row['K'] > row['D'] and row['pre_K'] < row[
+                'pre_D'] else 0, axis=1)
+        data['sell_kdj'] = data.apply(
+            lambda row: 1 if row['D'] > 80 and row['K'] > 80 and row['K'] < row['D'] and row['pre_K'] > row[
+                'pre_D'] else 0, axis=1)
 
 
 def MFI_indicator():
     """stock"""
     condition = {"code": {"$in": ["sh000001"]}, "date": {"$gte": "2020-01-01"}}
-    #condition = {"code": {"$in": ["000858"]}, "time": {"$gte": "2020-01-01"}}
+    # condition = {"code": {"$in": ["000858"]}, "time": {"$gte": "2020-01-01"}}
     database = 'stock'
     collection = 'ticker_daily'
     projection = {'_id': False}
@@ -88,10 +91,15 @@ def MFI_indicator():
     data['rsi12'] = ta.RSI(data.close, timeperiod=12)
     data['rsi6'] = ta.RSI(data.close, timeperiod=6)
 
+    # rsi指标添加买入卖出信号
+    data['pre_rsi12'] = data['rsi12'].shift(1)
+    data['rsi_sign_sell'] = data.apply(lambda row: 1 if row['rsi12'] < 80 and row['pre_rsi12'] > 80 else 0, axis=1)
+    data['rsi_sign_buy'] = data.apply(lambda row: 1 if row['rsi12'] > 20 and row['pre_rsi12'] <= 20 else 0, axis=1)
+
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
                                     slowd_period=5, slowd_matype=1)
-    data['ma20'] = ta.SMA(data.close,timeperiod=20)
-    data['ma55'] = ta.SMA(data.close,timeperiod=55)
+    data['ma20'] = ta.SMA(data.close, timeperiod=20)
+    data['ma55'] = ta.SMA(data.close, timeperiod=55)
 
     """ADX 低于25时，震荡行情，不明确的行情 大于25是，趋势强，但不能判断上涨还是下降 要结合+DI和-DI以及OBV指标
         信号如下判断
@@ -100,41 +108,52 @@ def MFI_indicator():
         3.判断obv 大于 avg100obv
         4.依据上面三个判断是否买入
     """
-    data['ADX'] = ta.ADX(data.high,data.low,data.close,timeperiod=14)
-    data['minus_di'] = ta.MINUS_DI(data.high,data.low,data.close,timeperiod=14)
-    data['plus_di'] = ta.PLUS_DI(data.high,data.low,data.close,timeperiod=14)
-    data['obv'] = ta.OBV(data.close,data.volume)
-    data['avg100obv'] = ta.SMA(data.obv,timeperiod=100)
-    data['atr14'] = ta.ATR(data.high,data.low,data.close,timeperiod=26)
-    data['natr14'] = ta.NATR(data.high,data.low,data.close,timeperiod=26)
-    data['TRANGE'] = ta.TRANGE(data.high,data.low,data.close)
+    data['ADX'] = ta.ADX(data.high, data.low, data.close, timeperiod=14)
+    data['minus_di'] = ta.MINUS_DI(data.high, data.low, data.close, timeperiod=14)
+    data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
+    data['obv'] = ta.OBV(data.close, data.volume)
+    data['avg100obv'] = ta.SMA(data.obv, timeperiod=100)
+    data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=26)
+    data['natr14'] = ta.NATR(data.high, data.low, data.close, timeperiod=26)
+    data['TRANGE'] = ta.TRANGE(data.high, data.low, data.close)
 
-    data['ADXR'] = ta.ADXR(data.high,data.low,data.close,timeperiod=14)
+    data['ADXR'] = ta.ADXR(data.high, data.low, data.close, timeperiod=14)
     # apo = slowma(price) - fastma(price)
-    data['APO'] = ta.APO(data.close,fastperiod=12,slowperiod=26)
-    #up 0-100 70-100上升趋势，0-30弱势
-    data['aroon_down'],data['aroon_up'] = ta.AROON(data.high,data.low,timeperiod=20)
+    data['APO'] = ta.APO(data.close, fastperiod=12, slowperiod=26)
+    # up 0-100 70-100上升趋势，0-30弱势
+    data['aroon_down'], data['aroon_up'] = ta.AROON(data.high, data.low, timeperiod=20)
+
+    data['H_line'], data['M_line'], data['L_line'] = ta.BBANDS(data.close, timeperiod=40, nbdevup=2, nbdevdn=2,
+                                                               matype=0)
+    data['up_boll_delta'] = data['close'] - data['H_line']
+    data['pre_up_boll_delta'] = data['up_boll_delta'].shift(1)
+    data['up_boll'] = data.apply(lambda row: 1 if row['pre_up_boll_delta'] <=0 and row['up_boll_delta'] >0 else 0, axis=1)
+
+    data['down_boll_delta'] = data['close'] - data['L_line']
+    data['pre_down_boll_delta'] = data['down_boll_delta'].shift(1)
+    data['dow_boll'] = data.apply(lambda row: 1 if row['pre_down_boll_delta'] >= 0 and row['down_boll_delta'] < 0 else 0,
+                                 axis=1)
+
     # plt.figure(figsize=(16, 14))
     # plt.subplot(211)
     # data['close'].plot(color='r')
     # plt.xlabel("")
     # plt.title("上证走势", fontsize=15)
-    data['BOP'] = ta.BOP(data.open,data.high,data.low,data.close)
-    #多空双方的博弈
-    data['AD'] = ta.AD(data.high,data.low,data.close,data.volume)
-    #real = EMA(AD,fastperiod)-EMA(AD,slowperiod) 由负转正买入，由正转负，卖出
-    data['ADOSC'] = ta.ADOSC(data.high,data.low,data.close,data.volume,fastperiod=12,slowperiod=16)
+    data['BOP'] = ta.BOP(data.open, data.high, data.low, data.close)
+    # 多空双方的博弈
+    data['AD'] = ta.AD(data.high, data.low, data.close, data.volume)
+    # real = EMA(AD,fastperiod)-EMA(AD,slowperiod) 由负转正买入，由正转负，卖出
+    data['ADOSC'] = ta.ADOSC(data.high, data.low, data.close, data.volume, fastperiod=12, slowperiod=16)
     # 'open', 'high', 'low', 'close'
-    data['CDL2CROWS'] = ta.CDL2CROWS(data.open,data.high,data.low,data.close)
-    data['CDL3BLACKCROWS'] = ta.CDL3BLACKCROWS(data.open,data.high,data.low,data.close)
-
+    data['CDL2CROWS'] = ta.CDL2CROWS(data.open, data.high, data.low, data.close)
+    data['CDL3BLACKCROWS'] = ta.CDL3BLACKCROWS(data.open, data.high, data.low, data.close)
 
     fig, axes = plt.subplots(4, 1)
-    data[['close','ma20','ma55']].loc['2023-03-01':].plot(ax=axes[0], grid=True, title='上证走势')
-    data[['avg100obv','obv']].loc['2023-03-01':].plot(ax=axes[1], grid=True)
-    data[['minus_di','plus_di','ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
-    #data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
-    #data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
+    data[['close', 'ma20', 'ma55']].loc['2023-03-01':].plot(ax=axes[0], grid=True, title='上证走势')
+    data[['avg100obv', 'obv']].loc['2023-03-01':].plot(ax=axes[1], grid=True)
+    data[['minus_di', 'plus_di', 'ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
+    # data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
+    # data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
     data[['CDL3BLACKCROWS']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
     plt.legend(loc='best', shadow=True)
 
@@ -162,11 +181,11 @@ def MFI_indicator():
                 data['D'][i]:
             data.loc[data.index[i], '收盘信号'] = 0
 
-    data.close.plot(figsize=(16, 7), grid=True)
+    data[['close','H_line','L_line']].plot(figsize=(16, 7), grid=True)
     for i in range(len(data)):
-        if data['收盘信号'][i] == 1:
+        if data['dow_boll'][i] == 1:
             plt.annotate('买', xy=(data.index[i], data.close[i]), arrowprops=dict(facecolor='r', shrink=0.05))
-        if data['收盘信号'][i] == 0:
+        if data['up_boll'][i] == 1:
             plt.annotate('卖', xy=(data.index[i], data.close[i]), arrowprops=dict(facecolor='g', shrink=0.1))
     plt.title('上证买卖信号', size=15)
     plt.xlabel('')
