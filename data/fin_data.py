@@ -535,6 +535,5 @@ def enter_credit_fin_agg_flow():
 
 if __name__ == '__main__':
     enter_credit_fin()
-
-    #enter_credit_fin_agg_flow()
+    enter_credit_fin_agg_flow()
     find_data()

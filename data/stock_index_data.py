@@ -7,7 +7,7 @@ from utils.tool import mongo_bulk_write_data
 
 def index_data(dict_list=None):
     if dict_list is None:
-        stock_zh_index_spot_df = try_get_action(ak.stock_zh_index_spot,try_count=3)
+        stock_zh_index_spot_df = try_get_action(ak.stock_zh_index_spot_sina,try_count=3)
         if stock_zh_index_spot_df is not None:
             index_table = get_mongo_table(database='stock', collection='index_data')
             for index in tqdm(stock_zh_index_spot_df.index):
