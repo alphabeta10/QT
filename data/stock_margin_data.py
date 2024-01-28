@@ -74,7 +74,7 @@ def handle_simple_sz_margin_data(start_date_str=None):
                             '融券余额': 'short_sell_balance',
                             '融资融券余额': 'margin_trade_short_sell_balance'}
     if start_date_str is None:
-        before_day = datetime.now() - timedelta(days=10)
+        before_day = datetime.now() - timedelta(days=15)
         start_date_str = before_day.strftime("%Y%m%d")
     now_int = int(datetime.now().strftime("%Y%m%d"))
     tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()

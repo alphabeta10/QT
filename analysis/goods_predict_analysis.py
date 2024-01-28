@@ -499,7 +499,7 @@ def source_predict_common(goods_name=None, config=None):
         else:
             print(name,comm_dict)
     for k,v in count_dict.items():
-        print(k,v)
+        print(k,v,len(v))
 
 if __name__ == '__main__':
     #goods_name = '大豆'

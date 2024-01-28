@@ -182,7 +182,7 @@ def handle_gov_yd_data():
     #ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     #ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
-    ids = ['A06']
+    #ids = ['A06']
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "yd"

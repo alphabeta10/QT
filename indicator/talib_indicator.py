@@ -181,7 +181,7 @@ def MFI_indicator():
                 data['D'][i]:
             data.loc[data.index[i], '收盘信号'] = 0
 
-    data[['close','H_line','L_line']].plot(figsize=(16, 7), grid=True)
+    data[['close','H_line','L_line','ma20','ma55']].plot(figsize=(16, 7), grid=True)
     for i in range(len(data)):
         if data['dow_boll'][i] == 1:
             plt.annotate('买', xy=(data.index[i], data.close[i]), arrowprops=dict(facecolor='r', shrink=0.05))

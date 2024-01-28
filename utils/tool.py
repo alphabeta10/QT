@@ -16,8 +16,13 @@ def is_json(str_: str):
     except Exception as e:
         return False
     return True
+def dump_json_data(file_name,json_data:dict):
+    with open(file_name,'w') as f:
+        json.dump(json_data,f)
 
-
+def load_json_data(file_name):
+    with open(file_name,'r') as f:
+        return json.load(f)
 def mongo_bulk_write_data(db_col, upsert_datas: list):
     """
     批量数据录入mongo db
