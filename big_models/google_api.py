@@ -1,5 +1,4 @@
 import pandas as pd
-import google.generativeai as genai
 import json
 
 
@@ -27,20 +26,14 @@ def handle_model_table_data(pd_data: pd.DataFrame):
     return input_table_str
 
 
-def google_big_gen_model():
-    genai.configure(api_key='AIzaSyDLVUYIGsuz9_yCcXisryY1GQi9ecr91Ns', transport='rest')
-    model = genai.GenerativeModel('gemini-pro')
 
 
-def google_big_gen_model_sentence_analysis(new_df: pd.DataFrame, model=None,demo_input=None,demo_output=None):
+def google_big_gen_model_sentence_analysis(new_df: pd.DataFrame, model,demo_input=None,demo_output=None):
     """
     google模型情感分析
     :param new_df:
     :return:
     """
-    if model is None:
-        genai.configure(api_key='AIzaSyDLVUYIGsuz9_yCcXisryY1GQi9ecr91Ns', transport='rest')
-        model = genai.GenerativeModel('gemini-pro')
     data_df = new_df[['发布时间', '新闻内容']]
     input_str = handle_model_table_data(data_df)
     if demo_input is None:
