@@ -4,14 +4,20 @@ from utils.actions import show_data
 from utils.tool import sort_dict_data_by
 import matplotlib.pyplot as plt
 import copy
+import google.generativeai as genai
+import numpy as np
+from utils.tool import load_json_data
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
+from big_models.google_api import handle_model_table_data, simple_big_gen_model_fn
+from utils.actions import try_get_action
 
 warnings.filterwarnings('ignore')
 from data.stock_detail_fin import handle_comm_stock_fin_em, handle_fin_analysis_indicator
-
+from pymongo import UpdateOne
+from utils.tool import mongo_bulk_write_data
 
 def get_data(cods=None, dtype="fin_indicator", projection=None):
     if projection is None:
@@ -25,6 +31,7 @@ def get_data(cods=None, dtype="fin_indicator", projection=None):
         datas.append(ele)
     pd_data = pd.DataFrame(data=datas)
     return pd_data
+
 
 def plot_bar_line_list(x, bar_y_list, line_z_list, bar_label_list, line_label_list, title_name):
     # 绘制柱图
@@ -74,7 +81,6 @@ def plot_bar_line(x, bar_y, line_z, bar_label, line_label):
 
     plt.legend(loc="upper right")
     plt.show()
-
 
 
 def get_fin_assets_metric(code_list, isDataFromLocal=True):
@@ -395,14 +401,15 @@ def stock_score(pd_data: pd.DataFrame, metric, sort_type=False):
     return score_df
 
 
-def analysis_fin_by_metric(code_dict=None,isLocal=False):
+def analysis_fin_by_metric(code_dict=None, isLocal=False):
     def handle_score(row, col_list):
         total_score = 0
         for col in col_list:
             total_score += row[col]
         return total_score
+
     if code_dict is None:
-        code_dict = {"sh603019": "中科曙光", "sz002230": "科大讯飞","sz000977":"浪潮信息","sz300474":"景嘉微"}
+        code_dict = {"sh603019": "中科曙光", "sz002230": "科大讯飞", "sz000977": "浪潮信息", "sz300474": "景嘉微"}
     rename_code = {}
     for k, v in code_dict.items():
         rename_code[k[2:]] = v
@@ -497,5 +504,195 @@ def handle_fin_avg_data(pd_data, local_codes, handle_key):
     return pd.DataFrame(data=new_pd_data_list)
 
 
+def big_model_stock_fin_data(local_codes, model):
+    def format_data(df_data: pd.DataFrame, cols):
+        data_cols = df_data.columns
+        for col in cols:
+            if col in data_cols:
+                df_data[col] = df_data[col].astype(float)
+                df_data[col] = np.round(df_data[col] / 1e8, 4)
+
+    if local_codes is None or len(local_codes) > 1:
+        print("输入代码不能为空")
+        return
+    if len(local_codes) > 1:
+        print("只能输入一个代码")
+        return
+    get_col_dict = {"MONETARYFUNDS": "货币资金",
+                    "INVENTORY": "存货",
+                    "ACCOUNTS_RECE": "应收账款",
+                    "PREPAYMENT": "预付款项",
+                    "TOTAL_ASSETS": "资产总计",
+                    "TOTAL_LIABILITIES": "负债合计",
+                    "INTANGIBLE_ASSET": "无形资产",
+                    "NOTE_ACCOUNTS_PAYABLE": "应付票据及应付账款",
+                    "ACCOUNTS_PAYABLE": "其中:应付账款",
+                    "LONG_LOAN": "长期借款",
+                    "SHORT_LOAN": "短期借款",
+                    "NOTE_ACCOUNTS_RECE": "应收票据及应收账款",
+                    "CIP": "在建工程",
+                    "FIXED_ASSET": "固定资产",
+                    "TOTAL_CURRENT_ASSETS": "流动资产合计",
+                    "TOTAL_PARENT_EQUITY": "归属于母公司股东权益总计",
+                    'TOTAL_EQUITY': "股东权益合计",
+                    'OTHER_CURRENT_ASSET': '其他流动资产',
+                    'NOTE_PAYABLE': "其中:应付票据",
+                    'BOND_PAYABLE': "应付债券",
+                    'SHARE_CAPITAL': '实收资本（或股本',
+                    'CAPITAL_RESERVE': '资本公积',
+                    'TOTAL_CURRENT_LIAB': '流动负债合计',
+                    'TRADE_FINASSET_NOTFVTPL': '交易性金融资产',
+                    'date': '日期',
+                    'code': '股票代码'
+                    }
+    format_cols = [k for k in get_col_dict.keys() if k not in ['date', 'code']]
+    projection = {"code": True, "date": True, "_id": False}
+    for k, _ in get_col_dict.items():
+        projection[k] = True
+    data = get_data(cods=local_codes, dtype='zcfz_report_detail', projection=projection)
+    data = data[data['date'] > '2023-01-01']
+    format_data(data, format_cols)
+    zcfz_max = np.max(data['date'].values)
+
+    data.rename(columns=get_col_dict, inplace=True)
+    zcfz_input_str = handle_model_table_data(data)
+    get_col_dict = {"FE_INTEREST_EXPENSE": "其中:利息费用",
+                    "FE_INTEREST_INCOME": "利息收入",
+                    "OPERATE_INCOME": "营业收入",
+                    "OPERATE_COST": "营业成本",
+                    'NETPROFIT': '净利润',
+                    'TOTAL_PROFIT': '利润总额',
+                    'OPERATE_TAX_ADD': '税金及附加',
+                    'OPERATE_PROFIT': '营业利润',
+                    'date': '日期',
+                    'code': '股票代码'
+                    }
+    format_cols = [k for k in get_col_dict.keys() if k not in ['date', 'code']]
+    projection = {"code": True, "date": True, "_id": False}
+    for k, _ in get_col_dict.items():
+        projection[k] = True
+    data = get_data(cods=local_codes, dtype='profit_report_em_detail', projection=projection)
+    data = data[data['date'] > '2023-01-01']
+    format_data(data, format_cols)
+    profit_max = np.max(data['date'].values)
+
+    data.rename(columns=get_col_dict, inplace=True)
+    profit_input_str = handle_model_table_data(data)
+
+    projection = {"date": True, "code": True, "_id": False}
+    get_col_dict = {"NETCASH_OPERATE": "经营活动产生的现金流量净额",
+                    "TOTAL_OPERATE_OUTFLOW": "经营活动现金流出小计",
+                    "TOTAL_OPERATE_INFLOW": "经营活动现金流入小计",
+                    "SALES_SERVICES": "销售商品、提供劳务收到的现金",
+                    "BUY_SERVICES": "购买商品、接受劳务支付的现金",
+                    "PAY_STAFF_CASH": "支付给职工以及为职工支付的现金",
+                    'NETCASH_INVEST': '投资活动产生的现金流量净额',
+                    'date': '日期',
+                    'code': '股票代码'
+                    }
+    format_cols = [k for k in get_col_dict.keys() if k not in ['date', 'code']]
+    for k, _ in get_col_dict.items():
+        projection[k] = True
+    data = get_data(dtype='cash_flow_report_em_detail', cods=local_codes, projection=projection)
+    data = data[data['date'] > '2023-01-01']
+    format_data(data, format_cols)
+    cash_max = np.max(data['date'].values)
+
+    data.rename(columns=get_col_dict, inplace=True)
+    cash_flow_input_str = handle_model_table_data(data)
+
+    input_txt = """给定资产负债表，利润表，现金流量表，总结出盈利能力，收入增长，债务水平，现金周转，资产及股权以及最终结论。资产负债表(数值单位亿元)：| 股票代码 | 日期 | 其中:应付账款 | 应收账款 | 资本公积 | 在建工程 | 固定资产 | 无形资产 | 存货 | 货币资金 | 应付票据及应付账款 | 应收票据及应收账款 | 其中:应付票据 | 其他流动资产 | 预付款项 | 实收资本（或股本 | 短期借款 | 资产总计 | 流动资产合计 | 流动负债合计 | 股东权益合计 | 负债合计 | 归属于母公司股东权益总计 | 长期借款 | 交易性金融资产 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 002230 | 2023-03-31 | 40.6885 | 97.3536 | 100.3972 | 7.7867 | 25.4997 | 25.8149 | 28.8286 | 32.1937 | 63.4071 | 102.3143 | 22.7187 | 1.9825 | 3.2523 | 23.2308 | 3.6401 | 317.1518 | 186.1447 | 104.1367 | 167.4155 | 149.7363 | 163.4949 | 22.7952 |  |
+| 002230 | 2023-06-30 | 48.6926 | 108.75 | 98.8862 | 9.5987 | 26.2006 | 25.8527 | 26.7974 | 36.9739 | 69.0859 | 114.0461 | 20.3933 | 1.786 | 2.9745 | 23.1568 | 9.3403 | 337.0917 | 199.963 | 113.4202 | 169.1204 | 167.9712 | 165.2496 | 29.7971 |  |
+| 002230 | 2023-09-30 | 56.0364 | 119.3862 | 98.9577 | 11.1309 | 29.2692 | 26.2652 | 26.5752 | 33.9815 | 78.9302 | 125.3536 | 22.8938 | 2.3238 | 3.6365 | 23.1568 | 11.8203 | 352.1416 | 209.4441 | 130.4688 | 167.1926 | 184.949 | 163.2782 | 29.0776 |  |
+盈利表(数值单位亿元)：| 股票代码 | 日期 | 净利润 | 营业成本 | 营业收入 | 营业利润 | 税金及附加 | 利润总额 | 其中:利息费用 | 利息收入 |
+|---|---|---|---|---|---|---|---|---|---|
+| 002230 | 2023-03-31 | -0.9502 | 16.7816 | 28.8758 | -0.77 | 0.1644 | -0.7274 | 0.1641 | 0.0603 |
+| 002230 | 2023-06-30 | 0.1486 | 46.9448 | 78.4155 | -0.3702 | 0.425 | -0.4323 | 0.3479 | 0.2103 |
+| 002230 | 2023-09-30 | 0.4503 | 75.3003 | 126.1375 | 0.0221 | 0.7278 | -0.0704 | 0.5255 | 0.3249 |
+现金流量表(数值单位亿元)：| 股票代码 | 日期 | 购买商品、接受劳务支付的现金 | 投资活动产生的现金流量净额 | 经营活动产生的现金流量净额 | 支付给职工以及为职工支付的现金 | 销售商品、提供劳务收到的现金 | 经营活动现金流入小计 | 经营活动现金流出小计 |
+|---|---|---|---|---|---|---|---|---|
+| 002230 | 2023-03-31 | 29.838 | -2.7971 | -16.6842 | 15.3572 | 36.7059 | 39.1216 | 55.8058 |
+| 002230 | 2023-06-30 | 56.149 | -8.473 | -15.2874 | 25.2462 | 75.064 | 82.985 | 98.2724 |
+| 002230 | 2023-09-30 | 83.2916 | -15.3073 | -11.716 | 34.7165 | 119.924 | 130.9132 | 142.6291 |
+输出：{"盈利能力":"净利润在逐季改善，从2023年3月末的-0.95亿元增至2023年9月末的0.45亿元。毛利率从2023年3月末的-2.7%上升至2023年9月末的0.36%。","收入增长":" 营业收入在逐季增长，从2023年3月末的28.88亿元增至2023年9月末的126.14亿元。营业收入同比增长42%。","债务水平":"流动负债总额逐季小幅增长，从2023年3月末的104.14亿元增至2023年9月末的130.47亿元。流动负债占总负债的比例从69.6%上升至70.5%。","现金周转":"经营活动产生的现金流量净额在逐季改善，从2023年3月末的-16.68亿元增至2023年9月末的-11.72亿元。收现比从2023年3月末的0.70倍提升至2023年9月末的0.92倍。","资产及股权":"资产总额从2023年3月末的317.15亿元增至2023年9月末的352.14亿元。股东权益总额从2023年3月末的167.42亿元增至2023年9月末的167.19亿元。","最终结论":"公司盈利能力呈改善趋势，营业收入逐季增长，收入同比增长强劲。公司流动负债较多，但仍处于可控范围，流动负债与长期负债的比例为70.50:29.50。公司现金流改善，收现比提升，资产总额和股东权益总额基本保持稳定。"}
+资产负债表(数值单位亿元)：$zcfz盈利表(数值单位亿元)：$profit现金流量表(数值单位亿元)：$cash输出："""
+    input_txt = input_txt.replace("$zcfz", zcfz_input_str).replace("$profit", profit_input_str).replace("$cash",
+                                                                                                        cash_flow_input_str)
+
+    ret_json = try_get_action(simple_big_gen_model_fn, model=model, request_txt=input_txt)
+    if ret_json is None:
+        return None,None
+    return ret_json,max([zcfz_max,profit_max,cash_max])
+
+
+def enter_big_model_analysis_stock_fin(code_dict: dict = None):
+    api_key_json = load_json_data("google_api.json")
+    api_key = api_key_json['api_key']
+    genai.configure(api_key=api_key, transport='rest')
+    model = genai.GenerativeModel('gemini-pro')
+
+    if code_dict is None:
+        code_dict = {
+            # 半导体
+            "002409": "雅克科技",
+            # 电力
+            "002015": "协鑫能科",
+            # 游戏
+            "002555": "三七互娱",
+            "002602": "世纪华通",
+            "603444": "吉比特",
+            # 通讯
+            "000063": "中兴通讯",
+            "600522": "中天科技",
+            # 白酒
+            "000858": "五粮液",
+            "600519": "贵州茅台",
+            # 机器人
+            "002472": "双环传动",
+            "002527": "新时达",
+            # 银行
+            "600036": "招商银行",
+            "600919": "江苏银行",
+            # AI相关
+            "300474": "景嘉微",
+            "002230": "科大讯飞",
+            "603019": "中科曙光",
+            "000977": "浪潮信息",
+            # 新能源
+            "300750": "宁德时代",
+            "002594": "比亚迪",
+            # 零食
+            "300783": "三只松鼠",
+            "603719": "良品铺子",
+            # 啤酒
+            "600132": "重庆啤酒",
+            "600600": "青岛啤酒",
+        }
+    update_request = []
+    big_model_col = get_mongo_table(database='stock', collection="big_model")
+    for code,name in code_dict.items():
+        print(f"handel {name}")
+
+        ret_json,time = big_model_stock_fin_data([code],model)
+        if ret_json is not None:
+            new_dict = {"data_type": "stock_fin_summary",
+                        "time": time, "code": code}
+            for k,v in ret_json.items():
+                new_dict[k] = v
+            update_request.append(
+                UpdateOne({"code": code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
+                          {"$set": new_dict},
+                          upsert=True)
+            )
+            if len(update_request)%10==0:
+                mongo_bulk_write_data(big_model_col,update_request)
+                update_request.clear()
+    if len(update_request)>0:
+        mongo_bulk_write_data(big_model_col, update_request)
+        update_request.clear()
+
+
 if __name__ == '__main__':
-    credit_funds_fin_inst_analysis()
+    enter_big_model_analysis_stock_fin()

@@ -2,7 +2,7 @@ from datetime import datetime,timedelta
 import akshare as ak
 import google.generativeai as genai
 import pandas as pd
-from big_models.google_api import google_big_gen_model_sentence_analysis
+from big_models.google_api import comm_google_big_gen_model
 from utils.send_msg import MailSender
 from utils.tool import load_json_data
 import schedule
@@ -28,8 +28,8 @@ def stock_real_analysis_main():
         [no_stock_key_set.add(e) for e in combine_dict.get("other_keys", [])]
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
-    genai.configure(api_key=api_key,transport='rest')
-    model = genai.GenerativeModel('gemini-pro')
+    # genai.configure(api_key=api_key,transport='rest')
+    # model = genai.GenerativeModel('gemini-pro')
 
     col = ['发布时间', '新闻标题', '新闻内容']
     stock_telegraph_cls_df = ak.stock_telegraph_cls(symbol="全部")
@@ -63,9 +63,11 @@ def stock_real_analysis_main():
         all_df_list.append(stock_df)
     if len(filter_stock_telegraph_cls_df)>0:
         all_df_list.append(filter_stock_telegraph_cls_df)
-    all_df = pd.concat([stock_df,filter_stock_telegraph_cls_df])
-    json_data = google_big_gen_model_sentence_analysis(all_df,model)
-    print(json_data)
+    if len(all_df_list)>0:
+        all_df = pd.concat(all_df_list)
+        print(all_df)
+        # json_data = google_big_gen_model_sentence_analysis(all_df,model)
+        # print(json_data)
     #         json_data = google_big_gen_model_sentence_analysis(stock_new_df,model)
     #         neg_data = [row for row in json_data if row['情感类别'] in ['中性','悲观']]
     #         pos_data = [row for row in json_data if row['情感类别'] in ['积极']]

@@ -1,12 +1,17 @@
 """
 股票基本分析，波动率，风险，等
 """
-import numpy as np
-
-from utils.tool import get_data_from_mongo, sort_dict_data_by
+from datetime import datetime, timedelta
+from big_models.google_api import *
 from analysis.analysis_tool import *
 import pandas as pd
 import matplotlib.pyplot as plt
+from utils.tool import load_json_data
+import google.generativeai as genai
+from utils.actions import try_get_action
+from data.mongodb import get_mongo_table
+from pymongo import UpdateOne
+from utils.tool import mongo_bulk_write_data
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -263,7 +268,7 @@ def bank_stock_portfolio():
     print(DF_Alloc_R)
 
 
-def comm_portfolio_analysis(code_dict_data,start_date,end_date):
+def comm_portfolio_analysis(code_dict_data, start_date, end_date):
     codes = list(code_dict_data.keys())
     data = get_data_from_mongo(database="stock", collection='ticker_daily',
                                condition={"code": {"$in": codes}, "time": {"$gte": start_date}},
@@ -371,7 +376,6 @@ def comm_portfolio_analysis(code_dict_data,start_date,end_date):
     print(DF_Alloc_R)
 
 
-
 def index_stock_portfolio():
     start_date = '2020-01-01'
     end_date = '2023-11-12'
@@ -381,7 +385,7 @@ def index_stock_portfolio():
 
     data = pd.pivot_table(data, values='close', index=['time'], columns=['name'])
     # data.rename(columns=code_dict_data, inplace=True)
-    data.dropna(axis=1,inplace=True)
+    data.dropna(axis=1, inplace=True)
     data.index = pd.to_datetime(data.index)
     ret_daily = data.pct_change(1)
     ret_daily = ret_daily.dropna()
@@ -484,18 +488,141 @@ def index_stock_portfolio():
 
 def month_portfolio_analysis():
     dict_data = {}
-    with open("concept_code.txt",mode='r') as f:
+    with open("concept_code.txt", mode='r') as f:
         lines = f.readlines()
 
         for line in lines:
-            splits = line.replace("\n","").split(",")
-            if len(splits)==2:
-                code,name = splits
+            splits = line.replace("\n", "").split(",")
+            if len(splits) == 2:
+                code, name = splits
                 dict_data[code] = name
-    comm_portfolio_analysis(code_dict_data=dict_data,start_date='2022-01-01',end_date='2023-12-18')
+    comm_portfolio_analysis(code_dict_data=dict_data, start_date='2022-01-01', end_date='2023-12-18')
 
+
+def big_model_stock_price_data(codes: list, model):
+    if codes is None:
+        print("股票代码必须不为空")
+        return
+    start_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
+    condition = {"code": {"$in": codes}, "time": {"$gte": start_date}}
+    database = 'stock'
+    collection = 'ticker_daily'
+    projection = {'_id': False}
+    sort_key = "time"
+
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    data = pd.pivot_table(data, values='close', index=['time'], columns=['code'])
+
+    def period_metric(pd_data: pd.DataFrame, periods=None):
+        if periods is None:
+            periods = [30, 60, 240]
+        result_df = pd.DataFrame(index=data.columns)
+        for peroid in periods:
+            acc_ret = (pd_data.tail(peroid) + 1).prod() - 1
+            mean = pd_data.tail(peroid).mean()
+            std = pd_data.tail(peroid).std()
+            sharpe = mean / std
+            volatility = pd_data.tail(peroid).std()
+            md = mdd(pd_data.tail(peroid))
+            result_df[f'{peroid}日夏普'] = np.round(sharpe, 4)
+            result_df[f'{peroid}日波动率'] = np.round(volatility, 4)
+            result_df[f'{peroid}日最大回撤'] = np.round(md, 4)
+            result_df[f'{peroid}日累计收益'] = np.round(acc_ret, 4)
+        return result_df
+
+    daily_ret = data.pct_change(1)
+    result_df = period_metric(daily_ret)
+    result_df['股票代码'] = result_df.index
+    request_txt = """给定计算好的不同日期的夏普，波动率，最大回撤以及累计收益，综合分析给出一个是否值得投资的结论。输入：| 30日夏普 | 30日波动率 | 30日最大回撤 | 30日累计收益 | 60日夏普 | 60日波动率 | 60日最大回撤 | 60日累计收益 | 240日夏普 | 240日波动率 | 240日最大回撤 | 240日累计收益 | 股票代码 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| -0.1019 | 0.0164 | -0.1081 | -0.0527 | -0.2653 | 0.0142 | -0.2111 | -0.2072 | -0.1124 | 0.0161 | -0.4017 | -0.3714 | 000858 |
+| -0.0702 | 0.0136 | -0.0863 | -0.0308 | -0.1444 | 0.0122 | -0.1231 | -0.104 | -0.0277 | 0.0129 | -0.1687 | -0.1004 | 600519 |
+输出：{"002230":"30日夏普为-0.23, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.19, 表明该股票在过去30天内的最大跌幅为19%。30日累计收益为-0.20, 表明该股票在过去30天内的总回报率为-20%。60日夏普为-0.13, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.24, 表明该股票在过去60天内的最大跌幅为24%。60日累计收益为-0.20, 表明该股票在过去60天内的总回报率为-20%。240日夏普为-0.01, 低于0, 表明该股票在过去240天内的表现不佳。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.53, 表明该股票在过去240天内的最大跌幅为53%。240日累计收益为-0.20, 表明该股票在过去240天内的总回报率为-20%。综合以上，002230在过去不同日期的表现都不佳，不建议投资","603019":"30日夏普为-0.28, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.21, 表明该股票在过去30天内的最大跌幅为21%。30日累计收益为-0.21, 表明该股票在过去30天内的总回报率为-21%。60日夏普为-0.15, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.25, 表明该股票在过去60天内的最大跌幅为25%。60日累计收益为-0.22, 表明该股票在过去60天内的总回报率为-22%。240日夏普为0.04, 高于0, 表明该股票在过去240天内的表现较好。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.49, 表明该股票在过去240天内的最大跌幅为49%。 240日累计收益为0.19, 表明该股票在过去240天内的总回报率为19%。综合以上，603019在过去不同日期的表现都不佳，不建议投资"}\n输入：${input_str}输出："""
+    json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
+                               request_txt=request_txt)
+    if json_data is None:
+        return None
+    return json_data
+
+
+def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
+    api_key_json = load_json_data("google_api.json")
+    api_key = api_key_json['api_key']
+    genai.configure(api_key=api_key, transport='rest')
+    model = genai.GenerativeModel('gemini-pro')
+    year = datetime.now().strftime('%Y-01-01')
+
+    if code_dict is None:
+        code_dict = {
+            # 半导体
+            "002409": "雅克科技",
+            # 电力
+            "002015": "协鑫能科",
+            # 游戏
+            "002555": "三七互娱",
+            "002602": "世纪华通",
+            "603444": "吉比特",
+            # 通讯
+            "000063": "中兴通讯",
+            "600522": "中天科技",
+            # 白酒
+            "000858": "五粮液",
+            "600519": "贵州茅台",
+            # 机器人
+            "002472": "双环传动",
+            "002527": "新时达",
+            # 银行
+            "600036": "招商银行",
+            "600919": "江苏银行",
+            # AI相关
+            "300474": "景嘉微",
+            "002230": "科大讯飞",
+            "603019": "中科曙光",
+            "000977": "浪潮信息",
+            # 新能源
+            "300750": "宁德时代",
+            "002594": "比亚迪",
+            # 零食
+            "300783": "三只松鼠",
+            "603719": "良品铺子",
+            # 啤酒
+            "600132": "重庆啤酒",
+            "600600": "青岛啤酒",
+        }
+    temp_codes = []
+    update_request = []
+    big_model_col = get_mongo_table(database='stock', collection="big_model")
+    for code, name in code_dict.items():
+        temp_codes.append(code)
+        if len(temp_codes) % 4 == 0:
+            ret_json = big_model_stock_price_data(temp_codes, model)
+            if ret_json is not None:
+                for ret_code,summary in ret_json.items():
+                    new_dict = {"data_type": "stock_price_summary", "abstract":summary,
+                                "time":year, "code": ret_code}
+                    update_request.append(
+                        UpdateOne({"code": ret_code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
+                                  {"$set": new_dict},
+                                  upsert=True)
+                    )
+                mongo_bulk_write_data(big_model_col, update_request)
+                update_request.clear()
+            temp_codes.clear()
+    if len(temp_codes) > 0:
+        ret_json = big_model_stock_price_data(temp_codes, model)
+        if ret_json is not None:
+            for ret_code, summary in ret_json.items():
+                new_dict = {"data_type": "stock_price_summary", "abstract": summary,
+                            "time": year, "code": ret_code}
+                update_request.append(
+                    UpdateOne({"code": ret_code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
+                              {"$set": new_dict},
+                              upsert=True)
+                )
+            mongo_bulk_write_data(big_model_col, update_request)
+            update_request.clear()
 
 
 if __name__ == '__main__':
-    # bank_stock_portfolio()
-    month_portfolio_analysis()
+    enter_big_model_analysis_stock_indicator()
