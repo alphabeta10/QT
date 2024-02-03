@@ -15,23 +15,24 @@ def handle_margin_sz_sh_total_data():
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     macro_china_market_margin_sz_df = try_get_action(ak.macro_china_market_margin_sz, try_count=3)
     update_request = []
-    for index in macro_china_market_margin_sz_df.index:
-        dict_data = dict(macro_china_market_margin_sz_df.loc[index])
-        time = str(index)[0:10]
+    if macro_china_market_margin_sz_df is not None:
+        for index in macro_china_market_margin_sz_df.index:
+            dict_data = dict(macro_china_market_margin_sz_df.loc[index])
+            time = str(index)[0:10]
 
-        in_db_data = {"data_type": "margin_data", "metric_code": "margin_sz", "time": time}
-        for k, v in dict_data.items():
-            in_db_data[sz_mapping_cf.get(k)] = v
-        update_request.append(
-            UpdateOne(
-                {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
-                 "metric_code": in_db_data['metric_code']},
-                {"$set": in_db_data},
-                upsert=True)
-        )
-        if len(update_request) % 1000 == 0:
-            mongo_bulk_write_data(stock_common, update_request)
-            update_request.clear()
+            in_db_data = {"data_type": "margin_data", "metric_code": "margin_sz", "time": time}
+            for k, v in dict_data.items():
+                in_db_data[sz_mapping_cf.get(k)] = v
+            update_request.append(
+                UpdateOne(
+                    {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
+                     "metric_code": in_db_data['metric_code']},
+                    {"$set": in_db_data},
+                    upsert=True)
+            )
+            if len(update_request) % 1000 == 0:
+                mongo_bulk_write_data(stock_common, update_request)
+                update_request.clear()
 
     if len(update_request) > 0:
         mongo_bulk_write_data(stock_common, update_request)
@@ -43,25 +44,26 @@ def handle_margin_sz_sh_total_data():
                      '融资融券余额': 'margin_trade_short_sell_balance'}
     macro_china_market_margin_sh_df = try_get_action(ak.macro_china_market_margin_sh, try_count=3)
     update_request = []
-    for index in macro_china_market_margin_sh_df.index:
-        dict_data = dict(macro_china_market_margin_sh_df.loc[index])
-        in_db_data = {"data_type": "margin_data", "metric_code": "margin_sh"}
-        for k, v in dict_data.items():
-            if k == '日期':
-                in_db_data['time'] = str(v)[0:10]
-            else:
-                in_db_data[sh_mapping_cf.get(k)] = v
-        update_request.append(
-            UpdateOne(
-                {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
-                 "metric_code": in_db_data['metric_code']},
-                {"$set": in_db_data},
-                upsert=True)
-        )
+    if macro_china_market_margin_sh_df is not None:
+        for index in macro_china_market_margin_sh_df.index:
+            dict_data = dict(macro_china_market_margin_sh_df.loc[index])
+            in_db_data = {"data_type": "margin_data", "metric_code": "margin_sh"}
+            for k, v in dict_data.items():
+                if k == '日期':
+                    in_db_data['time'] = str(v)[0:10]
+                else:
+                    in_db_data[sh_mapping_cf.get(k)] = v
+            update_request.append(
+                UpdateOne(
+                    {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
+                     "metric_code": in_db_data['metric_code']},
+                    {"$set": in_db_data},
+                    upsert=True)
+            )
 
-        if len(update_request) % 1000 == 0:
-            mongo_bulk_write_data(stock_common, update_request)
-            update_request.clear()
+            if len(update_request) % 1000 == 0:
+                mongo_bulk_write_data(stock_common, update_request)
+                update_request.clear()
 
     if len(update_request) > 0:
         mongo_bulk_write_data(stock_common, update_request)
@@ -87,18 +89,19 @@ def handle_simple_sz_margin_data(start_date_str=None):
         for date_str in trade_dates:
             print(f"handel {date_str}")
             stock_margin_sse_df = try_get_action(ak.stock_margin_szse, try_count=3, date=date_str)
-            for index in stock_margin_sse_df.index:
-                dict_data = dict(stock_margin_sse_df.loc[index])
-                in_db_data = {"data_type": "margin_data", "metric_code": "margin_sz_simple", "time": date_str}
-                for k, v in dict_data.items():
-                    in_db_data[simple_sz_mapping_cf.get(k)] = v
-                update_request.append(
-                    UpdateOne(
-                        {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
-                         "metric_code": in_db_data['metric_code']},
-                        {"$set": in_db_data},
-                        upsert=True)
-                )
+            if stock_margin_sse_df is not None:
+                for index in stock_margin_sse_df.index:
+                    dict_data = dict(stock_margin_sse_df.loc[index])
+                    in_db_data = {"data_type": "margin_data", "metric_code": "margin_sz_simple", "time": date_str}
+                    for k, v in dict_data.items():
+                        in_db_data[simple_sz_mapping_cf.get(k)] = v
+                    update_request.append(
+                        UpdateOne(
+                            {"data_type": in_db_data['data_type'], "time": in_db_data['time'],
+                             "metric_code": in_db_data['metric_code']},
+                            {"$set": in_db_data},
+                            upsert=True)
+                    )
 
         if len(update_request) > 0:
             mongo_bulk_write_data(stock_common, update_request)

@@ -217,6 +217,43 @@ def handle_futures_delivery_dce(dates=None):
     if len(datas) > 0:
         mongo_bulk_write_data(futures_basic_info, datas)
 
+def handel_futures_long_short_data_cffex(dates:list,codes:list):
+    """
+    金融板块期货多空信息数据
+    :return:
+    """
+    datas = []
+    futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
+    for date in dates:
+        print(f"handle date={date}")
+        data = try_get_action(ak.get_cffex_rank_table,try_count=3,date=date, vars_list=codes)
+        if data is not None:
+            for k, v in data.items():
+                sum_long_open_interest = v['long_open_interest'].sum()
+                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
+                sum_short_open_interest = v['short_open_interest'].sum()
+                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+
+                long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
+                position_result = {}
+                position_result['code'] = k
+                position_result['date'] = date
+                position_result['long_open_interest'] = int(sum_long_open_interest)
+                position_result['long_open_interest_chg'] = int(sum_long_open_interest_chg)
+
+                position_result['short_open_interest'] = int(sum_short_open_interest)
+                position_result['short_open_interest_chg'] = int(sum_short_open_interest_chg)
+                position_result['long_short_rate'] = long_short_rate
+                position_result['data_type'] = "futures_long_short_rate"
+                datas.append(UpdateOne(
+                    {"code": position_result['code'], "data_type": position_result['data_type'], "date": position_result['date']},
+                    {"$set": position_result},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_basic_info, datas)
+                datas.clear()
+
+
 
 def handle_futures_delivery_czce(trade_dates=None):
     if trade_dates is None:

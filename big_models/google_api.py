@@ -27,7 +27,7 @@ def handle_model_table_data(pd_data: pd.DataFrame):
     return input_table_str
 
 
-def simple_big_gen_model_fn(model,request_txt:str):
+def simple_big_gen_model_fn(model,request_txt:str,is_ret_json=True):
     safety_settings = [
         {
             "category": "HARM_CATEGORY_HARASSMENT",
@@ -48,8 +48,11 @@ def simple_big_gen_model_fn(model,request_txt:str):
     ]
     response = model.generate_content(request_txt, safety_settings=safety_settings)
     try:
-        json_data = json.loads(response.text)
-        return json_data
+        if is_ret_json is True:
+            json_data = json.loads(response.text)
+            return json_data
+        else:
+            return response.text
     except Exception as e:
         print(e)
         print(request_txt)

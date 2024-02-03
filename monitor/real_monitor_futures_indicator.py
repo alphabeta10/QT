@@ -72,14 +72,19 @@ def real_monitor_futures_and_cal_indicator():
     while True:
         cf_futures_zh_spot_df = None
         ff_futures_zh_spot_df = None
+        hour = int(datetime.now().strftime("%H"))
+        if hour>20:
+            new_date_str = (datetime.now()+timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            new_date_str = datetime.now().strftime("%Y-%m-%d")
         if cf_code != '':
             cf_futures_zh_spot_df = ak.futures_zh_spot(symbol=cf_code, market="CF", adjust='0')
-            cf_futures_zh_spot_df['date'] = datetime.now().strftime("%Y-%m-%d")
+            cf_futures_zh_spot_df['date'] = new_date_str
             cf_futures_zh_spot_df.index = pd.to_datetime(cf_futures_zh_spot_df['date'])
             cf_futures_zh_spot_df = cf_futures_zh_spot_df[r_col]
         if ff_code != '':
             ff_futures_zh_spot_df = ak.futures_zh_spot(symbol=ff_code, market="FF", adjust='0')
-            ff_futures_zh_spot_df['date'] = datetime.now().strftime("%Y-%m-%d")
+            ff_futures_zh_spot_df['date'] = new_date_str
             ff_futures_zh_spot_df.index = pd.to_datetime(ff_futures_zh_spot_df['date'])
             ff_futures_zh_spot_df = ff_futures_zh_spot_df[r_col]
 
