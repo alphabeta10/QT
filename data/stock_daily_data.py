@@ -97,6 +97,52 @@ def handle_stock_daily_data(codes=None,start_date=datetime.now().strftime("%Y%m0
               flush=True)
         update_request.clear()
 
+def handle_stock_dzjy_mrtj(start_date=datetime.now().strftime("%Y%m01"),end_date=datetime.now().strftime("%Y%m%d")):
+    stock_dzjy_mrtj_df = ak.stock_dzjy_mrtj(start_date=start_date, end_date=end_date)
+    update_request = []
+    stock_common = get_mongo_table(database='stock', collection='common_seq_data')
+    for index in stock_dzjy_mrtj_df.index:
+        data = stock_dzjy_mrtj_df.loc[index]
+        day = str(data['交易日期'])
+        close = float(data['收盘价'])
+        trade_price = float(data['成交价'])
+        amount = float(data['成交总额'])
+        pct_chg = float(data['涨跌幅'])
+        dis_rate = float(data['折溢率'])
+        trade_div_cir_total = float(data['成交总额/流通市值'])
+        num_of_trade = int(data['成交笔数'])
+        code = str(data['证券代码'])
+        dict_data = {
+            'time': day,
+            "close": close,
+            "trade_price": trade_price,
+            "metric_code": code,
+            "amount": amount,
+            "num_of_trade": num_of_trade,
+            "pct_chg": pct_chg,
+            "trade_div_cir_total": trade_div_cir_total,
+            "dis_rate": dis_rate,
+            "data_type":"stock_dzjy"
+        }
+        update_request.append(
+            UpdateOne({"metric_code": dict_data['metric_code'], 'time': dict_data['time'],"data_type":dict_data['data_type']},
+                      {"$set": dict_data},
+                      upsert=True)
+        )
+
+        if len(update_request) > 500:
+            update_result = stock_common.bulk_write(update_request, ordered=False)
+            print('插入：%4d条, 更新：%4d条' %
+                  (update_result.upserted_count, update_result.modified_count),
+                  flush=True)
+            update_request.clear()
+
+    if len(update_request) > 0:
+        update_result = stock_common.bulk_write(update_request, ordered=False)
+        print('插入：%4d条, 更新：%4d条' %
+              (update_result.upserted_count, update_result.modified_count),
+              flush=True)
+        update_request.clear()
 
 def col_create_index():
     ticker_daily = get_mongo_table(collection="ticker_daily")
@@ -108,4 +154,5 @@ def col_create_index():
 if __name__ == '__main__':
     save_stock_info_data()
     handle_stock_daily_data()
+    handle_stock_dzjy_mrtj()
 

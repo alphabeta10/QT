@@ -47,17 +47,13 @@ def simple_big_gen_model_fn(model,request_txt:str,is_ret_json=True):
         }
     ]
     response = model.generate_content(request_txt, safety_settings=safety_settings)
-    try:
-        if is_ret_json is True:
-            json_data = json.loads(response.text)
-            return json_data
-        else:
-            return response.text
-    except Exception as e:
-        print(e)
-        print(request_txt)
-        print(response.text)
-    return None
+    if is_ret_json is True:
+        json_data = json.loads(response.text)
+        return json_data
+    else:
+        return response.text
+
+
 def google_big_gen_model_comm_fn(data_df: pd.DataFrame, model, request_txt:str):
     """
     google模型，返回是json格式数据

@@ -68,7 +68,7 @@ def MFI_indicator():
     projection = {'_id': False}
     sort_key = "date"
     """futures"""
-    condition = {"symbol": {"$in": ["RB0"]}, "date": {"$gte": "2020-01-01"}}
+    condition = {"symbol": {"$in": ["B0"]}, "date": {"$gte": "2020-01-01"}}
     database = 'futures'
     collection = 'futures_daily'
     projection = {'_id': False}
@@ -154,7 +154,7 @@ def MFI_indicator():
     data[['minus_di', 'plus_di', 'ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
     # data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
     # data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
-    data[['CDL3BLACKCROWS']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
+    data[['atr14']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
     plt.legend(loc='best', shadow=True)
 
     # plt.subplot(212)
