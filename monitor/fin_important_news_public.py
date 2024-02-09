@@ -33,7 +33,7 @@ def sender_important_fin_data_to_user():
     important_countrys = ['中国',"美国"]
     important_keys = ['GDP', 'PMI', 'CPI', 'PPI', 'M0货币供应年率', 'M1货币供应年率', 'M2货币供应年率',
                       '人民币各项贷款余额年率', '新增人民币贷款', '社会融资规模']
-    if weekday in [5, 6]:
+    if weekday in [5, 6] or True:
         sender = MailSender()
         while int(now_str) < end_date_int:
             print(now_str)

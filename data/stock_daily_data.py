@@ -144,6 +144,20 @@ def handle_stock_dzjy_mrtj(start_date=datetime.now().strftime("%Y%m01"),end_date
               flush=True)
         update_request.clear()
 
+def stock_dzjy_main():
+    tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
+    trade_dates = []
+    start_date = datetime.now().strftime("%Y%m01")
+    now_int = int(datetime.now().strftime("%Y%m%d"))
+    for index in tool_trade_date_hist_sina_df.index:
+        trade_date = tool_trade_date_hist_sina_df.loc[index]['trade_date']
+        date_str = str(trade_date).replace("-", "")
+        if int(date_str) > int(start_date) and int(date_str) <= now_int:
+            trade_dates.append(date_str)
+
+    for trade_date in trade_dates:
+        print(f"handle {trade_date}")
+        handle_stock_dzjy_mrtj(start_date=trade_date, end_date=trade_date)
 def col_create_index():
     ticker_daily = get_mongo_table(collection="ticker_daily")
     ticker_daily.drop()
@@ -154,5 +168,5 @@ def col_create_index():
 if __name__ == '__main__':
     save_stock_info_data()
     handle_stock_daily_data()
-    handle_stock_dzjy_mrtj()
+    stock_dzjy_main()
 

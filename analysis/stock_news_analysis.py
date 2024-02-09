@@ -17,15 +17,12 @@ def big_model_stock_news_data(big_model_col,model,symbol='002527'):
         before_day_str = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
         data = data[data['发布时间'] > before_day_str]
 
-        batch = 20
-        start_index = 0
         temp_list = []
         update_request = []
         for index in data.index:
             dict_ele = dict(data.loc[index])
-            start_index += 1
             temp_list.append(dict_ele)
-            if start_index % batch == 0:
+            if len(temp_list) == 10:
                 temp_df = pd.DataFrame(temp_list)
                 ret = try_get_action(comm_google_big_gen_model, try_count=1, data_df=temp_df, model=model)
                 if ret is not None:
@@ -40,7 +37,6 @@ def big_model_stock_news_data(big_model_col,model,symbol='002527'):
                         )
                 mongo_bulk_write_data(big_model_col, update_request)
                 update_request.clear()
-                start_index = 0
                 temp_list.clear()
         if len(temp_list) > 0:
             temp_df = pd.DataFrame(temp_list)
