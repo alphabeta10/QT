@@ -74,7 +74,6 @@ def real_monitor_stock_and_cal_indicator():
         # 啤酒
         "600132": "重庆啤酒",
         "600600": "青岛啤酒",
-
     }
 
 

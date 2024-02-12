@@ -534,11 +534,11 @@ def big_model_stock_price_data(codes: list, model):
     daily_ret = data.pct_change(1)
     result_df = period_metric(daily_ret)
     result_df['股票代码'] = result_df.index
-    request_txt = """给定计算好的不同日期的夏普，波动率，最大回撤以及累计收益，综合分析给出一个是否值得投资的结论。输入：| 30日夏普 | 30日波动率 | 30日最大回撤 | 30日累计收益 | 60日夏普 | 60日波动率 | 60日最大回撤 | 60日累计收益 | 240日夏普 | 240日波动率 | 240日最大回撤 | 240日累计收益 | 股票代码 |
+    request_txt = """给定计算好的不同日期的夏普，波动率，最大回撤以及累计收益，综合分析以及给出一个投资分类[1，0]0表示不能投资，1表示可以投资。输入：| 30日夏普 | 30日波动率 | 30日最大回撤 | 30日累计收益 | 60日夏普 | 60日波动率 | 60日最大回撤 | 60日累计收益 | 240日夏普 | 240日波动率 | 240日最大回撤 | 240日累计收益 | 股票代码 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | -0.1019 | 0.0164 | -0.1081 | -0.0527 | -0.2653 | 0.0142 | -0.2111 | -0.2072 | -0.1124 | 0.0161 | -0.4017 | -0.3714 | 000858 |
 | -0.0702 | 0.0136 | -0.0863 | -0.0308 | -0.1444 | 0.0122 | -0.1231 | -0.104 | -0.0277 | 0.0129 | -0.1687 | -0.1004 | 600519 |
-输出：{"002230":"30日夏普为-0.23, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.19, 表明该股票在过去30天内的最大跌幅为19%。30日累计收益为-0.20, 表明该股票在过去30天内的总回报率为-20%。60日夏普为-0.13, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.24, 表明该股票在过去60天内的最大跌幅为24%。60日累计收益为-0.20, 表明该股票在过去60天内的总回报率为-20%。240日夏普为-0.01, 低于0, 表明该股票在过去240天内的表现不佳。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.53, 表明该股票在过去240天内的最大跌幅为53%。240日累计收益为-0.20, 表明该股票在过去240天内的总回报率为-20%。综合以上，002230在过去不同日期的表现都不佳，不建议投资","603019":"30日夏普为-0.28, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.21, 表明该股票在过去30天内的最大跌幅为21%。30日累计收益为-0.21, 表明该股票在过去30天内的总回报率为-21%。60日夏普为-0.15, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.25, 表明该股票在过去60天内的最大跌幅为25%。60日累计收益为-0.22, 表明该股票在过去60天内的总回报率为-22%。240日夏普为0.04, 高于0, 表明该股票在过去240天内的表现较好。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.49, 表明该股票在过去240天内的最大跌幅为49%。 240日累计收益为0.19, 表明该股票在过去240天内的总回报率为19%。综合以上，603019在过去不同日期的表现都不佳，不建议投资"}\n输入：${input_str}输出："""
+输出：{"综合分析":"30日夏普为-0.23, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.19, 表明该股票在过去30天内的最大跌幅为19%。30日累计收益为-0.20, 表明该股票在过去30天内的总回报率为-20%。60日夏普为-0.13, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.24, 表明该股票在过去60天内的最大跌幅为24%。60日累计收益为-0.20, 表明该股票在过去60天内的总回报率为-20%。240日夏普为-0.01, 低于0, 表明该股票在过去240天内的表现不佳。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.53, 表明该股票在过去240天内的最大跌幅为53%。240日累计收益为-0.20, 表明该股票在过去240天内的总回报率为-20%。综合以上，002230在过去不同日期的表现都不佳，不建议投资","603019":"30日夏普为-0.28, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.21, 表明该股票在过去30天内的最大跌幅为21%。30日累计收益为-0.21, 表明该股票在过去30天内的总回报率为-21%。60日夏普为-0.15, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.25, 表明该股票在过去60天内的最大跌幅为25%。60日累计收益为-0.22, 表明该股票在过去60天内的总回报率为-22%。240日夏普为0.04, 高于0, 表明该股票在过去240天内的表现较好。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.49, 表明该股票在过去240天内的最大跌幅为49%。 240日累计收益为0.19, 表明该股票在过去240天内的总回报率为19%。综合以上，603019在过去不同日期的表现都不佳，不建议投资","投资分类":0}\n输入：${input_str}输出："""
     json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
                                request_txt=request_txt)
     if json_data is None:
@@ -590,39 +590,36 @@ def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
             "600132": "重庆啤酒",
             "600600": "青岛啤酒",
         }
-    temp_codes = []
     update_request = []
     big_model_col = get_mongo_table(database='stock', collection="big_model")
     for code, name in code_dict.items():
+        temp_codes = []
         temp_codes.append(code)
-        if len(temp_codes) % 4 == 0:
-            ret_json = big_model_stock_price_data(temp_codes, model)
-            if ret_json is not None:
-                for ret_code,summary in ret_json.items():
-                    new_dict = {"data_type": "stock_price_summary", "abstract":summary,
-                                "time":year, "code": ret_code}
-                    update_request.append(
-                        UpdateOne({"code": ret_code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
-                                  {"$set": new_dict},
-                                  upsert=True)
-                    )
-                mongo_bulk_write_data(big_model_col, update_request)
-                update_request.clear()
-            temp_codes.clear()
-    if len(temp_codes) > 0:
         ret_json = big_model_stock_price_data(temp_codes, model)
         if ret_json is not None:
-            for ret_code, summary in ret_json.items():
+            summary = None
+            invent_state = None
+            if '综合分析' in ret_json.keys():
+                summary = ret_json['综合分析']
+            if '投资分类' in ret_json.keys():
+                invent_state = ret_json['投资分类']
+            if summary is not None and invent_state is not None:
                 new_dict = {"data_type": "stock_price_summary", "abstract": summary,
-                            "time": year, "code": ret_code}
+                            "time": year, "code": code,"invent_state":invent_state}
+
                 update_request.append(
-                    UpdateOne({"code": ret_code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
+                    UpdateOne({"code": code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
                               {"$set": new_dict},
                               upsert=True)
                 )
-            mongo_bulk_write_data(big_model_col, update_request)
-            update_request.clear()
-
+            else:
+                print(f"返回 json 有问题 {ret_json}")
+            if len(update_request)>4:
+                mongo_bulk_write_data(big_model_col, update_request)
+                update_request.clear()
+    if len(update_request) > 0:
+        mongo_bulk_write_data(big_model_col, update_request)
+        update_request.clear()
 
 if __name__ == '__main__':
     enter_big_model_analysis_stock_indicator()

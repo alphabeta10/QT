@@ -14,6 +14,8 @@ def get_fin_futures_long_short_rate(codes=None, start_time=None, is_fin=True):
     :param start_time:
     :return:
     """
+    if start_time is None:
+        start_time = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
     if codes is None:
         condition = {"data_type": "futures_long_short_rate", "date": {"$gt": start_time}, "code": {"$regex": "I"}}
     else:
@@ -81,17 +83,24 @@ def get_stock_last_dzjy(codes, start_time):
     for code, val in result_data.items():
         dis_rate = val['dis_rate']
         risk_level = "无评级"
+        risk_value = 0
         if dis_rate >= 0:
             risk_level = "无风险"
+            risk_value = 0
         elif dis_rate > -0.01 and dis_rate < 0:
             risk_level = "小风险"
+            risk_value = 0.1
         elif dis_rate > -0.05 and dis_rate <= -0.01:
             risk_level = "低风险"
+            risk_value = 0.3
         elif dis_rate > -0.1 and dis_rate <= -0.05:
             risk_level = "中风险"
+            risk_value = 0.5
         elif dis_rate <= -0.1:
             risk_level = "高风险"
+            risk_value = 0.8
         result_data[code]['risk_level'] = risk_level
+        result_data[code]['risk_value'] = risk_value
     return result_data
 
 

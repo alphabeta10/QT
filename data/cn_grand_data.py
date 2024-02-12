@@ -63,7 +63,7 @@ def post_or_get_data(url, params=None, method="post"):
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMYE4MjE3ODmgZZYq24AxMjQuMjMyLjE1MS4xMzM=; u=5; JSESSIONID=Yp7U1c3yPVJu7rb04-y9yP2VsMUeRZffGDPGAavwZ6mw064LwuST!-680104779"}
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gTI0ZTg3ZaBlxhSxgDE3NS4wLjIyNy4xNzmCZmM1ZWUx; u=2; JSESSIONID=uCiN98AbKmlUi2XoZQX5ZuSvMCOF2jKcJh1g37RXqAEW96KmRw1K!460167158"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):

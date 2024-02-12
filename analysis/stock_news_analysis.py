@@ -19,37 +19,46 @@ def big_model_stock_news_data(big_model_col,model,symbol='002527'):
 
         temp_list = []
         update_request = []
+        contain_keys = ['情感类别','摘要','时间']
         for index in data.index:
             dict_ele = dict(data.loc[index])
             temp_list.append(dict_ele)
             if len(temp_list) == 10:
                 temp_df = pd.DataFrame(temp_list)
-                ret = try_get_action(comm_google_big_gen_model, try_count=1, data_df=temp_df, model=model)
+                ret = try_get_action(comm_google_big_gen_model, try_count=3, data_df=temp_df, model=model,contain_keys=contain_keys)
                 if ret is not None:
                     for ret_ele in ret:
-                        new_dict = {"data_type": "news", "abstract": ret_ele['摘要'], "sentiment": ret_ele['情感类别'],
-                                    "time": ret_ele['时间'], "code": symbol}
-                        update_request.append(
-                            UpdateOne({"code": symbol, 'time': new_dict['time'], "data_type": new_dict['data_type'],
-                                       "abstract": new_dict['abstract']},
-                                      {"$set": new_dict},
-                                      upsert=True)
-                        )
+                        kys = ret_ele.keys()
+                        if '情感类别' in kys and '摘要' in kys and '时间' in kys:
+                            new_dict = {"data_type": "news", "abstract": ret_ele['摘要'], "sentiment": ret_ele['情感类别'],
+                                        "time": ret_ele['时间'], "code": symbol}
+                            update_request.append(
+                                UpdateOne({"code": symbol, 'time': new_dict['time'], "data_type": new_dict['data_type'],
+                                           "abstract": new_dict['abstract']},
+                                          {"$set": new_dict},
+                                          upsert=True)
+                            )
+                        else:
+                            print("返回的json数据有问题:",ret)
                 mongo_bulk_write_data(big_model_col, update_request)
                 update_request.clear()
                 temp_list.clear()
         if len(temp_list) > 0:
             temp_df = pd.DataFrame(temp_list)
-            ret = try_get_action(comm_google_big_gen_model, try_count=1, data_df=temp_df, model=model)
+            ret = try_get_action(comm_google_big_gen_model, try_count=3, data_df=temp_df, model=model,contain_keys=contain_keys)
             if ret is not None:
                 for ret_ele in ret:
-                    new_dict = {"data_type": "news", "abstract": ret_ele['摘要'], "sentiment": ret_ele['情感类别'],
-                                "time": ret_ele['时间'], "code": symbol}
-                    update_request.append(
-                        UpdateOne({"code": symbol, 'time': new_dict['time'], "data_type": new_dict['data_type']},
-                                  {"$set": new_dict},
-                                  upsert=True)
-                    )
+                    kys = ret_ele.keys()
+                    if '情感类别' in kys and '摘要' in kys and '时间' in kys:
+                        new_dict = {"data_type": "news", "abstract": ret_ele['摘要'], "sentiment": ret_ele['情感类别'],
+                                    "time": ret_ele['时间'], "code": symbol}
+                        update_request.append(
+                            UpdateOne({"code": symbol, 'time': new_dict['time'], "data_type": new_dict['data_type']},
+                                      {"$set": new_dict},
+                                      upsert=True)
+                        )
+                    else:
+                        print("返回的json数据有问题:", ret)
                 mongo_bulk_write_data(big_model_col, update_request)
                 update_request.clear()
 

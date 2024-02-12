@@ -92,7 +92,7 @@ def google_big_gen_model_comm_fn(data_df: pd.DataFrame, model, request_txt:str):
 
 
 
-def comm_google_big_gen_model(data_df: pd.DataFrame, model, demo_input=None, demo_output=None):
+def comm_google_big_gen_model(data_df: pd.DataFrame, model, demo_input=None, demo_output=None,contain_keys=None):
     """
     google模型情感分析
     :param data_df:
@@ -126,6 +126,14 @@ def comm_google_big_gen_model(data_df: pd.DataFrame, model, demo_input=None, dem
     response = model.generate_content(request_txt, safety_settings=safety_settings)
     try:
         json_data = json.loads(response.text)
+        if isinstance(json_data,list) and len(json_data)>0:
+            for key in contain_keys:
+                if key not in json_data[0].keys():
+                    return None
+        if isinstance(json_data,dict):
+            for key in contain_keys:
+                if key not in json_data.keys():
+                    return None
         return json_data
     except Exception as e:
         print(e)

@@ -1,13 +1,12 @@
 import pandas as pd
 from data.mongodb import get_mongo_table
 from utils.actions import show_data
-from utils.tool import sort_dict_data_by
 import matplotlib.pyplot as plt
 import copy
 import google.generativeai as genai
 import numpy as np
 from utils.tool import load_json_data
-
+from datetime import datetime,timedelta
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -17,15 +16,17 @@ from utils.actions import try_get_action
 warnings.filterwarnings('ignore')
 from data.stock_detail_fin import handle_comm_stock_fin_em, handle_fin_analysis_indicator
 from pymongo import UpdateOne
-from utils.tool import mongo_bulk_write_data
-
-def get_data(cods=None, dtype="fin_indicator", projection=None):
+from utils.tool import mongo_bulk_write_data,get_data_from_mongo, sort_dict_data_by
+from analysis.analysis_tool import convert_pd_data_to_month_data
+def get_data(cods=None, dtype="fin_indicator", projection=None,date=None):
     if projection is None:
         projection = {"_id": False}
     if cods is None:
         cods = ['603288', '601009', '600036', '002507', '002385', '603363']
+    if date is None:
+        date = (datetime.now() -timedelta(days=1825)).strftime("%Y-%m-%d")
     fin_col = get_mongo_table(collection='fin')
-    ret = fin_col.find({"code": {"$in": cods}, "data_type": dtype}, projection=projection).sort("date")
+    ret = fin_col.find({"code": {"$in": cods},"date":{"$gte":date}, "data_type": dtype}, projection=projection).sort("date")
     datas = []
     for ele in ret:
         datas.append(ele)
@@ -83,7 +84,7 @@ def plot_bar_line(x, bar_y, line_z, bar_label, line_label):
     plt.show()
 
 
-def get_fin_assets_metric(code_list, isDataFromLocal=True):
+def get_fin_assets_metric(code_list, isDataFromLocal=True,start_date=None):
     """
     资产负债率
     财务状况分析 偿债能力指标
@@ -147,9 +148,13 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True):
     projection = {"code": True, "date": True}
     for k, _ in get_col_dict.items():
         projection[k] = True
-    zcfz_pd_data = get_data(dtype='zcfz_report_detail', cods=local_codes, projection=projection)
+    zcfz_pd_data = get_data(dtype='zcfz_report_detail', cods=local_codes, projection=projection,date=start_date)
+    get_db_cols = list(zcfz_pd_data.columns)
     for col in get_col_dict.keys():
-        zcfz_pd_data[col] = zcfz_pd_data[col].apply(convert_ele)
+        if col in get_db_cols:
+            zcfz_pd_data[col] = zcfz_pd_data[col].apply(convert_ele)
+        else:
+            zcfz_pd_data[col] = 0
     zcfz_pd_data['流动资产比率'] = zcfz_pd_data['TOTAL_CURRENT_ASSETS'] / zcfz_pd_data['TOTAL_ASSETS']
     zcfz_pd_data['应收账款率'] = zcfz_pd_data['NOTE_ACCOUNTS_RECE'] / zcfz_pd_data['TOTAL_CURRENT_ASSETS']
     zcfz_pd_data['存货率'] = zcfz_pd_data['INVENTORY'] / zcfz_pd_data['TOTAL_CURRENT_ASSETS']
@@ -185,7 +190,7 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True):
     return zcfz_pd_data
 
 
-def get_fin_earning_metric(code_list, isDataFromLocal=True):
+def get_fin_earning_metric(code_list, isDataFromLocal=True,start_date=None):
     """
     盈利能力指标
         1.毛利率 = (营业收入-营业成本)/营业收入 毛利率越高，市场竞争力大
@@ -218,13 +223,18 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True):
                     'NETPROFIT': '净利润',
                     'TOTAL_PROFIT': '利润总额',
                     'OPERATE_TAX_ADD': '税金及附加',
-                    'OPERATE_PROFIT': '营业利润'
+                    'OPERATE_PROFIT': '营业利润',
+                    'RESEARCH_EXPENSE':'研发费用'
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
-    profit_pd_data = get_data(dtype='profit_report_em_detail', cods=local_codes, projection=projection)
+    profit_pd_data = get_data(dtype='profit_report_em_detail', cods=local_codes, projection=projection,date=start_date)
+    get_db_cols = list(profit_pd_data.columns)
     for col in get_col_dict.keys():
-        profit_pd_data[col] = profit_pd_data[col].apply(convert_ele)
+        if col in get_db_cols:
+            profit_pd_data[col] = profit_pd_data[col].apply(convert_ele)
+        else:
+            profit_pd_data[col] = 0
     profit_pd_data['毛利率'] = (profit_pd_data['OPERATE_INCOME'] - profit_pd_data['OPERATE_COST']) / profit_pd_data[
         'OPERATE_INCOME']
     profit_pd_data['销售净利率'] = profit_pd_data['NETPROFIT'] / profit_pd_data['OPERATE_INCOME']
@@ -234,7 +244,7 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True):
     return profit_pd_data
 
 
-def get_fin_cash_flow_metric(code_list, isDataFromLocal=True):
+def get_fin_cash_flow_metric(code_list, isDataFromLocal=True,start_date=None):
     """
     计算现金流量相关数据
     :param code_list:
@@ -264,13 +274,17 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True):
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
-    profit_pd_data = get_data(dtype='cash_flow_report_em_detail', cods=local_codes, projection=projection)
+    profit_pd_data = get_data(dtype='cash_flow_report_em_detail', cods=local_codes, projection=projection,date=start_date)
+    get_db_cols = list(profit_pd_data.columns)
     for col in get_col_dict.keys():
-        profit_pd_data[col] = profit_pd_data[col].apply(convert_ele)
+        if col in get_db_cols:
+            profit_pd_data[col] = profit_pd_data[col].apply(convert_ele)
+        else:
+            profit_pd_data[col] = 0
     return profit_pd_data
 
 
-def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromLocal=True, isCashDataFromLocal=True):
+def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromLocal=True, isCashDataFromLocal=True,start_date=None):
     """
 
     盈利指标
@@ -302,9 +316,9 @@ def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromL
     :param isCashDataFromLocal:
     :return:
     """
-    zcfc_data = get_fin_assets_metric(code_list, isZcfcDataFromLocal)
-    profit_data = get_fin_earning_metric(code_list, isProfitDataFromLocal)
-    cash_flow_data = get_fin_cash_flow_metric(code_list, isCashDataFromLocal)
+    zcfc_data = get_fin_assets_metric(code_list, isZcfcDataFromLocal,start_date)
+    profit_data = get_fin_earning_metric(code_list, isProfitDataFromLocal,start_date)
+    cash_flow_data = get_fin_cash_flow_metric(code_list, isCashDataFromLocal,start_date)
     pd_merge_data = pd.merge(zcfc_data, profit_data, on=['date', 'code'], how='left')
     pd_merge_data = pd.merge(pd_merge_data, cash_flow_data, on=['date', 'code'], how='left')
     pd_merge_data['总资产收益率'] = pd_merge_data['NETPROFIT'] / pd_merge_data['AVG_TOTAL_ASSETS']
@@ -401,7 +415,9 @@ def stock_score(pd_data: pd.DataFrame, metric, sort_type=False):
     return score_df
 
 
-def analysis_fin_by_metric(code_dict=None, isLocal=False):
+def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,start_date=None):
+    quarter_mapping = {1:"03-31",2:"06-30",3:"09-30",4:"12-31"}
+    quarter_month = quarter_mapping[quarter]
     def handle_score(row, col_list):
         total_score = 0
         for col in col_list:
@@ -415,8 +431,8 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False):
         rename_code[k[2:]] = v
     codes = list(code_dict.keys())
     data = get_fin_common_metric(code_list=codes, isZcfcDataFromLocal=isLocal, isProfitDataFromLocal=isLocal,
-                                 isCashDataFromLocal=isLocal)
-    pd_data = data[data['date'].str.contains("09-30")]
+                                 isCashDataFromLocal=isLocal,start_date=start_date)
+    pd_data = data[data['date'].str.contains(quarter_month)]
 
     # 同期的比较同比的指标 净利润增长率:NETPROFIT 营业收入增长率:OPERATE_INCOME 总资产增长率:TOTAL_ASSETS 净资产增长率:TOTAL_EQUITY 营业利润增长率:OPERATE_PROFIT
     pd_data['净利润增长率'] = pd_data['NETPROFIT'].pct_change(1)
@@ -424,9 +440,10 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False):
     pd_data['总资产增长率'] = pd_data['TOTAL_ASSETS'].pct_change(1)
     pd_data['净资产增长率'] = pd_data['TOTAL_EQUITY'].pct_change(1)
     pd_data['营业利润增长率'] = pd_data['OPERATE_PROFIT'].pct_change(1)
+    pd_data['研发费用增长率'] = pd_data['RESEARCH_EXPENSE'].pct_change(1)
 
     # 公司发展指标
-    future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率']
+    future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率','研发费用增长率']
     # 盈利能力指标
     profitability_metric_cols = ['毛利率', '销售净利率', '总资产收益率', '净资产收益率', '资本收益率', '资本报酬率',
                                  '总资产利润率']
@@ -453,21 +470,26 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False):
             sort_type = metric_sort_type.get(metric)
         score_df = stock_score(pd_data, metric, sort_type=sort_type)
         score_df_list.append(score_df)
-        data = pd.pivot_table(pd_data, values=metric, index=['date'], columns=['code']).tail(10)
+        data = pd.pivot_table(pd_data, values=metric, index=['date'], columns=['code'])
         data = data.rename(columns=rename_code)
-        data.plot(kind='bar', title=metric, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
-        plt.show()
+        if is_show:
+            show_data(data)
+            data.plot(kind='bar', title=metric, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+            plt.show()
 
     score_df = score_df_list[0]
     for ele in score_df_list[1:]:
         score_df = pd.merge(score_df, ele, left_on=['code', 'date'], right_on=['code', 'date'])
     score_df['total_score'] = score_df.apply(handle_score, axis=1, args=(metric_core_col,))
 
-    data = pd.pivot_table(score_df, values='total_score', index=['date'], columns=['code']).tail(10)
+    data = pd.pivot_table(score_df, values='total_score', index=['date'], columns=['code'])
+    ret_data = copy.deepcopy(data)
     data = data.rename(columns=rename_code)
-    show_data(data)
-    data.plot(kind='bar', title='分数', rot=45, width=0.5, figsize=(15, 8), fontsize=10)
-    plt.show()
+    if is_show:
+        show_data(data)
+        data.plot(kind='bar', title='分数', rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+        plt.show()
+    return ret_data
 
 
 def handle_fin_avg_data(pd_data, local_codes, handle_key):
@@ -692,6 +714,27 @@ def enter_big_model_analysis_stock_fin(code_dict: dict = None):
     if len(update_request)>0:
         mongo_bulk_write_data(big_model_col, update_request)
         update_request.clear()
+def m1_and_m2_diff_analysis():
+    database = 'govstats'
+    collection = 'data_info'
+    projection = {'_id': False}
+    sort_key = "time"
+    code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)","A0D0104_yd":"货币(M1)供应量同比增长(%)","A0D0106_yd":"流通中现金(M0)供应量同比增长(%)"}
+    code_list = {"$in": list(code_dict.keys())}
+    condition = {"code": code_list}
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    cols = ['time', 'data','code']
+    data = data[cols]
+    data = pd.pivot_table(data,values='data',index='time',columns='code')
+    data.rename(columns=code_dict,inplace=True)
+    data['m1_m2_diff'] = round(data['货币(M1)供应量同比增长(%)'] - data['货币和准货币(M2)供应量同比增长(%)'],4)
+    data['time'] = data.index
+    data['code'] = 'm1与m2增速之差'
+    data = convert_pd_data_to_month_data(data,'time','m1_m2_diff','code')
+    show_data(data)
+    data.plot(kind='line', title='m1与m2增速之差', rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
 
 
 if __name__ == '__main__':
