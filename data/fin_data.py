@@ -226,7 +226,7 @@ def find_data():
         "住户贷款": "loans_to_households",
         "住户短期贷款": "short_term_loans",
         "住户中长期贷款": "mid_long_term_loans",
-        "(事)业单位贷款":"loans_to_non_financial_enterprises_and_government_departments_organizations",
+        "(事)业单位贷款": "loans_to_non_financial_enterprises_and_government_departments_organizations",
         "企业短期贷款": "short_term_loans_1",
         "企业中长期贷款": "mid_long_term_loans_1",
     }
@@ -252,8 +252,6 @@ def find_data():
         "人民币贷款存量": "rmb_loans_growth",
         "信贷存量": "trust_loans_growth",
     }
-
-
 
     re_all_config = {}
     for k, v in income_config.items():
@@ -368,28 +366,28 @@ def go(file_dir='fin_agg2023', type_name='社会融资规模存量统计表', ti
     if type_name == '社会融资规模存量统计表':
         data_dict_data = {}
         agg_stock_dict = {
-            "人民币贷款":"rmb_loans",
-            "外币贷款（折合人民币":"foreign_currency_loans",
-            "委托贷款":"entrusted_loans",
-            "信托贷款":"trust_loans",
-            "未贴现银行承兑汇票":"undiscounted_banker_acceptances",
-            "企业债券":"net_fin_cor_bonds",
-            "政府债券":"gov_bonds",
-            "非金融企业境内股票":"equity_stock_non_fin_enter",
-            "存款类金融机构资产支持证券":"asset_backed_fin_inst",
-            "贷款核销":"loans_written_off",
+            "人民币贷款": "rmb_loans",
+            "外币贷款（折合人民币": "foreign_currency_loans",
+            "委托贷款": "entrusted_loans",
+            "信托贷款": "trust_loans",
+            "未贴现银行承兑汇票": "undiscounted_banker_acceptances",
+            "企业债券": "net_fin_cor_bonds",
+            "政府债券": "gov_bonds",
+            "非金融企业境内股票": "equity_stock_non_fin_enter",
+            "存款类金融机构资产支持证券": "asset_backed_fin_inst",
+            "贷款核销": "loans_written_off",
         }
         for index in pd_data.index:
             dict_data = dict(pd_data.loc[index])
-            name = str(dict_data['社会融资规模存量统计表']).strip().replace(" ","")
+            name = str(dict_data['社会融资规模存量统计表']).strip().replace(" ", "")
             if name in agg_stock_dict.keys():
                 col_name = agg_stock_dict[name]
-                for i in range(1,13):
-                    first_index = i*2 -1
+                for i in range(1, 13):
+                    first_index = i * 2 - 1
                     value = str(dict_data[f'Unnamed: {first_index}'])
-                    second_index = i*2
+                    second_index = i * 2
                     stock_percent = str(dict_data[f'Unnamed: {second_index}'])
-                    if i<10:
+                    if i < 10:
                         month = f"{time}0{i}01"
                     else:
                         month = f"{time}{i}01"
@@ -410,13 +408,6 @@ def go(file_dir='fin_agg2023', type_name='社会融资规模存量统计表', ti
                     {"$set": new_dict_data},
                     upsert=True)
             )
-
-
-
-
-
-
-
 
         # name = "_".join(re.findall('[A-Za-z]+',item)).lower()
         # if name not in name_mapping_count.keys():
@@ -470,29 +461,29 @@ def handle_credit_agg_stock_data(file_dir='fin_agg2023', type_name='社会融资
     if type_name == '社会融资规模存量统计表':
         data_dict_data = {}
         agg_stock_dict = {
-            "社会融资规模存量":"afre",
-            "人民币贷款":"rmb_loans",
-            "外币贷款（折合人民币":"foreign_currency_loans",
-            "委托贷款":"entrusted_loans",
-            "信托贷款":"trust_loans",
-            "未贴现银行承兑汇票":"undiscounted_banker_acceptances",
-            "企业债券":"net_fin_cor_bonds",
-            "政府债券":"gov_bonds",
-            "非金融企业境内股票":"equity_stock_non_fin_enter",
-            "存款类金融机构资产支持证券":"asset_backed_fin_inst",
-            "贷款核销":"loans_written_off",
+            "社会融资规模存量": "afre",
+            "人民币贷款": "rmb_loans",
+            "外币贷款（折合人民币": "foreign_currency_loans",
+            "委托贷款": "entrusted_loans",
+            "信托贷款": "trust_loans",
+            "未贴现银行承兑汇票": "undiscounted_banker_acceptances",
+            "企业债券": "net_fin_cor_bonds",
+            "政府债券": "gov_bonds",
+            "非金融企业境内股票": "equity_stock_non_fin_enter",
+            "存款类金融机构资产支持证券": "asset_backed_fin_inst",
+            "贷款核销": "loans_written_off",
         }
         for index in pd_data.index:
             dict_data = dict(pd_data.loc[index])
-            name = str(dict_data['社会融资规模存量统计表']).strip().replace(" ","")
+            name = str(dict_data['社会融资规模存量统计表']).strip().replace(" ", "")
             if name in agg_stock_dict.keys():
                 col_name = agg_stock_dict[name]
-                for i in range(1,13):
-                    first_index = i*2 -1
+                for i in range(1, 13):
+                    first_index = i * 2 - 1
                     value = str(dict_data[f'Unnamed: {first_index}'])
-                    second_index = i*2
+                    second_index = i * 2
                     stock_percent = str(dict_data[f'Unnamed: {second_index}'])
-                    if i<10:
+                    if i < 10:
                         month = f"{time}0{i}01"
                     else:
                         month = f"{time}{i}01"
@@ -517,6 +508,71 @@ def handle_credit_agg_stock_data(file_dir='fin_agg2023', type_name='社会融资
         mongo_bulk_write_data(stock_common, update_request)
 
 
+def handle_balance_sheet_of_monetary_authority(handle_dir=None):
+    if handle_dir is None:
+        handle_dir = 'fin_balance_sheet_of_monetary_authority_his'
+    list_files = os.listdir(handle_dir)
+    stock_common = get_mongo_table(database='stock', collection='common_seq_data')
+    for file_name in list_files:
+        file_name = os.path.join(handle_dir, file_name)
+        print(f"handle {file_name}")
+        pd_data = pd.read_excel(file_name, dtype=str)
+        meta_cols = None
+        header_dict = {'国外资产ForeignAssets': 'foreign_assets', '外汇ForeignExchange': 'foreign_exchange',
+                       '货币黄金MonetaryGold': 'monetary_gold',
+                       '其他国外资产OtherForeignAssets': 'other_foreign_assets',
+                       '对政府债权ClaimsonGovernment': 'claims_on_government',
+                       '其中：中央政府Ofwhich:CentralGovernment': 'of_which_central_government',
+                       '对其他存款性公司债权ClaimsonOtherDepositoryCorporations': 'claims_on_other_depository_corporations',
+                       '对其他金融性公司债权ClaimsonOtherFinancialCorporations': 'claims_on_other_financial_corporations',
+                       '对非金融性部门债权ClaimsonNon-financialSector': 'claims_on_non_financial_sector',
+                       '其他资产OtherAssets': 'other_assets', '总资产TotalAssets': 'total_assets',
+                       '储备货币ReserveMoney': 'reserve_money', '货币发行CurrencyIssue': 'currency_issue',
+                       '金融性公司存款DepositsofFinancialCorporations': 'deposits_of_financial_corporations',
+                       '其他存款性公司存款DepositsofOtherDepositoryCorporations': 'deposits_of_other_depository_corporations',
+                       '其他金融性公司存款DepositsofOtherFinancialCorporations': 'deposits_of_other_financial_corporations',
+                       '非金融机构存款DepositsofNon-financialInstitutions': 'deposits_of_non_financial_institutions',
+                       '不计入储备货币的金融性公司存款DepositsoffinancialcorporationsexcludedfromReserveMoney': 'deposits_of_financial_corporations_excluded_from_reserve_money',
+                       '发行债券BondIssue': 'bond_issue', '国外负债ForeignLiabilities': 'foreign_liabilities',
+                       '政府存款DepositsofGovernment': 'deposits_of_government', '自有资金OwnCapital': 'own_capital',
+                       '其他负债OtherLiabilities': 'other_liabilities', '总负债TotalLiabilities': 'total_liabilities'}
+        result_data = {}
+        for index in pd_data.index:
+            dict_data = dict(pd_data.loc[index])
+
+            if str(dict_data['货币当局资产负债表']).replace(' ', '') == '项目Item':
+                meta_cols = {key: str(ele).replace(".", "") + "01" for key, ele in dict_data.items() if
+                             str(ele).replace(' ', '') != '项目Item' and len(str(ele)) == 7}
+            if meta_cols is not None:
+                if str(dict_data['货币当局资产负债表']).replace(' ', '') not in ['nan', '项目Item']:
+                    item_name = str(dict_data['货币当局资产负债表']).replace(" ", "")
+                    col_name = header_dict.get(item_name)
+                    if col_name is not None:
+                        for key, time_name in meta_cols.items():
+                            value = str(dict_data.get(key)).replace("\u3000","")
+                            if str(value) == 'nan' or value=='':
+                                value = 0
+                            else:
+                                value = float(value)
+                            result_data.setdefault(time_name, {})
+                            result_data[time_name][col_name] = value
+                        if col_name == 'total_liabilities':
+                            break
+        update_request = []
+        for time, new_dict_data in result_data.items():
+            if len(new_dict_data) != len(header_dict):
+                print("check data")
+            new_dict_data['time'] = time
+            new_dict_data['data_type'] = 'fin_monetary'
+            new_dict_data['metric_code'] = 'balance_monetary_authority'
+            update_request.append(
+                UpdateOne(
+                    {"data_type": new_dict_data['data_type'], "time": new_dict_data['time'],
+                     "metric_code": new_dict_data['metric_code']},
+                    {"$set": new_dict_data},
+                    upsert=True))
+        mongo_bulk_write_data(stock_common, update_request)
+
 
 def enter_credit_fin():
     file_dir = 'fin_credit_funds2023'
@@ -526,6 +582,7 @@ def enter_credit_fin():
         print(key)
         fin_ins_credit_funds_data(file_dir=file_dir, type_name=key, time='2023')
 
+
 def enter_credit_fin_agg_flow():
     file_dir = 'fin_agg2023'
     type_dict_mapping = {'社会融资规模增量统计表': 'agg_fin_flow',
@@ -533,7 +590,9 @@ def enter_credit_fin_agg_flow():
     for key, v in type_dict_mapping.items():
         handle_credit_agg_stock_data(file_dir=file_dir, type_name=key, time='2023')
 
+
 if __name__ == '__main__':
     enter_credit_fin()
     enter_credit_fin_agg_flow()
+    handle_balance_sheet_of_monetary_authority()
     find_data()
