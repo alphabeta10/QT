@@ -87,6 +87,8 @@ def us_monetary_data_to_mongo():
                        "unit": "Billions of Dollars"},
                       {"name": "M2", "category": "finance", "series_id": "M2SL",
                        "unit": "Billions of Dollars"},
+                      {"name": "EFFR", "category": "finance", "series_id": "EFFR",
+                       "unit": "Percent"},
                       ]
     for series_id_dict in series_id_list:
         name, category, series_id, unit = series_id_dict['name'], series_id_dict['category'], series_id_dict[

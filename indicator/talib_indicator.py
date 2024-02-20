@@ -68,11 +68,11 @@ def MFI_indicator():
     projection = {'_id': False}
     sort_key = "date"
     """futures"""
-    condition = {"symbol": {"$in": ["B0"]}, "date": {"$gte": "2020-01-01"}}
-    database = 'futures'
-    collection = 'futures_daily'
-    projection = {'_id': False}
-    sort_key = "date"
+    # condition = {"symbol": {"$in": ["B0"]}, "date": {"$gte": "2020-01-01"}}
+    # database = 'futures'
+    # collection = 'futures_daily'
+    # projection = {'_id': False}
+    # sort_key = "date"
 
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
@@ -112,7 +112,8 @@ def MFI_indicator():
     data['minus_di'] = ta.MINUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['obv'] = ta.OBV(data.close, data.volume)
-    data['avg100obv'] = ta.SMA(data.obv, timeperiod=100)
+    data['obv_diff'] = ta.EMA(data.obv,6) - ta.EMA(data.obv,12)
+    data['avg100obv'] = ta.SMA(data.obv, timeperiod=120)
     data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=26)
     data['natr14'] = ta.NATR(data.high, data.low, data.close, timeperiod=26)
     data['TRANGE'] = ta.TRANGE(data.high, data.low, data.close)
@@ -140,7 +141,9 @@ def MFI_indicator():
     # plt.xlabel("")
     # plt.title("上证走势", fontsize=15)
     data['BOP'] = ta.BOP(data.open, data.high, data.low, data.close)
-    # 多空双方的博弈
+    # 多空双方的博弈 计算公式如下：
+    # AD＝前一日AD值＋（CLV*成交量）
+    # CLV = ((Close－Low)－(High－Close))/( High - Low)
     data['AD'] = ta.AD(data.high, data.low, data.close, data.volume)
     # real = EMA(AD,fastperiod)-EMA(AD,slowperiod) 由负转正买入，由正转负，卖出
     data['ADOSC'] = ta.ADOSC(data.high, data.low, data.close, data.volume, fastperiod=12, slowperiod=16)
@@ -154,7 +157,7 @@ def MFI_indicator():
     data[['minus_di', 'plus_di', 'ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
     # data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
     # data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
-    data[['atr14']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
+    data[['obv_diff']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
     plt.legend(loc='best', shadow=True)
 
     # plt.subplot(212)
@@ -177,7 +180,7 @@ def MFI_indicator():
         if data['K'][i] < 20 and data['D'][i] < 20 and data['K'][i - 1] <= data['D'][i - 1] and data['K'][i] > \
                 data['D'][i]:
             data.loc[data.index[i], '收盘信号'] = 1
-        if data['K'][i] > 80 and data['D'][i] > 80 and data['K'][i - 1] >= data['D'][i - 1] and data['K'][i] < \
+        if data['K'][i] > 70 and data['D'][i] > 70 and data['K'][i - 1] >= data['D'][i - 1] and data['K'][i] < \
                 data['D'][i]:
             data.loc[data.index[i], '收盘信号'] = 0
 

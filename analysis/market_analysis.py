@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from analysis.alg import judge_peak_lower
 from datetime import datetime
+from utils.actions import show_data
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -224,6 +225,64 @@ def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=Non
     convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
     plt.show()
 
+
+def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_key=None, data_type=None,is_show=False):
+    database = 'govstats'
+    collection = 'customs_goods'
+    if name is None:
+        name = '尿素'
+    if unit is None:
+        unit = '万吨'
+    if data_type is None:
+        data_type = "export_goods_detail"
+    projection = {'_id': False}
+    condition = {"name": name, "data_type": data_type, "unit": unit}
+    sort_key = "date"
+    if title is None:
+        title = '出口数据分析'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    dict_fs = {
+        "acc_price":{"dnum":"acc_month_volume","num":"acc_month_amount"},
+        "cur_price":{"dnum":"month_volume","num":"month_amount"}
+    }
+    dict_name_mapping = {
+        "acc_price":"累计价格",
+        "cur_price":"当前价格"
+    }
+    if val_key is None:
+        val_key = 'cur_price'
+    if val_key not in dict_fs.keys():
+        key_list = list(dict_fs.keys())
+        keystr = ",".join(key_list)
+        print(f"not val in {keystr}")
+        return
+    covert_list_keys = list(dict_fs[val_key].values())
+    data[covert_list_keys] = data[covert_list_keys].astype(float)
+    combine_keys = dict_fs[val_key]
+    num_key = combine_keys['num']
+    dnum_key = combine_keys['dnum']
+
+    year_dict_data = {}
+    for index in data.index:
+        ele = data.loc[index]
+        time = ele['date']
+        code = ele['name']
+        val = round(ele[num_key] / ele[dnum_key],4)
+        year = time[0:4]
+        metric = dict_name_mapping.get(val_key)
+        combine_key = f"{year}年{code}{metric}"
+        index_of = int(time.split("-")[1]) - 1
+        if combine_key not in year_dict_data.keys():
+            year_dict_data[combine_key] = [0.0] * 12
+        year_dict_data[combine_key][index_of] = val
+    convert_data = pd.DataFrame(data=year_dict_data,
+                                index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
+                                       '12月'])
+    if is_show:
+        show_data(convert_data)
+    convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+    plt.show()
 
 def cn_st_month_industry_revene_rate_analysis():
     """

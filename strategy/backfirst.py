@@ -2,9 +2,12 @@ import backtrader as bt
 from backtrader.feeds import DataBase
 from utils.tool import get_data_from_mongo
 import pandas as pd
+import math
+import backtrader.indicators as bi
 from backtrader import date2num
 import datetime as dt
-
+# import pyfolio as pf
+# from pyfolio.utils import to_utc, to_series
 
 # 自定义数据类
 class MyData(DataBase):
@@ -72,6 +75,206 @@ class MyData(DataBase):
         self.lines.c1[0] = int(one_row.get("time").split("-")[1])
         return True
 
+class TurtleStrategy(bt.Strategy):
+    params = (
+        ("long_period",20),
+        ("short_period",10),
+        ("printlog",True),
+    )
+
+    def __init__(self):
+        self.order = None
+        self.buyprice = 0
+        self.comm = 0
+        self.buy_size = 0
+        self.buy_count = 0
+        # macd子图模式显示
+        #bt.indicators.MACDHisto(self.data[0], subplot=False)
+        #指标
+        self.H_line = bi.Highest(self.data.high(-1),period=self.p.long_period)
+        self.L_line = bi.Lowest(self.data.low(-1),period=self.p.long_period)
+        self.TR = bi.Max((self.data.high(0) - self.data.low(0)), abs(self.data.close(-1) - self.data.high(0)),
+                         abs(self.data.close(-1) - self.data.low(0)))
+        self.ATR = bi.SimpleMovingAverage(self.TR, period=14,plot=True,plotname='atr')
+
+
+        self.buy_signal = bt.ind.CrossOver(self.data.close(0),self.H_line,plotname='buy_signal',plot=False)
+        self.sell_signal = bt.ind.CrossOver(self.data.close(0),self.L_line,plotname='sell_signal',plot=False)
+        for data in self.datas:
+            print(data._name)
+
+
+    def next(self):
+
+        if self.order:
+            return
+        if self.buy_signal>0 and self.buy_count==0:
+            self.buy_size = math.ceil((self.broker.getvalue() * 0.01 / self.ATR) / 100) * 100
+            self.sizer.p.stake = self.buy_size
+            self.buy_count = 1
+            self.order = self.buy()
+            self.log("入场")
+            # 加仓: 价格上涨了买入价的0.5ATR且加仓次数少于3次(含)
+        elif self.data.close > self.buyprice + 0.5 * self.ATR[0] and self.buy_count > 0 and self.buy_count <= 4:
+            self.buy_size = math.ceil((self.broker.get_cash() * 0.01 / self.ATR) / 100) * 100
+            self.sizer.p.stake = self.buy_size
+            self.order = self.buy()
+            self.buy_count += 1
+            self.log("加仓")
+
+        # 离场: 价格跌破下轨线且持仓时
+        elif self.sell_signal < 0 and self.buy_count > 0:
+            self.order = self.sell()
+            self.buy_count = 0
+            self.log("离场")
+
+        # 止损: 价格跌破买入价的2个ATR且持仓时
+        elif self.data.close < (self.buyprice - 2 * self.ATR[0]) and self.buy_count > 0:
+            self.order = self.sell()
+            self.buy_count = 0
+            self.log("止损")
+
+
+        # 输出交易记录
+    def log(self, txt, dt=None, doprint=False):
+        if self.params.printlog or doprint:
+            dt = dt or self.datas[0].datetime.date(0)
+            print('%s, %s' % (dt.isoformat(), txt))
+
+    def notify_order(self, order):
+        # 有交易提交/被接受，啥也不做
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+        # 交易完成，报告结果
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.log(
+                    '执行买入, 价格: %.2f, 成本: %.2f, 手续费 %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+                self.buyprice = order.executed.price
+                self.comm += order.executed.comm
+            else:
+                self.log(
+                    '执行卖出, 价格: %.2f, 成本: %.2f, 手续费 %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+                self.comm += order.executed.comm
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log("交易失败")
+        self.order = None
+
+    # 输出手续费
+    def stop(self):
+        self.log("手续费:%.2f 成本比例:%.5f" % (self.comm, self.comm / self.broker.getvalue()))
+
+
+
+class KDJStrategy(bt.Strategy):
+    params = (
+        ("long_period",20),
+        ("short_period",10),
+        ("printlog",True),
+    )
+
+    def __init__(self):
+        self.order = None
+        self.buyprice = 0
+        self.comm = 0
+        self.buy_size = 0
+        self.buy_count = 0
+        # macd子图模式显示
+        #bt.indicators.MACDHisto(self.data[0], subplot=False)
+        #指标
+        self.H_line = bi.Highest(self.data.high(-1),period=self.p.long_period)
+        self.L_line = bi.Lowest(self.data.low(-1),period=self.p.long_period)
+        self.TR = bi.Max((self.data.high(0) - self.data.low(0)), abs(self.data.close(-1) - self.data.high(0)),
+                         abs(self.data.close(-1) - self.data.low(0)))
+        self.ATR = bi.SimpleMovingAverage(self.TR, period=14,plot=True,plotname='atr')
+
+
+        self.buy_signal = bt.ind.CrossOver(self.data.close(0),self.H_line,plotname='buy_signal',plot=False)
+        self.sell_signal = bt.ind.CrossOver(self.data.close(0),self.L_line,plotname='sell_signal',plot=False)
+
+        self.res = bt.talib.STOCH(self.data.high, self.data.low, self.data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
+                                    slowd_period=5, slowd_matype=1)
+        self.rsi12 = bt.talib.RSI(self.data.close, timeperiod=12)
+        self.rsi6 = bt.talib.RSI(self.data.close, timeperiod=6)
+        self.K,self.D = self.res.slowk,self.res.slowd
+
+        self.buy_signal = bt.And(self.K>0,self.K<15,self.D>0,self.D<15)
+        self.sell_signal = bt.Or(self.K>65,self.D>65)
+
+
+
+
+    def next(self):
+        print(self.K[0],self.D[0],self.sell_signal[0])
+        if self.order:
+            return
+        if self.buy_signal>0 and self.buy_count==0:
+            self.buy_size = math.ceil((self.broker.getvalue() * 0.01 / self.ATR[0]) / 100) * 100
+            self.sizer.p.stake = self.buy_size
+            self.buy_count = 1
+            self.order = self.buy()
+            self.log("入场")
+            # 加仓: 价格上涨了买入价的0.5ATR且加仓次数少于3次(含)
+        # elif self.data.close > self.buyprice + 0.5 * self.ATR[0] and self.buy_count > 0 and self.buy_count <= 4:
+        #     self.buy_size = math.ceil((self.broker.get_cash() * 0.01 / self.ATR[0]) / 100) * 100
+        #     self.sizer.p.stake = self.buy_size
+        #     self.order = self.buy()
+        #     self.buy_count += 1
+        #     self.log("加仓")
+
+        # 离场: 价格跌破下轨线且持仓时
+        elif self.sell_signal > 0 and self.buy_count > 0:
+            self.order = self.sell()
+            self.buy_count = 0
+            self.log("离场")
+
+        # 止损: 价格跌破买入价的2个ATR且持仓时
+        elif self.data.close < (self.buyprice - 2* self.ATR[0]) and self.buy_count > 0:
+            self.order = self.sell()
+            self.buy_count = 0
+            self.log("止损")
+
+
+        # 输出交易记录
+    def log(self, txt, dt=None, doprint=False):
+        if self.params.printlog or doprint:
+            dt = dt or self.datas[0].datetime.date(0)
+            print('%s, %s' % (dt.isoformat(), txt))
+
+    def notify_order(self, order):
+        # 有交易提交/被接受，啥也不做
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+        # 交易完成，报告结果
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.log(
+                    '执行买入, 价格: %.2f, 成本: %.2f, 手续费 %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+                self.buyprice = order.executed.price
+                self.comm += order.executed.comm
+            else:
+                self.log(
+                    '执行卖出, 价格: %.2f, 成本: %.2f, 手续费 %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+                self.comm += order.executed.comm
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log("交易失败")
+        self.order = None
+
+    # 输出手续费
+    def stop(self):
+        self.log("手续费:%.2f 成本比例:%.5f" % (self.comm, self.comm / self.broker.getvalue()))
 
 class TestStrategy(bt.Strategy):
     params = (('maperiod', 20),
@@ -277,10 +480,51 @@ class ADXStrategy(bt.Strategy):
 if __name__ == '__main__':
     cerebro = bt.Cerebro()  #
     print("Starting Portfolio value : %.2f" % cerebro.broker.get_value())
-    cerebro.addstrategy(ADXStrategy)
-    codes = ['300015']
-    data = MyData(codes=codes, start_date='2020-01-01')
+    cerebro.addstrategy(KDJStrategy)
+    codes = ['300783']
+    data = MyData(codes=codes, start_date='2023-01-01',dataname=codes[0])
     cerebro.adddata(data)
-    cerebro.run()
+    cerebro.addanalyzer(bt.analyzers.SQN,_name='sqnAnz')
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio,_name='SharpeRatio',legacyannual=True)
+    cerebro.addanalyzer(bt.analyzers.VWR, _name='VWR')
+    cerebro.addanalyzer(bt.analyzers.AnnualReturn, _name='AnnualReturn')
+    tframes = dict(days=bt.TimeFrame.Days, weeks=bt.TimeFrame.Weeks, months=bt.TimeFrame.Months,
+                   years=bt.TimeFrame.Years)
+    cerebro.addanalyzer(bt.analyzers.TimeReturn, timeframe=tframes['years'], _name='TimeAnz')
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='TradeAnalyzer')
+    cerebro.addanalyzer(bt.analyzers.DrawDown, _name='DW')
+    # cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
+
+    results = cerebro.run()
     print("Final Portfolio value : %.2f" % cerebro.broker.get_value())
+    print('\n#8')
+    strat = results[0]
+    anzs = strat.analyzers
+    dsharp = anzs.SharpeRatio.get_analysis()['sharperatio']
+    trade_info = anzs.TradeAnalyzer.get_analysis()
+    #
+    dw = anzs.DW.get_analysis()
+    max_drowdown_len = dw['max']['len']
+    max_drowdown = dw['max']['drawdown']
+    max_drowdown_money = dw['max']['moneydown']
+    #
+    print('\n#8-1,基本BT量化分析数据')
+    print('\t夏普指数SharpeRatio : ', dsharp)
+    print('\t最大回撤周期 max_drowdown_len : ', max_drowdown_len)
+    print('\t最大回撤 max_drowdown : ', max_drowdown)
+    print('\t最大回撤(资金)max_drowdown_money : ', max_drowdown_money)
+
+    # xpyf = anzs.getbyname('pyfolio')
+    # xret, xpos, xtran, gross_lev = xpyf.get_pf_items()
+    #
+    # xret = to_utc(xret)
+    # xpos = to_utc(xpos)
+    # xtran = to_utc(xtran)
+    # print('\n@xret', xret)
+    # print('\n@xpos', xpos)
+    # print('\n@xtran', xtran)
+
+
+
     cerebro.plot()
+

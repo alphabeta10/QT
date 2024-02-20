@@ -125,4 +125,8 @@ def market_eval_risk():
 
 
 if __name__ == '__main__':
-    ai_industry_and_stock_eva_risk()
+    dict_codes = {"002555": "三七互娱",
+            "002602": "世纪华通",
+            "603444": "吉比特",}
+    result = ai_industry_and_stock_eva_risk(codes=list(dict_codes.keys()))
+    print(result)

@@ -200,7 +200,7 @@ def handle_futures_delivery_dce(dates=None):
         if futures_delivery_dce_df is not None:
             for index in futures_delivery_dce_df.index:
                 ele_dict_data = dict(futures_delivery_dce_df.loc[index])
-                code = ele_dict_data['品种']
+                code = ele_dict_data['品种'].replace(" ","")
                 date = str(ele_dict_data['交割日期'])
                 if date != 'nan':
                     dict_data = {"code": code, "data_type": "futures_delivery"}

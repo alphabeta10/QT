@@ -243,7 +243,7 @@ def traffic():
     :return:
     """
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
-    for i in range(3):
+    for i in range(5):
         if i > 1:
             url = f"https://www.mot.gov.cn/zhuanti/wuliubtbc/qingkuangtongbao_wuliu/index_{i}.html"
         else:

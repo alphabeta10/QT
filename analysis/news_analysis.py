@@ -4,9 +4,9 @@ from utils.tool import sort_dict_data_by
 from utils.actions import show_data
 import numpy as np
 import jieba.analyse
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
 import jieba.posseg as pseg
-from gensim.models.doc2vec import TaggedDocument, Doc2Vec
+# from gensim.models.doc2vec import TaggedDocument, Doc2Vec
 
 
 def word_in_sentence(word_list, sentence):
@@ -148,72 +148,72 @@ def analysis_gxb_news():
             print(k, v)
 
 
-def stock_new_tmp():
-    import akshare as ak
-    print(ak.__version__)
-    stock_news_em_df = ak.stock_news_em(symbol="300015")
-    text_list = []
-    for index in stock_news_em_df.index:
-        print(dict(stock_news_em_df.loc[index]))
-        new_content = stock_news_em_df.loc[index]['新闻内容']
-        text_list.append(new_content)
-    cut_sentence_list = cut_sentence(text_list)
-    train_data = X_train(cut_sentence_list)
-    model = train(train_data)
-    words = ['月', '28', '日', '爱尔', '眼科', '公告', '公司', '拟以', '亿', '亿元', '回购', '股份', '用于', '实施',
-             '股权', '激励', '计划', '员工', '持股', '计划', '回购', '价不超', '44.16', '元']
-    inferred_vector = model.infer_vector(doc_words=words,alpha=0.025,epochs=500)
-    print(inferred_vector)
-
-    sims = model.docvecs.most_similar([inferred_vector],topn=10)
-
-    for count,sim in sims:
-        print(count,sim)
-        sentence = text_list[count]
-        words = ''
-        for word in sentence:
-            words = words + word + " "
-        print(words,sim,len(sentence))
+# def stock_new_tmp():
+#     import akshare as ak
+#     print(ak.__version__)
+#     stock_news_em_df = ak.stock_news_em(symbol="300015")
+#     text_list = []
+#     for index in stock_news_em_df.index:
+#         print(dict(stock_news_em_df.loc[index]))
+#         new_content = stock_news_em_df.loc[index]['新闻内容']
+#         text_list.append(new_content)
+#     cut_sentence_list = cut_sentence(text_list)
+#     train_data = X_train(cut_sentence_list)
+#     model = train(train_data)
+#     words = ['月', '28', '日', '爱尔', '眼科', '公告', '公司', '拟以', '亿', '亿元', '回购', '股份', '用于', '实施',
+#              '股权', '激励', '计划', '员工', '持股', '计划', '回购', '价不超', '44.16', '元']
+#     inferred_vector = model.infer_vector(doc_words=words,alpha=0.025,epochs=500)
+#     print(inferred_vector)
+#
+#     sims = model.docvecs.most_similar([inferred_vector],topn=10)
+#
+#     for count,sim in sims:
+#         print(count,sim)
+#         sentence = text_list[count]
+#         words = ''
+#         for word in sentence:
+#             words = words + word + " "
+#         print(words,sim,len(sentence))
 
 
     # 新闻关键词 减持   增持   减少 质押
 
 
-def cluster_model():
-    X = np.array([[1,2],[1,4],[4,4]])
-    kmeans = KMeans(n_clusters=2,random_state=0).fit(X)
-    print(kmeans)
-
-
-def cut_sentence(text_list):
-    # 加载停用词
-    stop_file_name = "stopwords.dat"
-    stopwords = read_file(stop_file_name)
-    result = []
-    for each in text_list:
-        each_cut = jieba.cut(each)
-        each_split = " ".join(each_cut).split()
-        each_result = [word for word in each_split if word not in stopwords]
-        result.append(' '.join(each_result))
-    return result
-
-
-def X_train(cut_sentence):
-    x_train = []
-    for i, text in enumerate(cut_sentence):
-        word_list = text.split(' ')
-        l = len(word_list)
-        word_list[l - 1] = word_list[l - 1].strip()
-        document = TaggedDocument(word_list, tags=[i])
-        x_train.append(document)
-    return x_train
-
-
-def train(x_train, size=300):
-    model = Doc2Vec(x_train, min_count=1, window=3, vector_size=size, sample=1e3,negative=5,workers=4)
-    model.train(x_train, total_examples=model.corpus_count, epochs=10)
-    return model
+# def cluster_model():
+#     X = np.array([[1,2],[1,4],[4,4]])
+#     kmeans = KMeans(n_clusters=2,random_state=0).fit(X)
+#     print(kmeans)
+#
+#
+# def cut_sentence(text_list):
+#     # 加载停用词
+#     stop_file_name = "stopwords.dat"
+#     stopwords = read_file(stop_file_name)
+#     result = []
+#     for each in text_list:
+#         each_cut = jieba.cut(each)
+#         each_split = " ".join(each_cut).split()
+#         each_result = [word for word in each_split if word not in stopwords]
+#         result.append(' '.join(each_result))
+#     return result
+#
+#
+# def X_train(cut_sentence):
+#     x_train = []
+#     for i, text in enumerate(cut_sentence):
+#         word_list = text.split(' ')
+#         l = len(word_list)
+#         word_list[l - 1] = word_list[l - 1].strip()
+#         document = TaggedDocument(word_list, tags=[i])
+#         x_train.append(document)
+#     return x_train
+#
+#
+# def train(x_train, size=300):
+#     model = Doc2Vec(x_train, min_count=1, window=3, vector_size=size, sample=1e3,negative=5,workers=4)
+#     model.train(x_train, total_examples=model.corpus_count, epochs=10)
+#     return model
 
 
 if __name__ == '__main__':
-    analysis_gxb_news()
+    analysis_news()

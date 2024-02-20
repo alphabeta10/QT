@@ -416,6 +416,18 @@ def stock_score(pd_data: pd.DataFrame, metric, sort_type=False):
 
 
 def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,start_date=None):
+
+    def fin_data_same_rate(pd_data, val_col, rename_col):
+        temp_data = pd.pivot_table(pd_data, values=val_col, index='date', columns='code')
+        temp_data.sort_index(inplace=True)
+        pct_change_data = temp_data.pct_change(1)
+        data_list = []
+        for index in pct_change_data.index:
+            dict_data = dict(pct_change_data.loc[index])
+            for code, value in dict_data.items():
+                data_list.append({"code": code, rename_col: value, "date": index})
+        return pd.DataFrame(data_list)
+
     quarter_mapping = {1:"03-31",2:"06-30",3:"09-30",4:"12-31"}
     quarter_month = quarter_mapping[quarter]
     def handle_score(row, col_list):
@@ -433,14 +445,27 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,
     data = get_fin_common_metric(code_list=codes, isZcfcDataFromLocal=isLocal, isProfitDataFromLocal=isLocal,
                                  isCashDataFromLocal=isLocal,start_date=start_date)
     pd_data = data[data['date'].str.contains(quarter_month)]
-
     # 同期的比较同比的指标 净利润增长率:NETPROFIT 营业收入增长率:OPERATE_INCOME 总资产增长率:TOTAL_ASSETS 净资产增长率:TOTAL_EQUITY 营业利润增长率:OPERATE_PROFIT
-    pd_data['净利润增长率'] = pd_data['NETPROFIT'].pct_change(1)
-    pd_data['营业收入增长率'] = pd_data['OPERATE_INCOME'].pct_change(1)
-    pd_data['总资产增长率'] = pd_data['TOTAL_ASSETS'].pct_change(1)
-    pd_data['净资产增长率'] = pd_data['TOTAL_EQUITY'].pct_change(1)
-    pd_data['营业利润增长率'] = pd_data['OPERATE_PROFIT'].pct_change(1)
-    pd_data['研发费用增长率'] = pd_data['RESEARCH_EXPENSE'].pct_change(1)
+
+    same_df = fin_data_same_rate(pd_data,'NETPROFIT','净利润增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'OPERATE_INCOME', '营业收入增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'TOTAL_ASSETS', '总资产增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+
+    same_df = fin_data_same_rate(pd_data, 'TOTAL_EQUITY', '净资产增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+
+    same_df = fin_data_same_rate(pd_data, 'OPERATE_PROFIT', '营业利润增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'RESEARCH_EXPENSE', '研发费用增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
 
     # 公司发展指标
     future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率','研发费用增长率']
@@ -692,6 +717,7 @@ def enter_big_model_analysis_stock_fin(code_dict: dict = None):
             "600132": "重庆啤酒",
             "600600": "青岛啤酒",
         }
+
     update_request = []
     big_model_col = get_mongo_table(database='stock', collection="big_model")
     for code,name in code_dict.items():

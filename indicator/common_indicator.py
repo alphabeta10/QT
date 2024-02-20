@@ -183,5 +183,38 @@ def get_stock_margin_indicator(code):
     return data, last_risk_dict
 
 
+def get_stock_holder_or_reduce_risk(codes,start_time=None):
+    """
+    获取最近30日股票是否有股东减持或者增持，起始时间默认前30日
+    :param codes:
+    :param start_time:
+    :return:
+    """
+    stock_seq_daily = get_mongo_table(collection='stock_seq_daily')
+    if start_time is None:
+        start_time = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    print(f"before day {start_time}")
+    result_dict_data = {}
+    for ele in stock_seq_daily.find({"metric_key": {"$in": codes}, "ann_time": {"$gte": start_time}},
+                                    projection={'_id': False}):
+        code = ele['metric_key']
+        holder_or_reduce = ele['shareholding_change_overweight']
+        shareholding_change_outstanding_share_rate = ele['shareholding_change_outstanding_share_rate']
+        if shareholding_change_outstanding_share_rate != '':
+            shareholding_change_outstanding_share_rate = float(shareholding_change_outstanding_share_rate)
+        else:
+            shareholding_change_outstanding_share_rate = 0
+        if holder_or_reduce == '减持':
+            shareholding_change_outstanding_share_rate = -shareholding_change_outstanding_share_rate
+        result_dict_data.setdefault(code,0)
+        result_dict_data[code] += shareholding_change_outstanding_share_rate
+    risk_level = {}
+    for k, v in result_dict_data.items():
+        if v > 0:
+            risk_level[k] = {"risk_level": "无风险", "risk_value": 0}
+        if v < 0:
+            risk_level[k] = {"risk_level": "有风险", "risk_value": 0.6}
+    return result_dict_data,risk_level
+
 if __name__ == '__main__':
     pass
