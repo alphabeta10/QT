@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 def global_micro_data(arg_start_date_str = None):
     if arg_start_date_str is None:
-        arg_start_date_str = datetime.now().strftime("%Y%m01")
+        arg_start_date_str = (datetime.now()-timedelta(days=30)).strftime("%Y%m01")
 
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     start_date_str = copy.deepcopy(arg_start_date_str)

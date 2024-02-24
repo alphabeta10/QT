@@ -355,6 +355,7 @@ def credit_funds_fin_inst_analysis():
         "(事)业单位贷款": "loans_to_non_financial_enterprises_and_government_departments_organizations",
         "企业短期贷款": "short_term_loans_1",
         "企业中长期贷款": "mid_long_term_loans_1",
+        "债券投资": "portfolio_investments",
     }
     all_income_config = {
         "time": True,
@@ -377,7 +378,7 @@ def credit_funds_fin_inst_analysis():
     data = pd_data.rename(columns=re_all_config)
     for col in income_config.keys():
         data[[col]] = data[[col]].astype(float)
-
+    data.dropna(inplace=True,axis=0)
     data.set_index(keys=['time'], inplace=True)
     print("*" * 50)
     show_data(data)
@@ -761,6 +762,42 @@ def m1_and_m2_diff_analysis():
     show_data(data)
     data.plot(kind='line', title='m1与m2增速之差', rot=45, figsize=(15, 8), fontsize=10)
     plt.show()
+def money_multiply_analysis():
+    """
+    中国货币乘数
+    :return:
+    """
+    database = 'govstats'
+    collection = 'data_info'
+    projection = {'_id': False}
+    sort_key = "time"
+    code_dict = {"A0D0101_yd": "m2"}
+    code_list = {"$in": list(code_dict.keys())}
+    condition = {"code": code_list}
+    m2_data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    cols = ['time', 'data']
+    m2_data = m2_data[cols]
+    database = 'stock'
+    collection = 'common_seq_data'
+    projection = {'_id': False,'reserve_money':True,'time':True}
+    sort_key = "time"
+    condition = {"data_type":"fin_monetary","metric_code":"balance_monetary_authority","time":{"$gt":"20170101"}}
+    base_data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    base_data['time'] = base_data['time'].apply(lambda key:key[0:6])
+
+    merge_data = pd.merge(base_data,m2_data,on=['time'])
+    merge_data['m_multiply'] = round(merge_data['data']/merge_data['reserve_money'],4)
+    merge_data.set_index(keys='time',inplace=True)
+    merge_data['m_multiply'].plot(kind='line', title='中国货币乘数', rot=45, figsize=(15, 8), fontsize=10)
+    show_data(merge_data)
+    plt.show()
+
+
+
+
+
 
 
 if __name__ == '__main__':

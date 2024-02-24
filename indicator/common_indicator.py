@@ -169,7 +169,7 @@ def get_stock_margin_indicator(code):
     start_day = (datetime.now() - timedelta(days=100)).strftime("%Y%m%d")
     datas = []
     for ele in stock_margin_daily.find(
-            {"code": "002602", "time": {"$gt": start_day}},
+            {"code": code, "time": {"$gt": start_day}},
             projection={'_id': False}).sort("time"):
         datas.append(ele)
     pd_data = pd.DataFrame(data=datas)

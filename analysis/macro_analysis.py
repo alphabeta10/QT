@@ -2,12 +2,17 @@ import akshare as ak
 import google.generativeai as genai
 from datetime import datetime
 from big_models.google_api import *
-from utils.actions import try_get_action
 from utils.tool import load_json_data
 from pymongo import UpdateOne
 from data.mongodb import get_mongo_table
 from utils.tool import mongo_bulk_write_data
-
+from utils.actions import show_data
+import matplotlib.pyplot as plt
+# 设置中文显示不乱码
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+import warnings
+from utils.actions import try_get_action
+warnings.filterwarnings('ignore')
 def big_model_macro_data():
     def handel_summary_data(output_txt):
         return output_txt.replace("\n", "").replace("*", "").replace(" ", "").replace("-", "")
@@ -19,7 +24,7 @@ def big_model_macro_data():
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
     genai.configure(api_key=api_key, transport='rest')
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.0-pro-latest')
 
     # 获取最新存款准备金数据
     macro_china_reserve_requirement_ratio_df = try_get_action(ak.macro_china_reserve_requirement_ratio, try_count=3)
@@ -206,6 +211,32 @@ def enter_big_model_analysis_macro():
         mongo_bulk_write_data(big_model_col, update_request)
         update_request.clear()
 
+def global_pmi_data_analysis():
+    stock_common = get_mongo_table(database='stock', collection='common_seq_data')
+    condition = {"data_type": "global_micro_data", "metric_code": {"$regex": "PMI"}, "time": {"$gt": "2017-01-01"}}
+    gloabel_pmi_gt_and_lt_count = {}
+    for ele in stock_common.find(condition, projection={"_id": False}).sort("time"):
+        time = ele['time']
+        pub_value = float(ele['pub_value'])
+        pub_month  = time[0:7]
+        gloabel_pmi_gt_and_lt_count.setdefault(pub_month,{"lt":0,"gt":0})
+        if pub_value>50:
+            gloabel_pmi_gt_and_lt_count[pub_month]['gt'] += 1
+        else:
+            gloabel_pmi_gt_and_lt_count[pub_month]['lt'] += 1
+
+    new_datas = []
+    for time,lt_gt in gloabel_pmi_gt_and_lt_count.items():
+        rate = round(lt_gt['lt']/lt_gt['gt'],4)
+        new_datas.append({"time":time,"lt_and_gt_rate":rate,"lt":lt_gt['lt'],"gt":lt_gt['gt']})
+    pd_data = pd.DataFrame(new_datas)
+    pd_data.set_index(keys='time',inplace=True)
+    show_data(pd_data)
+    pd_data['lt_and_gt_rate'].plot(kind='line', title='全球公布的pmi小于50和大于50的个数比值', rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
+    pd_data[['lt','gt']].plot(kind='line', title='全球公布的pmi小于50和大于50的个数', rot=45, figsize=(15, 8),
+                                   fontsize=10)
+    plt.show()
 
 
 

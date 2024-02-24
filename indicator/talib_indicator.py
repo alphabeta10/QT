@@ -68,11 +68,11 @@ def MFI_indicator():
     projection = {'_id': False}
     sort_key = "date"
     """futures"""
-    # condition = {"symbol": {"$in": ["B0"]}, "date": {"$gte": "2020-01-01"}}
-    # database = 'futures'
-    # collection = 'futures_daily'
-    # projection = {'_id': False}
-    # sort_key = "date"
+    condition = {"symbol": {"$in": ["FG0"]}, "date": {"$gte": "2020-01-01"}}
+    database = 'futures'
+    collection = 'futures_daily'
+    projection = {'_id': False}
+    sort_key = "date"
 
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
@@ -113,7 +113,7 @@ def MFI_indicator():
     data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['obv'] = ta.OBV(data.close, data.volume)
     data['obv_diff'] = ta.EMA(data.obv,6) - ta.EMA(data.obv,12)
-    data['avg100obv'] = ta.SMA(data.obv, timeperiod=120)
+    data['avg100obv'] = ta.SMA(data.obv, timeperiod=40)
     data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=26)
     data['natr14'] = ta.NATR(data.high, data.low, data.close, timeperiod=26)
     data['TRANGE'] = ta.TRANGE(data.high, data.low, data.close)

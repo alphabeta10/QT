@@ -15,7 +15,7 @@ def get_model_ai_new_indicator_from_db(codes, start_time):
             sentiment_dict[code][sentiment] = 0
         sentiment_dict[code][sentiment] += 1
     return sentiment_dict
-def get_model_stock_indicator_from_db(codes,start_time):
+def get_model_stock_news_analysis_from_db(codes, start_time):
     model_indicator_col = get_mongo_table(database='stock', collection="big_model")
     sentiment_dict = {}
     for ele in model_indicator_col.find(

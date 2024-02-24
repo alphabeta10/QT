@@ -203,7 +203,7 @@ def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=Non
         keystr = ",".join(key_list)
         print(f"not val in {keystr}")
         return
-    data[list(dict_fs.keys())] = data[list(dict_fs.keys())].astype(float)
+    data[val_key] = data[val_key].astype(float)
 
     year_dict_data = {}
     for index in data.index:

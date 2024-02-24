@@ -575,24 +575,24 @@ def handle_balance_sheet_of_monetary_authority(handle_dir=None):
 
 
 def enter_credit_fin():
-    file_dir = 'fin_credit_funds2023'
+    file_dir = 'fin_credit_funds2024'
     type_dict_mapping = {'金融机构外汇信贷收支表': 'fin_inst_foreign',
                          '金融机构本外币信贷收支表': 'fin_inst_rmb_foreign', '金融机构人民币信贷收支表': "fin_inst_rmb"}
     for key, v in type_dict_mapping.items():
         print(key)
-        fin_ins_credit_funds_data(file_dir=file_dir, type_name=key, time='2023')
+        fin_ins_credit_funds_data(file_dir=file_dir, type_name=key, time='2024')
 
 
 def enter_credit_fin_agg_flow():
-    file_dir = 'fin_agg2023'
+    file_dir = 'fin_agg2024'
     type_dict_mapping = {'社会融资规模增量统计表': 'agg_fin_flow',
                          '社会融资规模存量统计表': 'agg_fin_stock'}
     for key, v in type_dict_mapping.items():
-        handle_credit_agg_stock_data(file_dir=file_dir, type_name=key, time='2023')
+        handle_credit_agg_stock_data(file_dir=file_dir, type_name=key, time='2024')
 
 
 if __name__ == '__main__':
     enter_credit_fin()
     enter_credit_fin_agg_flow()
-    handle_balance_sheet_of_monetary_authority()
+    handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
     find_data()
