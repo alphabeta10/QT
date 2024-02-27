@@ -39,7 +39,8 @@ def real_monitor_stock_index_and_cal_indicator():
 
     code_dict = {
         "sh000001": "上证指数",
-        "sz399001": "深证成指"
+        "sz399001": "深证成指",
+        "sh000852":"中证1000"
     }
     codes = list(code_dict.keys())
     condition = {code_name: {"$in": codes}, "date": {"$gte": start_date}}

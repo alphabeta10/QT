@@ -19,7 +19,7 @@ def get_model_stock_news_analysis_from_db(codes, start_time):
     model_indicator_col = get_mongo_table(database='stock', collection="big_model")
     sentiment_dict = {}
     for ele in model_indicator_col.find(
-            {"data_type": "news", "time": {"$gt": start_time}, "code": {"$in": codes}},
+            {"data_type": "detail_news", "time": {"$gt": start_time}, "code": {"$in": codes}},
             projection={'_id': False}).sort(
         "time"):
         sentiment = ele['sentiment']

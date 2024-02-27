@@ -41,7 +41,7 @@ def get_country_data(url='https://www.fmprc.gov.cn/zyxw/index.shtml'):
 
 def handle_rl_country():
     news = get_mongo_table(database='stock', collection='news')
-    for i in range(0,3):
+    for i in range(0,15):
         if i >0:
             url = f'https://www.fmprc.gov.cn/zyxw/index_{i}.shtml'
         else:

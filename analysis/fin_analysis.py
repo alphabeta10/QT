@@ -408,9 +408,16 @@ def stock_score(pd_data: pd.DataFrame, metric, sort_type=False):
         dict_data = dict(data.loc[index])
         sort_dict_data = sort_dict_data_by(dict_data, by='value', reverse=sort_type)
         num = len(sort_dict_data)
+        before_rank, before_ele = 0, 0
         for i, combine in enumerate(sort_dict_data.items()):
             k, v = combine
-            score = ((i + 1) / num) * 100
+            if i == 0:
+                before_rank, before_ele = i + 1, v
+            else:
+                if before_ele != v:
+                    before_rank += 1
+                before_ele = v
+            score = round((before_rank / num) * 100, 4)
             dict_list.append({"code": k, f"{metric}_score": score, "date": index})
     score_df = pd.DataFrame(data=dict_list)
     return score_df

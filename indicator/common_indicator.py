@@ -111,7 +111,7 @@ def eva_market_margin_risk(last_dict_data):
         risk_level = "低风险"
     else:
         risk_level = "有风险"
-    result_dict.setdefault(risk_level,0)
+    result_dict.setdefault(risk_level, 0)
     result_dict[risk_level] += 1
 
     if last_dict_data['sec_selling_volume'] < last_dict_data['sec_selling_volume_ema5'] and last_dict_data[
@@ -121,7 +121,7 @@ def eva_market_margin_risk(last_dict_data):
         risk_level = "有风险"
     result_dict.setdefault(risk_level, 0)
     result_dict[risk_level] += 1
-    result_dict = {k:round(v/2,4) for k,v in result_dict.items()}
+    result_dict = {k: round(v / 2, 4) for k, v in result_dict.items()}
     return result_dict
 
 
@@ -141,7 +141,7 @@ def get_last_sz_market_margin_indicator():
     data['fin_purchase_amount_ema5'] = ta.EMA(data['fin_purchase_amount'], timeperiod=5)
     data['fin_purchase_amount_ema10'] = ta.EMA(data['fin_purchase_amount'], timeperiod=10)
     last_risk_dict = eva_market_margin_risk(dict(data.tail(1).iloc[0]))
-    return data,last_risk_dict
+    return data, last_risk_dict
 
 
 def get_last_sh_market_margin_indicator():
@@ -160,7 +160,7 @@ def get_last_sh_market_margin_indicator():
     data['fin_purchase_amount_ema5'] = ta.EMA(data['fin_purchase_amount'], timeperiod=5)
     data['fin_purchase_amount_ema10'] = ta.EMA(data['fin_purchase_amount'], timeperiod=10)
     last_risk_dict = eva_market_margin_risk(dict(data.tail(1).iloc[0]))
-    return data,last_risk_dict
+    return data, last_risk_dict
 
 
 def get_stock_margin_indicator(code):
@@ -183,7 +183,31 @@ def get_stock_margin_indicator(code):
     return data, last_risk_dict
 
 
-def get_stock_holder_or_reduce_risk(codes,start_time=None):
+def get_batch_stock_margin_indicator(codes):
+    stock_margin_daily = get_mongo_table(database='stock', collection='stock_margin_daily')
+
+    start_day = (datetime.now() - timedelta(days=100)).strftime("%Y%m%d")
+    datas = []
+    for ele in stock_margin_daily.find(
+            {"code": {"$in": codes}, "time": {"$gt": start_day}},
+            projection={'_id': False}).sort("time"):
+        datas.append(ele)
+    pd_data = pd.DataFrame(data=datas)
+    margin_risk = {}
+    for code in codes:
+        data = pd_data[pd_data['code'] == code][['sec_selling_volume', 'time', 'fin_purchase_amount']]
+        if len(data) > 0:
+            data['sec_selling_volume_ema5'] = ta.EMA(data['sec_selling_volume'], timeperiod=5)
+            data['sec_selling_volume_ema10'] = ta.EMA(data['sec_selling_volume'], timeperiod=10)
+
+            data['fin_purchase_amount_ema5'] = ta.EMA(data['fin_purchase_amount'], timeperiod=5)
+            data['fin_purchase_amount_ema10'] = ta.EMA(data['fin_purchase_amount'], timeperiod=10)
+            last_risk_dict = eva_market_margin_risk(dict(data.tail(1).iloc[0]))
+            margin_risk[code] = last_risk_dict
+    return margin_risk
+
+
+def get_stock_holder_or_reduce_risk(codes, start_time=None):
     """
     获取最近30日股票是否有股东减持或者增持，起始时间默认前30日
     :param codes:
@@ -206,7 +230,7 @@ def get_stock_holder_or_reduce_risk(codes,start_time=None):
             shareholding_change_outstanding_share_rate = 0
         if holder_or_reduce == '减持':
             shareholding_change_outstanding_share_rate = -shareholding_change_outstanding_share_rate
-        result_dict_data.setdefault(code,0)
+        result_dict_data.setdefault(code, 0)
         result_dict_data[code] += shareholding_change_outstanding_share_rate
     risk_level = {}
     for k, v in result_dict_data.items():
@@ -214,7 +238,8 @@ def get_stock_holder_or_reduce_risk(codes,start_time=None):
             risk_level[k] = {"risk_level": "无风险", "risk_value": 0}
         if v < 0:
             risk_level[k] = {"risk_level": "有风险", "risk_value": 0.6}
-    return result_dict_data,risk_level
+    return result_dict_data, risk_level
+
 
 if __name__ == '__main__':
     pass
