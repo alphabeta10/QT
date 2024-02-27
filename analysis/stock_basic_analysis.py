@@ -12,6 +12,7 @@ from utils.actions import try_get_action
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
+from tqdm import tqdm
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -541,7 +542,7 @@ def big_model_stock_price_data(codes: list, model):
 输出：{"综合分析":"30日夏普为-0.23, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.19, 表明该股票在过去30天内的最大跌幅为19%。30日累计收益为-0.20, 表明该股票在过去30天内的总回报率为-20%。60日夏普为-0.13, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.24, 表明该股票在过去60天内的最大跌幅为24%。60日累计收益为-0.20, 表明该股票在过去60天内的总回报率为-20%。240日夏普为-0.01, 低于0, 表明该股票在过去240天内的表现不佳。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.53, 表明该股票在过去240天内的最大跌幅为53%。240日累计收益为-0.20, 表明该股票在过去240天内的总回报率为-20%。综合以上，002230在过去不同日期的表现都不佳，不建议投资","603019":"30日夏普为-0.28, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.21, 表明该股票在过去30天内的最大跌幅为21%。30日累计收益为-0.21, 表明该股票在过去30天内的总回报率为-21%。60日夏普为-0.15, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.25, 表明该股票在过去60天内的最大跌幅为25%。60日累计收益为-0.22, 表明该股票在过去60天内的总回报率为-22%。240日夏普为0.04, 高于0, 表明该股票在过去240天内的表现较好。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.49, 表明该股票在过去240天内的最大跌幅为49%。 240日累计收益为0.19, 表明该股票在过去240天内的总回报率为19%。综合以上，603019在过去不同日期的表现都不佳，不建议投资","投资分类":0}\n输入：${input_str}输出："""
     json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
                                request_txt=request_txt)
-    if json_data is not None and ('综合分析' not in json_data.keys() or '投资分类' not in json_data.keys()):
+    if json_data is not None and isinstance(json_data,dict) and ('综合分析' not in json_data.keys() or '投资分类' not in json_data.keys()):
         json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
                                    request_txt=request_txt)
     return json_data
@@ -557,7 +558,8 @@ def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
         code_dict = comm_read_stock('../stock.txt')
     update_request = []
     big_model_col = get_mongo_table(database='stock', collection="big_model")
-    for code, name in code_dict.items():
+    for code, name in tqdm(code_dict.items()):
+        print(f"handle name={name}")
         temp_codes = []
         temp_codes.append(code)
         ret_json = big_model_stock_price_data(temp_codes, model)
