@@ -11,6 +11,7 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
     ret_msg_dict = {}
     for index in pd_data.index:
         dict_data = dict(pd_data.loc[index])
+        show_indicator_set = set()
         for key, combine_dict in indicator_config.items():
             if key in dict_data.keys():
                 # 对比数据
@@ -22,6 +23,13 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
 
                     if ele_val > left_val and ele_val < right_val:
                         ret_msg_dict[key] = combine_dict['name']
+                        for ele in combine_dict.get('other_show_indicator',[]):
+                            show_indicator_set.add(ele)
+                if "eq" in combine_ky:
+                    if ele_val==combine_dict['eq']:
+                        ret_msg_dict[key] = combine_dict['name']
+                        for ele in combine_dict.get('other_show_indicator', []):
+                            show_indicator_set.add(ele)
 
                 if "lt" in combine_ky:
                     if isinstance(combine_dict['lt'], str):
@@ -30,6 +38,8 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
                         compared_val = combine_dict['lt']
                     if ele_val < compared_val:
                         ret_msg_dict[key] = combine_dict['name']
+                        for ele in combine_dict.get('other_show_indicator', []):
+                            show_indicator_set.add(ele)
                 if "gt" in combine_ky:
                     if isinstance(combine_dict['gt'], str):
                         compared_val = dict_data[combine_dict['gt']]
@@ -37,8 +47,13 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
                         compared_val = combine_dict['gt']
                     if ele_val > compared_val:
                         ret_msg_dict[key] = combine_dict['name']
+                        for ele in combine_dict.get('other_show_indicator', []):
+                            show_indicator_set.add(ele)
         if len(ret_msg_dict.keys()) > 0:
             ret_msg_dict['row_data'] = dict_data
+        show_indicator_list = list(show_indicator_set)
+        if len(show_indicator_list)>0:
+            ret_msg_dict['other_show_indicator'] = show_indicator_list
     return ret_msg_dict
 
 
@@ -52,8 +67,8 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实�
     :return:
     """
     html_msg = "<p>最新监控指标如下有些指标可能触发，请留意</p>"
-    html_msg += "<table>"
-    html_msg += f"<tr><th>股票相关价格内容</th> <th>触发的指标</th></tr>"
+    html_msg += "<table border=\"1\">"
+    html_msg += f"<tr><th>股票相关价格内容</th> <th>触发的指标</th><th>附带指标显示</th></tr>"
     if comm_info_dict is None:
         comm_info_dict = {"name":"名称","close":"C","open":"O","high":"H","low":"L","pct_chg":"pct_chg"}
     for msg_dict_data in msg_dict_data_list:
@@ -68,11 +83,21 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实�
         html_msg += f"<tr><td>{html_info_msg}</td>"
         trigger_list = []
         for k, msg in msg_dict_data.items():
-            if k != 'row_data':
+            if k not in ['row_data','other_show_indicator']:
                 indicator_val = round(row_data[k],2)
                 trigger_list.append(msg + f" {k}={indicator_val}")
         trigger_msg = ",".join(trigger_list)
         html_msg += f"<td>{trigger_msg}</td>"
+
+        trigger_list = []
+        if 'other_show_indicator' in msg_dict_data.keys():
+            for key in msg_dict_data['other_show_indicator']:
+                indicator_val = round(row_data[key], 4)
+                trigger_list.append(f"{key}={indicator_val}")
+            trigger_msg = ",".join(trigger_list)
+            html_msg += f"<td>{trigger_msg}</td>"
+        else:
+            html_msg += f"<td>无</td>"
         html_msg += "</tr>"
     html_msg += "</table>"
 

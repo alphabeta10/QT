@@ -8,6 +8,7 @@ from indicator.talib_indicator import common_indictator_cal
 from monitor.real_common import construct_indicator_send_msg, comm_indicator_send_msg_by_email
 from utils.send_msg import MailSender
 from utils.tool import *
+from monitor.indicator_config import buy_indicator_config,sell_indicator_config
 
 def real_monitor_stock_and_cal_indicator():
     code_name = 'code'
@@ -22,63 +23,7 @@ def real_monitor_stock_and_cal_indicator():
     else:
         sell_trigger_count = {}
         buy_trigger_count = {}
-
-
-    buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,20]"},
-                            "pre_K": {"range": [0, 20], "name": "pre_KDJ的K值在范围[0,20]"},
-                            "自定义20日均线": {"gt": "close", "name": "20日均线大于收盘价"},
-                            "D": {"range": [0, 20], "name": "KDJ的D值在范围[0,20]"},
-                            "pre_D": {"range": [0, 20], "name": "prd_KDJ的D值在范围[0,20]"},
-                            "rsi12": {"range": [0, 20], "name": "rsi12值在范围[0,20]"},
-                            }
-
-    sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[70, 100]"},
-                             "pre_K": {"range": [70, 100], "name": "pre_KDJ的K值在范围[70, 100]"},
-                             "D": {"range": [70, 100], "name": "KDJ的D值在范围[70, 100]"},
-                             "pre_D": {"range": [70, 100], "name": "pre_KDJ的D值在范围[70, 100]"},
-                             "rsi12": {"range": [70, 100], "name": "rsi12值在范围[70,100]"},
-                             }
-
-    code_dict = {
-        # 半导体
-        "002409": "雅克科技",
-        # 电力
-        "002015": "协鑫能科",
-        # 游戏
-        "002555": "三七互娱",
-        "002602": "世纪华通",
-        "603444": "吉比特",
-        # 通讯
-        "000063": "中兴通讯",
-        "600522": "中天科技",
-        # 白酒
-        "000858": "五粮液",
-        "600519": "贵州茅台",
-        # 机器人
-        "002472": "双环传动",
-        "002527": "新时达",
-        # 银行
-        "600036": "招商银行",
-        "600919": "江苏银行",
-        # AI相关
-        "300474": "景嘉微",
-        "002230": "科大讯飞",
-        "603019": "中科曙光",
-        "000977": "浪潮信息",
-        # 新能源
-        "300750": "宁德时代",
-        "002594": "比亚迪",
-        # 零食
-        "300783": "三只松鼠",
-        "603719": "良品铺子",
-        # 啤酒
-        "600132": "重庆啤酒",
-        "600600": "青岛啤酒",
-    }
     code_dict = comm_read_stock('../stock.txt')
-
-
-
     codes = list(code_dict.keys())
     condition = {code_name: {"$in": codes}, "time": {"$gte": start_date}}
     database = 'stock'

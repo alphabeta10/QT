@@ -7,24 +7,11 @@ from indicator.talib_indicator import common_indictator_cal
 from utils.tool import *
 import os
 from monitor.real_common import *
+from monitor.indicator_config import buy_indicator_config,sell_indicator_config
 pd.set_option('display.precision', 4)
 
 
 def real_monitor_futures_and_cal_indicator():
-    buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,20]"},
-                            "pre_K": {"range": [0, 20], "name": "pre_KDJ的K值在范围[0,20]"},
-                            "自定义20日均线": {"gt": "close", "name": "20日均线大于收盘价"},
-                            "D": {"range": [0, 20], "name": "KDJ的D值在范围[0,20]"},
-                            "pre_D": {"range": [0, 20], "name": "prd_KDJ的D值在范围[0,20]"},
-                            "rsi12": {"range": [0, 20], "name": "rsi12值在范围[0,20]"},
-                            }
-
-    sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[70, 100]"},
-                             "pre_K": {"range": [70, 100], "name": "pre_KDJ的K值在范围[70, 100]"},
-                             "D": {"range": [70, 100], "name": "KDJ的D值在范围[70, 100]"},
-                             "pre_D": {"range": [70, 100], "name": "pre_KDJ的D值在范围[70, 100]"},
-                             "rsi12": {"range": [70, 100], "name": "rsi12值在范围[70,100]"},
-                             }
 
     code_name = 'symbol'
     start_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")

@@ -7,23 +7,10 @@ from utils.tool import *
 from data.global_micro_data import *
 from indicator.talib_indicator import common_indictator_cal
 from monitor.real_common import *
+from monitor.indicator_config import buy_indicator_config,sell_indicator_config
 
 
 def real_monitor_stock_index_and_cal_indicator():
-    buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,20]"},
-                            "pre_K": {"range": [0, 20], "name": "pre_KDJ的K值在范围[0,20]"},
-                            "自定义20日均线": {"gt": "close", "name": "20日均线大于收盘价"},
-                            "D": {"range": [0, 20], "name": "KDJ的D值在范围[0,20]"},
-                            "pre_D": {"range": [0, 20], "name": "prd_KDJ的D值在范围[0,20]"},
-                            "rsi12": {"range": [0, 20], "name": "rsi12值在范围[0,20]"},
-                            }
-
-    sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[70, 100]"},
-                             "pre_K": {"range": [70, 100], "name": "pre_KDJ的K值在范围[70, 100]"},
-                             "D": {"range": [70, 100], "name": "KDJ的D值在范围[70, 100]"},
-                             "pre_D": {"range": [70, 100], "name": "pre_KDJ的D值在范围[70, 100]"},
-                             "rsi12": {"range": [70, 100], "name": "rsi12值在范围[70,100]"},
-                             }
     code_name = 'code'
     start_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
 
@@ -40,7 +27,7 @@ def real_monitor_stock_index_and_cal_indicator():
     code_dict = {
         "sh000001": "上证指数",
         "sz399001": "深证成指",
-        "sh000852":"中证1000"
+        "sh000852": "中证1000"
     }
     codes = list(code_dict.keys())
     condition = {code_name: {"$in": codes}, "date": {"$gte": start_date}}
@@ -57,7 +44,8 @@ def real_monitor_stock_index_and_cal_indicator():
     sender = MailSender()
     while True:
         stock_index_zh_a_spot_em_df = try_get_action(ak.stock_zh_index_spot_sina, try_count=3)
-        c_cols = {'代码': "code", '成交量': "volume", '最高': "high", '最低': "low", '最新价': "close","涨跌幅": "pct_chg", "今开": "open"}
+        c_cols = {'代码': "code", '成交量': "volume", '最高': "high", '最低': "low", '最新价': "close",
+                  "涨跌幅": "pct_chg", "今开": "open"}
         stock_index_zh_a_spot_em_df = stock_index_zh_a_spot_em_df[stock_index_zh_a_spot_em_df['代码'].isin(codes)][
             list(c_cols.keys())]
         stock_index_zh_a_spot_em_df.rename(columns=c_cols, inplace=True)

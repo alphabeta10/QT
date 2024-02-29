@@ -4,16 +4,18 @@ from utils.actions import try_get_action
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
-
-def index_data(dict_list=None):
+from datetime import datetime,timedelta
+def index_data(dict_list=None,start_date = None):
     if dict_list is None:
+        if start_date is None:
+            start_date = (datetime.now()-timedelta(days=15)).strftime("%Y%m%d")
         stock_zh_index_spot_df = try_get_action(ak.stock_zh_index_spot_sina,try_count=3)
         if stock_zh_index_spot_df is not None:
             index_table = get_mongo_table(database='stock', collection='index_data')
             for index in tqdm(stock_zh_index_spot_df.index):
                 code = stock_zh_index_spot_df.loc[index]['代码']
                 name = stock_zh_index_spot_df.loc[index]['名称']
-                stock_zh_index_daily_df = try_get_action(ak.stock_zh_index_daily,try_count=3,symbol=code)
+                stock_zh_index_daily_df = try_get_action(ak.stock_zh_index_daily_em,try_count=3,symbol=code,start_date=start_date)
                 if stock_zh_index_daily_df is not None:
                     update_request = []
                     for index in stock_zh_index_daily_df.index:
@@ -24,6 +26,7 @@ def index_data(dict_list=None):
                         low = float(data['low'])
                         close = float(data['close'])
                         volume = int(data['volume'])
+                        amount = float(data['amount'])
                         dict_data = {
                             "date":date,
                             "code":code,
@@ -32,7 +35,8 @@ def index_data(dict_list=None):
                             "high":high,
                             "low":low,
                             "close":close,
-                            "volume":volume
+                            "volume":volume,
+                            'amount':amount
                         }
                         update_request.append(
                             UpdateOne(

@@ -29,8 +29,16 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
                                     slowd_period=5, slowd_matype=1)
     data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=14)
     data['ADOSC'] = ta.ADOSC(data.high, data.low, data.close, data.volume, fastperiod=3, slowperiod=10)
+    data['ADX'] = ta.ADX(data.high, data.low, data.close, timeperiod=14)
+    data['minus_di'] = ta.MINUS_DI(data.high, data.low, data.close, timeperiod=14)
+    data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
+    data['obv'] = ta.OBV(data.close, data.volume)
+    data['slow_obv_diff'] = ta.EMA(data.obv, 7) - ta.EMA(data.obv, 14)
+
     addSignal(data, sign_type='mfi')
     addSignal(data, sign_type='KDJ')
+    obv_signal(data,120)
+    obv_signal(data,20)
     return data
 
 
@@ -51,6 +59,16 @@ def addSignal(data: pd.DataFrame, sign_type=None):
             lambda row: 1 if row['D'] > 80 and row['K'] > 80 and row['K'] < row['D'] and row['pre_K'] > row[
                 'pre_D'] else 0, axis=1)
 
+def obv_signal(data:pd.DataFrame,day):
+    data[f'avg{day}obv'] = ta.SMA(data.obv, timeperiod=day)
+    data[f'obv{day}_diff'] = data['obv'] - data[f'avg{day}obv']
+    data[f'pre_obv{day}_diff'] = data[f'obv{day}_diff'].shift(1)
+    data[f'obv{day}_cross'] = data.apply(
+        lambda row: 1 if row[f'pre_obv{day}_diff'] < 0 and row[f'obv{day}_diff'] > 0 else 0,
+        axis=1)
+    data[f'dead_obv{day}_cross'] = data.apply(
+        lambda row: 1 if row[f'pre_obv{day}_diff'] > 0 and row[f'obv{day}_diff'] < 0 else 0,
+        axis=1)
 
 def MFI_indicator():
     """stock"""
@@ -62,17 +80,17 @@ def MFI_indicator():
     sort_key = "time"
 
     """index"""
-    condition = {"code": {"$in": ["sh000001"]}, "date": {"$gte": "2019-01-01"}}
+    condition = {"code": {"$in": ["sz399001"]}, "date": {"$gte": "2019-01-01"}}
     database = 'stock'
     collection = 'index_data'
     projection = {'_id': False}
     sort_key = "date"
     """futures"""
-    condition = {"symbol": {"$in": ["FG0"]}, "date": {"$gte": "2020-01-01"}}
-    database = 'futures'
-    collection = 'futures_daily'
-    projection = {'_id': False}
-    sort_key = "date"
+    # condition = {"symbol": {"$in": ["FG0"]}, "date": {"$gte": "2020-01-01"}}
+    # database = 'futures'
+    # collection = 'futures_daily'
+    # projection = {'_id': False}
+    # sort_key = "date"
 
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
@@ -100,6 +118,8 @@ def MFI_indicator():
                                     slowd_period=5, slowd_matype=1)
     data['ma20'] = ta.SMA(data.close, timeperiod=20)
     data['ma55'] = ta.SMA(data.close, timeperiod=55)
+    data['amount'] = round(data['amount']/1e8,4)
+    data['amount55'] = ta.SMA(data.amount, timeperiod=55)
 
     """ADX 低于25时，震荡行情，不明确的行情 大于25是，趋势强，但不能判断上涨还是下降 要结合+DI和-DI以及OBV指标
         信号如下判断
@@ -112,8 +132,16 @@ def MFI_indicator():
     data['minus_di'] = ta.MINUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['obv'] = ta.OBV(data.close, data.volume)
-    data['obv_diff'] = ta.EMA(data.obv,6) - ta.EMA(data.obv,12)
-    data['avg100obv'] = ta.SMA(data.obv, timeperiod=40)
+    data['obv_diff'] = ta.EMA(data.obv, 7) - ta.EMA(data.obv, 14)
+    data['avg100obv'] = ta.SMA(data.obv, timeperiod=120)
+    data['obv100_diff'] = data['obv'] - data['avg100obv']
+    data['pre_obv100_diff'] = data['obv100_diff'].shift(1)
+    data['obv_cross'] = data.apply(
+        lambda row: 1 if row['pre_obv100_diff']<0 and row['obv100_diff'] >0 else 0,
+        axis=1)
+    data['dead_obv_cross'] = data.apply(
+        lambda row: 1 if row['pre_obv100_diff']>0 and row['obv100_diff'] <0 else 0,
+        axis=1)
     data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=26)
     data['natr14'] = ta.NATR(data.high, data.low, data.close, timeperiod=26)
     data['TRANGE'] = ta.TRANGE(data.high, data.low, data.close)
@@ -128,12 +156,14 @@ def MFI_indicator():
                                                                matype=0)
     data['up_boll_delta'] = data['close'] - data['H_line']
     data['pre_up_boll_delta'] = data['up_boll_delta'].shift(1)
-    data['up_boll'] = data.apply(lambda row: 1 if row['pre_up_boll_delta'] <=0 and row['up_boll_delta'] >0 else 0, axis=1)
+    data['up_boll'] = data.apply(lambda row: 1 if row['pre_up_boll_delta'] <= 0 and row['up_boll_delta'] > 0 else 0,
+                                 axis=1)
 
     data['down_boll_delta'] = data['close'] - data['L_line']
     data['pre_down_boll_delta'] = data['down_boll_delta'].shift(1)
-    data['dow_boll'] = data.apply(lambda row: 1 if row['pre_down_boll_delta'] >= 0 and row['down_boll_delta'] < 0 else 0,
-                                 axis=1)
+    data['dow_boll'] = data.apply(
+        lambda row: 1 if row['pre_down_boll_delta'] >= 0 and row['down_boll_delta'] < 0 else 0,
+        axis=1)
 
     # plt.figure(figsize=(16, 14))
     # plt.subplot(211)
@@ -157,7 +187,8 @@ def MFI_indicator():
     data[['minus_di', 'plus_di', 'ADX']].loc['2023-03-01':].plot(ax=axes[2], grid=True)
     # data[['ADXR','ADX','APO']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
     # data[['aroon_down','aroon_up']].loc['2023-07-01':].plot(ax=axes[3], grid=True)
-    data[['obv_diff']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
+    #data[['obv_diff']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
+    data[['amount55','amount']].loc['2023-03-01':].plot(ax=axes[3], grid=True)
     plt.legend(loc='best', shadow=True)
 
     # plt.subplot(212)
@@ -184,7 +215,7 @@ def MFI_indicator():
                 data['D'][i]:
             data.loc[data.index[i], '收盘信号'] = 0
 
-    data[['close','H_line','L_line','ma20','ma55']].plot(figsize=(16, 7), grid=True)
+    data[['close', 'H_line', 'L_line', 'ma20', 'ma55']].plot(figsize=(16, 7), grid=True)
     for i in range(len(data)):
         if data['dow_boll'][i] == 1:
             plt.annotate('买', xy=(data.index[i], data.close[i]), arrowprops=dict(facecolor='r', shrink=0.05))
