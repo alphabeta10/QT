@@ -686,7 +686,8 @@ def enter_big_model_analysis_stock_fin(code_dict: dict = None):
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
     genai.configure(api_key=api_key, transport='rest')
-    model = genai.GenerativeModel('gemini-pro')
+    version = api_key_json['version']
+    model = genai.GenerativeModel(version)
 
     if code_dict is None:
         code_dict = {

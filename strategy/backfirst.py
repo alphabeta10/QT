@@ -1,7 +1,6 @@
 import backtrader as bt
 from backtrader.feeds import DataBase
 from utils.tool import get_data_from_mongo
-import pandas as pd
 import math
 import backtrader.indicators as bi
 from backtrader import date2num

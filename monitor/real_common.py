@@ -1,4 +1,63 @@
 import pandas as pd
+from datetime import datetime,timedelta
+import os
+def unique_key_to_file(file_name: str, data_list: set):
+    with open(file_name, mode='w') as f:
+        for ele in data_list:
+            f.write(ele + "\n")
+
+
+def unique_key_load(file_name: str):
+    with open(file_name, mode='r') as f:
+        lines = f.readlines()
+        keys = set([line.replace("\n", "") for line in lines if line.replace("\n", "") != ''])
+        return keys
+
+
+def common_filter_data(data_dict: dict, file_name, new_key,time_key='time', before_day=3):
+    before_day_str = (datetime.now() - timedelta(days=before_day)).strftime("%Y%m%d")
+    before_day = int(before_day_str)
+    filter_datas = {}
+    if os.path.exists(file_name) is False:
+        unique_keys = set()
+        for name, list_news in data_dict.items():
+            new_list_news = []
+            for new in list_news:
+                day_str = new[time_key].replace("-", "")[0:8]
+                day_int = int(day_str)
+                if day_int >= before_day:
+                    new_list_news.append(new)
+                    key = name + new[time_key] + new[new_key]
+                    unique_keys.add(key)
+            if len(new_list_news) > 0:
+                filter_datas[name] = new_list_news
+        if len(unique_keys) > 0:
+            unique_key_to_file(file_name, unique_keys)
+        return filter_datas
+    else:
+        unique_keys = unique_key_load(file_name)
+        new_keys = set()
+        is_has_new = False
+        for name, list_news in data_dict.items():
+            new_list_news = []
+            for new in list_news:
+                day_str = new[time_key].replace("-", "")[0:8]
+                day_int = int(day_str)
+                key = name + new[time_key] + new[new_key]
+
+                if day_int >= before_day:
+                    new_list_news.append(new)
+                    new_keys.add(key)
+                    if key not in unique_keys:
+                        is_has_new = True
+            if len(new_list_news) > 0:
+                filter_datas[name] = new_list_news
+        if is_has_new:
+            unique_key_to_file(file_name, new_keys)
+            return filter_datas
+        else:
+            return {}
+
 
 
 def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):

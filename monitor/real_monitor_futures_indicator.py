@@ -36,6 +36,8 @@ def real_monitor_futures_and_cal_indicator():
          "contract_chg_price": 10},
         {"name": "乙二醇连续", "market_type": "CF", "code": "EG0", "stop_price": 1000, "stop_time": 1,
          "contract_chg_price": 10},
+        {"name": "尿素", "market_type": "CF", "code": "UR2409", "stop_price": 1000, "stop_time": 1,
+         "contract_chg_price": 10}
     ]
 
     comm_info_dict = {"name": "名称", "close": "C", "open": "O", "high": "H", "low": "L"}

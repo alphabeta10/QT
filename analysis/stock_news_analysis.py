@@ -119,11 +119,12 @@ def handle_stock_news_abstract_sentiment(code_dict=None):
     big_model_col = get_mongo_table(database='stock', collection="big_model")
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
+    version = api_key_json['version']
     genai.configure(api_key=api_key, transport='rest')
     for m in genai.list_models():
         if "generateContent" in m.supported_generation_methods:
             print(m.name)
-    model = genai.GenerativeModel('gemini-1.0-pro-latest')
+    model = genai.GenerativeModel(version)
 
     for code, name in tqdm(code_dict.items()):
         print(f"handle code={code},name={name}")
@@ -135,11 +136,12 @@ def handle_detail_stock_news_abstract_sentiment(code_dict=None):
     big_model_col = get_mongo_table(database='stock', collection="big_model")
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
+    version = api_key_json['version']
     genai.configure(api_key=api_key, transport='rest')
     for m in genai.list_models():
         if "generateContent" in m.supported_generation_methods:
             print(m.name)
-    model = genai.GenerativeModel('gemini-1.0-pro-latest')
+    model = genai.GenerativeModel(version)
     before_day_str = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d %H:%M:%S")
 
     for code, name in tqdm(code_dict.items()):

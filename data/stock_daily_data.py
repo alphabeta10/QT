@@ -1,6 +1,6 @@
 import akshare as ak
 import tushare as ts
-from datetime import datetime
+from datetime import datetime,timedelta
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from tqdm import tqdm
@@ -41,10 +41,12 @@ def get_stock_info_data():
     return new_codes
 
 
-def handle_stock_daily_data(codes=None, start_date=datetime.now().strftime("%Y%m01"),
+def handle_stock_daily_data(codes=None, start_date=None,
                             end_date=datetime.now().strftime("%Y%m%d")):
     if codes is None:
         codes = get_stock_info_data()
+    if start_date is None:
+        start_date = (datetime.now()-timedelta(days=5)).strftime("%Y%m%d")
     tiker_daily = get_mongo_table(collection="ticker_daily")
     print(f"start={start_date},end={end_date}")
     update_request = []

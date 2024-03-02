@@ -551,8 +551,9 @@ def big_model_stock_price_data(codes: list, model):
 def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
+    version = api_key_json['version']
     genai.configure(api_key=api_key, transport='rest')
-    model = genai.GenerativeModel('gemini-1.0-pro-latest')
+    model = genai.GenerativeModel(version)
     year = datetime.now().strftime('%Y-01-01')
     if code_dict is None:
         code_dict = comm_read_stock('../stock.txt')

@@ -16,13 +16,22 @@ def is_json(str_: str):
     except Exception as e:
         return False
     return True
-def dump_json_data(file_name,json_data:dict):
-    with open(file_name,'w') as f:
-        json.dump(json_data,f)
+
+
+def dump_json_data(file_name, json_data: dict):
+    with open(file_name, 'w') as f:
+        json.dump(json_data, f)
+
+
+def handel_summary_data(output_txt):
+    return output_txt.replace("\n", "").replace("*", "").replace(" ", "").replace("-", "")
+
 
 def load_json_data(file_name):
-    with open(file_name,'r') as f:
+    with open(file_name, 'r') as f:
         return json.load(f)
+
+
 def mongo_bulk_write_data(db_col, upsert_datas: list):
     """
     批量数据录入mongo db
@@ -57,12 +66,15 @@ def get_data_from_mongo(database='stock', collection='goods', condition=None, pr
     pd_data = pd.DataFrame(data=datas)
     return pd_data
 
+
 def comm_read_stock(file_name):
-    with open(file_name,mode='r') as f:
+    with open(file_name, mode='r') as f:
         lines = f.readlines()
-        lines = [line.replace("\n","") for line in lines if len(line.split(","))==2]
-        code_dict = {line.split(",")[0]:line.split(",")[1] for line in lines}
+        lines = [line.replace("\n", "") for line in lines if len(line.split(",")) == 2]
+        code_dict = {line.split(",")[0]: line.split(",")[1] for line in lines}
         return code_dict
+
+
 def sort_dict_data_by(dict_data, by='key', reverse=False):
     """
     字典按key或者value排序

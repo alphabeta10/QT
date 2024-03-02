@@ -103,6 +103,10 @@ def get_result_data(url, year, last_year):
                      }
         return dict_data
 
+def show_none_data(val,text,data):
+    if val is None or val==0:
+        print(text,data)
+        raise Exception("解析失败")
 
 def get_week_result_data(url, year, last_year):
     respond = requests.get(url, headers={
@@ -151,8 +155,11 @@ def get_week_result_data(url, year, last_year):
             if "铁路货运" in ele:
                 get_res = re.findall("(\d+\\.?\d+)万吨", ele)
                 tl_result = get_res[0]
+            if '铁路' in ele:
+                get_res = re.findall("(\d+\\.?\d+)万吨", ele.replace(" ",""))
+                tl_result = get_res[0]
             if "高速公路" in ele:
-                get_res = re.findall("(\d+\\.?\d+)万辆", ele)
+                get_res = re.findall("(\d+\\.?\d+)万辆", ele.replace(" ",""))
                 if len(get_res) > 0:
                     gs_result = get_res[0]
             if "港口" in ele:
@@ -190,6 +197,18 @@ def get_week_result_data(url, year, last_year):
                     get_res = re.findall("(\d+\\.?\d+)亿件", ele)
                     lj_result = get_res[0]
                     td_result = get_res[1]
+        show_none_data(tl_result,'公路为空',text_data)
+        show_none_data(gs_result,'高速为空',text_data)
+        show_none_data(mh_hb_result,'民航保障航班为空',text_data)
+        show_none_data(hy_hb_result,'货运航班为空',text_data)
+        show_none_data(gj_hb_result,'国际航班为空',text_data)
+        show_none_data(gn_hb_result,'国内航班为空',text_data)
+        show_none_data(lj_result,'邮政揽件为空',text_data)
+        show_none_data(td_result,'邮政投递为空',text_data)
+        show_none_data(gk_result,'港股货运吨为空',text_data)
+        show_none_data(gk_teu_result,'港口集装箱为空',text_data)
+
+
         dict_data = {"tl_traffic": tl_result, "gs_traffic": gs_result,
                      "mh_hb_traffic": mh_hb_result, "hy_hb_traffic": hy_hb_result,
                      "gj_hb_traffic": gj_hb_result, "gn_hb_traffic": gn_hb_result,
@@ -197,6 +216,9 @@ def get_week_result_data(url, year, last_year):
                      "gk_traffic": gk_result, "gk_teu_traffic": gk_teu_result, "time": time
                      }
         return dict_data
+    else:
+        print("解析失败")
+        raise Exception("解析失败")
 
 
 def get_main_traffic_data(url):
@@ -243,8 +265,8 @@ def traffic():
     :return:
     """
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
-    for i in range(5):
-        if i > 1:
+    for i in range(2):
+        if i >= 1:
             url = f"https://www.mot.gov.cn/zhuanti/wuliubtbc/qingkuangtongbao_wuliu/index_{i}.html"
         else:
             url = 'https://www.mot.gov.cn/zhuanti/wuliubtbc/qingkuangtongbao_wuliu/index.html'

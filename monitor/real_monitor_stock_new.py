@@ -26,11 +26,6 @@ def stock_real_analysis_main():
             name = combine_dict['name']
             no_stock_key_set.add(name)
         [no_stock_key_set.add(e) for e in combine_dict.get("other_keys", [])]
-    api_key_json = load_json_data("google_api.json")
-    api_key = api_key_json['api_key']
-    # genai.configure(api_key=api_key,transport='rest')
-    # model = genai.GenerativeModel('gemini-pro')
-
     col = ['发布时间', '新闻标题', '新闻内容']
     stock_telegraph_cls_df = ak.stock_telegraph_cls(symbol="全部")
     tel_col = ['标题', '内容', '发布日期', '发布时间']

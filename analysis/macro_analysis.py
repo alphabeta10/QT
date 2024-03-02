@@ -23,8 +23,9 @@ def big_model_macro_data():
     #加载模型
     api_key_json = load_json_data("google_api.json")
     api_key = api_key_json['api_key']
+    version = api_key_json['version']
     genai.configure(api_key=api_key, transport='rest')
-    model = genai.GenerativeModel('gemini-1.0-pro-latest')
+    model = genai.GenerativeModel(version)
 
     # 获取最新存款准备金数据
     macro_china_reserve_requirement_ratio_df = try_get_action(ak.macro_china_reserve_requirement_ratio, try_count=3)
