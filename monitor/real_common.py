@@ -164,5 +164,39 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='å®žæ
         sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
 
 
+def st_peak_data(data: pd.DataFrame,time_key,before_peak=-6):
+    data['pre_close'] = data['close'].shift(1)
+    data['next_close'] = data['close'].shift(-1)
+
+    data['is_peak'] = data.apply(
+        lambda row: 1 if row['close'] > row['pre_close'] and row['close'] > row['next_close'] else 0, axis=1)
+    peak_data = []
+    datas = []
+
+    for index in data.index:
+        dict_data = dict(data.loc[index])
+        compared_list = peak_data[before_peak:]
+        cur_close = dict_data['close']
+        if time_key not in dict_data.keys():
+            time_data = str(index)
+        else:
+            time_data = dict_data[time_key]
+        dict_data[time_key] = time_data
+        if dict_data['is_peak'] == 1:
+            combine_data = {"close": dict_data['close'], time_key: time_data}
+            peak_data.append(combine_data)
+        up = 0
+        down = 0
+        for ele in compared_list:
+            tmp_close = ele['close']
+            if cur_close > tmp_close:
+                up += 1
+            else:
+                down += 1
+        dict_data['up'] = up
+        dict_data['down'] = down
+        datas.append(dict_data)
+    return pd.DataFrame(datas)
+
 if __name__ == '__main__':
     pass

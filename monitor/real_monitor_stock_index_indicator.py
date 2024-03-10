@@ -61,6 +61,7 @@ def real_monitor_stock_index_and_cal_indicator():
             pd_data = data[data[code_name] == code][cols]
             today_data = stock_index_zh_a_spot_em_df[stock_index_zh_a_spot_em_df[code_name] == code]
             new_data = pd.concat([pd_data, today_data])
+            new_data = st_peak_data(new_data, sort_key)
             new_data['name'] = code_dict.get(code)
             common_indictator_cal(new_data, ma_timeperiod=20)
             new_data['stop_rate'] = round((new_data['atr14'] * 3) / new_data['close'], 4)

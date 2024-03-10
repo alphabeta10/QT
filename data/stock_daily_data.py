@@ -179,6 +179,11 @@ def handle_stock_cyq_main():
         for code in tqdm(codes):
             stock_cyq_em_df = try_get_action(ak.stock_cyq_em,try_count=3,symbol=code, adjust="")
             if stock_cyq_em_df is not None and len(stock_cyq_em_df)>0:
+                before_day_str = (datetime.now()-timedelta(days=10)).strftime("%Y-%m-%d")
+                stock_cyq_em_df['日期'] = stock_cyq_em_df.apply(
+                    lambda row: str(row['日期'])[0:10],
+                    axis=1)
+                stock_cyq_em_df = stock_cyq_em_df[stock_cyq_em_df['日期']>before_day_str]
                 for index in stock_cyq_em_df.index:
                     dict_data = dict(stock_cyq_em_df.loc[index])
                     new_dict_data = {"data_type": "stock_cyq","metric_code":code}
@@ -218,7 +223,7 @@ def col_create_index():
 
 
 if __name__ == '__main__':
-    save_stock_info_data()
+    #save_stock_info_data()
     handle_stock_daily_data()
     stock_dzjy_main()
     handle_stock_cyq_main()
