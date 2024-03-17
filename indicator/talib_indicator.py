@@ -73,18 +73,19 @@ def obv_signal(data:pd.DataFrame,day):
 def MFI_indicator():
     """stock"""
     condition = {"code": {"$in": ["sh000001"]}, "date": {"$gte": "2020-01-01"}}
-    # condition = {"code": {"$in": ["000858"]}, "time": {"$gte": "2020-01-01"}}
+    condition = {"code": {"$in": ["300474"]}, "time": {"$gte": "2020-01-01"}}
     database = 'stock'
     collection = 'ticker_daily'
     projection = {'_id': False}
     sort_key = "time"
 
     """index"""
-    condition = {"code": {"$in": ["sz399001"]}, "date": {"$gte": "2019-01-01"}}
-    database = 'stock'
-    collection = 'index_data'
-    projection = {'_id': False}
-    sort_key = "date"
+    # condition = {"code": {"$in": ["sz399001"]}, "date": {"$gte": "2019-01-01"}}
+    # condition = {"code": {"$in": ["sh000001"]}, "date": {"$gte": "2019-01-01"}}
+    # database = 'stock'
+    # collection = 'index_data'
+    # projection = {'_id': False}
+    # sort_key = "date"
     """futures"""
     # condition = {"symbol": {"$in": ["FG0"]}, "date": {"$gte": "2020-01-01"}}
     # database = 'futures'

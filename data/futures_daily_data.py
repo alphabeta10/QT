@@ -3,7 +3,9 @@ from pymongo import UpdateOne
 from utils.actions import try_get_action
 from utils.tool import mongo_bulk_write_data
 from data.mongodb import get_mongo_table
-from datetime import datetime
+from datetime import datetime, timedelta
+import requests
+import pandas as pd
 
 
 def handle_futures_daily_data(symbols=None):
@@ -30,9 +32,31 @@ def handle_futures_daily_data(symbols=None):
             mongo_bulk_write_data(futures_daily, datas)
 
 
+def get_all_inventory_symbols():
+    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+    params = {
+        "reportName": "RPT_FUTU_POSITIONCODE",
+        "columns": "TRADE_MARKET_CODE,TRADE_CODE,TRADE_TYPE",
+        "filter": '(IS_MAINCODE="1")',
+        "pageNumber": "1",
+        "pageSize": "500",
+        "source": "WEB",
+        "client": "WEB",
+        "_": "1669352163467",
+    }
+    r = requests.get(url, params=params)
+    data_json = r.json()
+    temp_df = pd.DataFrame(data_json["result"]["data"])
+    symbol_dict = dict(zip(temp_df["TRADE_TYPE"], temp_df["TRADE_CODE"]))
+    symbols = [k for k in symbol_dict.keys() if
+               k not in ['中证1000', '中证500', '沪深300', '上证50', '集运指数(欧线)', '5年期国债', '2年期国债',
+                         '10年期国债', '30年期国债期货']]
+    return symbols
+
+
 def handle_futures_inventory_data(symbols=None):
     if symbols is None:
-        symbols = ['豆一']
+        symbols = get_all_inventory_symbols()
     futures_daily = get_mongo_table(database='futures', collection='futures_inventory')
     for symbol in symbols:
         datas = []
@@ -60,7 +84,8 @@ def handle_futures_receipt_data(codes=None, start_day=datetime.now().strftime("%
     if codes is None:
         futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_day=start_day, end_day=end_day)
     else:
-        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_day=start_day, end_day=end_day, vars_list=codes)
+        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_day=start_day, end_day=end_day,
+                                         vars_list=codes)
     datas = []
     if futures_receipt is not None:
         for index in futures_receipt.index:
@@ -200,7 +225,7 @@ def handle_futures_delivery_dce(dates=None):
         if futures_delivery_dce_df is not None:
             for index in futures_delivery_dce_df.index:
                 ele_dict_data = dict(futures_delivery_dce_df.loc[index])
-                code = ele_dict_data['品种'].replace(" ","")
+                code = ele_dict_data['品种'].replace(" ", "")
                 date = str(ele_dict_data['交割日期'])
                 if date != 'nan':
                     dict_data = {"code": code, "data_type": "futures_delivery"}
@@ -217,7 +242,8 @@ def handle_futures_delivery_dce(dates=None):
     if len(datas) > 0:
         mongo_bulk_write_data(futures_basic_info, datas)
 
-def handel_futures_long_short_data_cffex(dates:list,codes:list):
+
+def handel_futures_long_short_data_cffex(dates: list, codes: list):
     """
     金融板块期货多空信息数据
     :return:
@@ -226,7 +252,7 @@ def handel_futures_long_short_data_cffex(dates:list,codes:list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_cffex_rank_table,try_count=3,date=date, vars_list=codes)
+        data = try_get_action(ak.get_cffex_rank_table, try_count=3, date=date, vars_list=codes)
         if data is not None:
             for k, v in data.items():
                 sum_long_open_interest = v['long_open_interest'].sum()
@@ -246,13 +272,136 @@ def handel_futures_long_short_data_cffex(dates:list,codes:list):
                 position_result['long_short_rate'] = long_short_rate
                 position_result['data_type'] = "futures_long_short_rate"
                 datas.append(UpdateOne(
-                    {"code": position_result['code'], "data_type": position_result['data_type'], "date": position_result['date']},
+                    {"code": position_result['code'], "data_type": position_result['data_type'],
+                     "date": position_result['date']},
                     {"$set": position_result},
                     upsert=True))
             if len(datas) > 0:
                 mongo_bulk_write_data(futures_basic_info, datas)
                 datas.clear()
 
+
+def handel_futures_long_short_data_dce(dates: list, codes: list):
+    """
+    大连期货多空信息数据
+    :return:
+    """
+    datas = []
+    futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
+    for date in dates:
+        print(f"handle date={date}")
+        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date, vars_list=codes)
+        if data is not None:
+            for k, v in data.items():
+                sum_long_open_interest = v['long_open_interest'].sum()
+                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
+                sum_short_open_interest = v['short_open_interest'].sum()
+                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+
+                long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
+                position_result = {}
+                position_result['code'] = k
+                position_result['date'] = date
+                position_result['long_open_interest'] = int(sum_long_open_interest)
+                position_result['long_open_interest_chg'] = int(sum_long_open_interest_chg)
+
+                position_result['short_open_interest'] = int(sum_short_open_interest)
+                position_result['short_open_interest_chg'] = int(sum_short_open_interest_chg)
+                position_result['long_short_rate'] = long_short_rate
+                position_result['data_type'] = "futures_long_short_rate"
+                datas.append(UpdateOne(
+                    {"code": position_result['code'], "data_type": position_result['data_type'],
+                     "date": position_result['date']},
+                    {"$set": position_result},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_basic_info, datas)
+                datas.clear()
+
+
+def handel_futures_long_short_data_shfe(dates: list, codes: list):
+    """
+    上期货多空信息数据
+    :return:
+    """
+    datas = []
+    futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
+    for date in dates:
+        print(f"handle date={date}")
+        data = try_get_action(ak.get_shfe_rank_table, try_count=3, date=date, vars_list=codes)
+        if data is not None:
+            for k, v in data.items():
+                sum_long_open_interest = v['long_open_interest'].sum()
+                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
+                sum_short_open_interest = v['short_open_interest'].sum()
+                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+
+                long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
+                position_result = {}
+                position_result['code'] = k
+                position_result['date'] = date
+                position_result['long_open_interest'] = int(sum_long_open_interest)
+                position_result['long_open_interest_chg'] = int(sum_long_open_interest_chg)
+
+                position_result['short_open_interest'] = int(sum_short_open_interest)
+                position_result['short_open_interest_chg'] = int(sum_short_open_interest_chg)
+                position_result['long_short_rate'] = long_short_rate
+                position_result['data_type'] = "futures_long_short_rate"
+                datas.append(UpdateOne(
+                    {"code": position_result['code'], "data_type": position_result['data_type'],
+                     "date": position_result['date']},
+                    {"$set": position_result},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_basic_info, datas)
+                datas.clear()
+
+
+def handel_futures_long_short_data_gfex(dates: list, codes: list):
+    """
+    广期货多空信息数据
+    :return:
+    """
+    datas = []
+    futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
+    for date in dates:
+        print(f"handle date={date}")
+        data = try_get_action(ak.futures_gfex_position_rank, try_count=3, date=date, vars_list=codes)
+        if data is not None:
+            for k, v in data.items():
+                v['long_open_interest'] = v.apply(lambda ele: int(str(ele['long_open_interest']).replace(",", "")),
+                                                  axis=1)
+                v['long_open_interest_chg'] = v.apply(
+                    lambda ele: int(str(ele['long_open_interest_chg']).replace(",", "")), axis=1)
+                v['short_open_interest'] = v.apply(lambda ele: int(str(ele['short_open_interest']).replace(",", "")),
+                                                   axis=1)
+                v['short_open_interest_chg'] = v.apply(
+                    lambda ele: int(str(ele['short_open_interest_chg']).replace(",", "")), axis=1)
+
+                sum_long_open_interest = v['long_open_interest'].sum()
+                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
+                sum_short_open_interest = v['short_open_interest'].sum()
+                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+
+                long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
+                position_result = {}
+                position_result['code'] = k
+                position_result['date'] = date
+                position_result['long_open_interest'] = int(sum_long_open_interest)
+                position_result['long_open_interest_chg'] = int(sum_long_open_interest_chg)
+
+                position_result['short_open_interest'] = int(sum_short_open_interest)
+                position_result['short_open_interest_chg'] = int(sum_short_open_interest_chg)
+                position_result['long_short_rate'] = long_short_rate
+                position_result['data_type'] = "futures_long_short_rate"
+                datas.append(UpdateOne(
+                    {"code": position_result['code'], "data_type": position_result['data_type'],
+                     "date": position_result['date']},
+                    {"$set": position_result},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_basic_info, datas)
+                datas.clear()
 
 
 def handle_futures_delivery_czce(trade_dates=None):
@@ -283,6 +432,97 @@ def handle_futures_delivery_czce(trade_dates=None):
     if len(datas) > 0:
         mongo_bulk_write_data(futures_basic_info, datas)
 
+
+def handel_futures_long_short_data_czce(dates: list, codes: list):
+    """
+    郑期货多空信息数据
+    :return:
+    """
+    datas = []
+    futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
+    for date in dates:
+        print(f"handle date={date}")
+        data = try_get_action(ak.get_czce_rank_table, try_count=3, date=date, vars_list=codes)
+        if data is not None:
+            for k, v in data.items():
+                v['long_open_interest'] = v.apply(
+                    lambda ele: int(str(ele['long_open_interest']).replace(",", "")) if str(
+                        ele['long_open_interest']) != '-' else 0, axis=1)
+                v['long_open_interest_chg'] = v.apply(
+                    lambda ele: int(str(ele['long_open_interest_chg']).replace(",", "")) if str(
+                        ele['long_open_interest_chg']) != '-' else 0, axis=1)
+                v['short_open_interest'] = v.apply(
+                    lambda ele: int(str(ele['short_open_interest']).replace(",", "")) if str(
+                        ele['short_open_interest']) != '-' else 0, axis=1)
+                v['short_open_interest_chg'] = v.apply(
+                    lambda ele: int(str(ele['short_open_interest_chg']).replace(",", "")) if str(
+                        ele['short_open_interest_chg']) != '-' else 0, axis=1)
+
+                sum_long_open_interest = v['long_open_interest'].sum()
+                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
+                sum_short_open_interest = v['short_open_interest'].sum()
+                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+
+                long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
+                position_result = {}
+                position_result['code'] = k
+                position_result['date'] = date
+                position_result['long_open_interest'] = int(sum_long_open_interest)
+                position_result['long_open_interest_chg'] = int(sum_long_open_interest_chg)
+
+                position_result['short_open_interest'] = int(sum_short_open_interest)
+                position_result['short_open_interest_chg'] = int(sum_short_open_interest_chg)
+                position_result['long_short_rate'] = long_short_rate
+                position_result['data_type'] = "futures_long_short_rate"
+                datas.append(UpdateOne(
+                    {"code": position_result['code'], "data_type": position_result['data_type'],
+                     "date": position_result['date']},
+                    {"$set": position_result},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_basic_info, datas)
+                datas.clear()
+
+
+def futures_long_short_rate_codes():
+    futures_rule_df = ak.futures_rule(date="20240315")
+    dict_codes = {}
+    for index in futures_rule_df.index:
+        dict_data = dict(futures_rule_df.loc[index])
+        symbol = dict_data['品种']
+        code = dict_data['代码']
+        trade_futures = dict_data['交易所']
+        if '期权' not in symbol:
+            dict_codes.setdefault(trade_futures, [])
+            dict_codes[trade_futures].append({"symbol": symbol, "code": code})
+    return dict_codes
+
+
+def enter_futrures_long_short_main(before_days=5):
+    tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
+    trade_dates = []
+    month_dates = set()
+    now_int = int(datetime.now().strftime("%Y%m%d"))
+    before_day_int = int((datetime.now() - timedelta(days=before_days)).strftime("%Y%m%d"))
+    for index in tool_trade_date_hist_sina_df.index:
+        trade_date = tool_trade_date_hist_sina_df.loc[index]['trade_date']
+        date_str = str(trade_date).replace("-", "")
+        if int(date_str) > before_day_int and int(date_str) <= now_int:
+            trade_dates.append(date_str)
+            month_dates.add(date_str[:6])
+
+    dict_codes = futures_long_short_rate_codes()
+    fn_mapping = {
+        "大商所": handel_futures_long_short_data_dce,
+        "郑商所": handel_futures_long_short_data_czce,
+        "上期所": handel_futures_long_short_data_shfe,
+        "广期所": handel_futures_long_short_data_gfex,
+        "中金所": handel_futures_long_short_data_cffex,
+    }
+    for k, fn in fn_mapping.items():
+        print(f"handle {k}")
+        codes = [ele['code'] for ele in dict_codes[k] if '期权' not in ele['symbol']]
+        fn(trade_dates, codes)
 
 
 def col_create_index():

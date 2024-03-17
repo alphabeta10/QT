@@ -1,6 +1,8 @@
 import pandas as pd
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 import os
+
+
 def unique_key_to_file(file_name: str, data_list: set):
     with open(file_name, mode='w') as f:
         for ele in data_list:
@@ -14,7 +16,7 @@ def unique_key_load(file_name: str):
         return keys
 
 
-def common_filter_data(data_dict: dict, file_name, new_key,time_key='time', before_day=3):
+def common_filter_data(data_dict: dict, file_name, new_key, time_key='time', before_day=3):
     before_day_str = (datetime.now() - timedelta(days=before_day)).strftime("%Y%m%d")
     before_day = int(before_day_str)
     filter_datas = {}
@@ -59,7 +61,6 @@ def common_filter_data(data_dict: dict, file_name, new_key,time_key='time', befo
             return {}
 
 
-
 def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
     """
     构建发送邮件的json数据
@@ -82,10 +83,10 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
 
                     if ele_val > left_val and ele_val < right_val:
                         ret_msg_dict[key] = combine_dict['name']
-                        for ele in combine_dict.get('other_show_indicator',[]):
+                        for ele in combine_dict.get('other_show_indicator', []):
                             show_indicator_set.add(ele)
                 if "eq" in combine_ky:
-                    if ele_val==combine_dict['eq']:
+                    if ele_val == combine_dict['eq']:
                         ret_msg_dict[key] = combine_dict['name']
                         for ele in combine_dict.get('other_show_indicator', []):
                             show_indicator_set.add(ele)
@@ -111,12 +112,12 @@ def construct_indicator_send_msg(pd_data: pd.DataFrame, indicator_config: dict):
         if len(ret_msg_dict.keys()) > 0:
             ret_msg_dict['row_data'] = dict_data
         show_indicator_list = list(show_indicator_set)
-        if len(show_indicator_list)>0:
+        if len(show_indicator_list) > 0:
             ret_msg_dict['other_show_indicator'] = show_indicator_list
     return ret_msg_dict
 
 
-def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实时股票指标触发',comm_info_dict=None):
+def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实时股票指标触发', comm_info_dict=None):
     """
     发送邮件
     :param msg_dict_data_list:
@@ -129,21 +130,21 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实�
     html_msg += "<table border=\"1\">"
     html_msg += f"<tr><th>股票相关价格内容</th> <th>触发的指标</th><th>附带指标显示</th></tr>"
     if comm_info_dict is None:
-        comm_info_dict = {"name":"名称","close":"C","open":"O","high":"H","low":"L","pct_chg":"pct_chg"}
+        comm_info_dict = {"name": "名称", "close": "C", "open": "O", "high": "H", "low": "L", "pct_chg": "pct_chg"}
     for msg_dict_data in msg_dict_data_list:
         row_data = msg_dict_data['row_data']
         info_msg_list = []
-        for info_key,info_name in comm_info_dict.items():
+        for info_key, info_name in comm_info_dict.items():
             info_val = row_data[info_key]
             info_msg = f"{info_name}={info_val}"
             info_msg_list.append(info_msg)
-        html_info_msg  = ",".join(info_msg_list)
+        html_info_msg = ",".join(info_msg_list)
 
         html_msg += f"<tr><td>{html_info_msg}</td>"
         trigger_list = []
         for k, msg in msg_dict_data.items():
-            if k not in ['row_data','other_show_indicator']:
-                indicator_val = round(row_data[k],2)
+            if k not in ['row_data', 'other_show_indicator']:
+                indicator_val = round(row_data[k], 2)
                 trigger_list.append(msg + f" {k}={indicator_val}")
         trigger_msg = ",".join(trigger_list)
         html_msg += f"<td>{trigger_msg}</td>"
@@ -164,18 +165,24 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='实�
         sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
 
 
-def st_peak_data(data: pd.DataFrame,time_key,before_peak=-6):
+def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6,before_low=-6):
     data['pre_close'] = data['close'].shift(1)
     data['next_close'] = data['close'].shift(-1)
 
     data['is_peak'] = data.apply(
         lambda row: 1 if row['close'] > row['pre_close'] and row['close'] > row['next_close'] else 0, axis=1)
+
+    data['is_low'] = data.apply(
+        lambda row: 1 if row['close'] < row['pre_close'] and row['close'] < row['next_close'] else 0, axis=1)
+
     peak_data = []
+    low_data = []
     datas = []
 
     for index in data.index:
         dict_data = dict(data.loc[index])
         compared_list = peak_data[before_peak:]
+        low_compared_list = low_data[before_low:]
         cur_close = dict_data['close']
         if time_key not in dict_data.keys():
             time_data = str(index)
@@ -185,6 +192,9 @@ def st_peak_data(data: pd.DataFrame,time_key,before_peak=-6):
         if dict_data['is_peak'] == 1:
             combine_data = {"close": dict_data['close'], time_key: time_data}
             peak_data.append(combine_data)
+        if dict_data['is_low'] == 1:
+            combine_data = {"close": dict_data['close'], time_key: time_data}
+            low_data.append(combine_data)
         up = 0
         down = 0
         for ele in compared_list:
@@ -195,8 +205,17 @@ def st_peak_data(data: pd.DataFrame,time_key,before_peak=-6):
                 down += 1
         dict_data['up'] = up
         dict_data['down'] = down
+
+        down = 0
+        for ele in low_compared_list:
+            tmp_close = ele['close']
+            if cur_close < tmp_close:
+                down += 1
+        dict_data['low_down'] = down
+
         datas.append(dict_data)
     return pd.DataFrame(datas)
+
 
 if __name__ == '__main__':
     pass

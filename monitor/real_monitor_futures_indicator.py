@@ -97,6 +97,7 @@ def real_monitor_futures_and_cal_indicator():
                 new_data.rename(columns={"current_price": "close"}, inplace=True)
             if new_data is not None:
                 new_data = pd.concat([pd_data, new_data])
+                new_data = st_peak_data(new_data, sort_key)
                 common_indictator_cal(new_data, ma_timeperiod=20)
                 new_data['name'] = name
                 new_data['position'] = futures_cf['stop_price'] / (
