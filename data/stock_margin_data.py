@@ -54,7 +54,7 @@ def handle_margin_sz_sh_total_data():
                 if k == '日期':
                     in_db_data['time'] = str(v)[0:10]
                 else:
-                    in_db_data[sh_mapping_cf.get(k)] = v
+                    in_db_data[sh_mapping_cf.get(k)] = float(v)
             update_request.append(
                 UpdateOne(
                     {"data_type": in_db_data['data_type'], "time": in_db_data['time'],

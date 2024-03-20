@@ -62,10 +62,15 @@ def real_monitor_stock_index_and_cal_indicator():
             today_data = stock_index_zh_a_spot_em_df[stock_index_zh_a_spot_em_df[code_name] == code]
             new_data = pd.concat([pd_data, today_data])
             new_data = st_peak_data(new_data, sort_key)
+            linear_result = cal_linear_data_fn(new_data[sort_key].values,new_data['close'].values,new_data['is_peak'].values,new_data['is_low'].values)
+            low_keys = list(linear_result['low'].keys())
+            high_keys = list(linear_result['high'].keys())
+            new_data['low_linear'] = linear_result['low'][low_keys[-1]]
+            new_data['high_linear'] = linear_result['high'][high_keys[-1]]
             new_data['name'] = code_dict.get(code)
             common_indictator_cal(new_data, ma_timeperiod=20)
             new_data['stop_rate'] = round((new_data['atr14'] * 3) / new_data['close'], 4)
-            show_data(new_data.tail(3))
+            show_data(new_data.tail(1))
 
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), buy_indicator_config)
             name = code_dict.get(code)

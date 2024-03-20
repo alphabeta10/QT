@@ -82,9 +82,9 @@ def handle_futures_receipt_data(codes=None, start_day=datetime.now().strftime("%
                                 end_day=datetime.now().strftime("%Y%m%d")):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     if codes is None:
-        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_day=start_day, end_day=end_day)
+        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_date=start_day, end_date=end_day)
     else:
-        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_day=start_day, end_day=end_day,
+        futures_receipt = try_get_action(ak.get_receipt, try_count=3, start_date=start_day, end_date=end_day,
                                          vars_list=codes)
     datas = []
     if futures_receipt is not None:
@@ -113,7 +113,7 @@ def handle_futures_czce_warehouse_receipt(trade_dates=None):
     for trade_date in trade_dates:
         print(f"handel 郑商所仓单日报数据日期 {trade_date}")
         czce_warehouse_receipt_df = try_get_action(ak.futures_czce_warehouse_receipt, try_count=3,
-                                                   trade_date=trade_date)
+                                                   date=trade_date)
         if czce_warehouse_receipt_df is not None:
             for k, v in czce_warehouse_receipt_df.items():
                 columns = v.columns
@@ -156,7 +156,7 @@ def handle_futures_dce_warehouse_receipt(trade_dates=None):
     for trade_date in trade_dates:
         print(f"handel 大商所仓单日报数据日期 {trade_date}")
         futures_dce_warehouse_receipt_df = try_get_action(ak.futures_dce_warehouse_receipt, try_count=3,
-                                                          trade_date=trade_date)
+                                                          date=trade_date)
         if futures_dce_warehouse_receipt_df is not None:
             for k, v in futures_dce_warehouse_receipt_df.items():
                 code = f"{k}小计"
@@ -185,7 +185,7 @@ def handle_futures_shfe_warehouse_receipt(trade_dates=None):
     for trade_date in trade_dates:
         print(f"handel 上期所仓单日报数据日期 {trade_date}")
         futures_shfe_warehouse_receipt = try_get_action(ak.futures_shfe_warehouse_receipt, try_count=3,
-                                                        trade_date=trade_date)
+                                                    date=trade_date)
         if futures_shfe_warehouse_receipt is not None:
             for k, v in futures_shfe_warehouse_receipt.items():
                 data = v[v['WHABBRNAME'] == '总计']

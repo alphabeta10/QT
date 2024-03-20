@@ -217,5 +217,47 @@ def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6,before_low=-6):
     return pd.DataFrame(datas)
 
 
+def linear_fn(k, x1, y1, cal_x2):
+    return k * (cal_x2 - x1) + y1
+
+def handle_point(is_high_or_low, temp_points_list:list, linear_fn_dict:dict, num, combine_data):
+    if is_high_or_low == 1:
+        temp_points_list.append(combine_data)
+    if len(temp_points_list) == 2:
+        first_point = temp_points_list[0]
+        second_point = temp_points_list[1]
+        y0, x0 = first_point[1], 0
+        y1, x1 = second_point[1], second_point[2] - first_point[2]
+        k = (y1 - y0) / (x1 - x0)
+        linear_fn_dict[first_point[0]] = [k, y0, first_point[2], num, second_point]
+        temp_points_list.pop(0)
+def cal_seq_linear_point(linear_fn_dict:dict,result:dict,type='high'):
+    for date, combine_list in linear_fn_dict.items():
+        cal_list_data = []
+        k, y0, start, end, x1 = combine_list
+        for i in range(0, start):
+            ele = linear_fn(k, 0, y0, -(start - i))
+            cal_list_data.append(ele)
+        for i in range(start, end):
+            ele = linear_fn(k, 0, y0, i - start)
+            cal_list_data.append(ele)
+        result[type][date] = cal_list_data
+def cal_linear_data_fn(dates, close_data, is_high_data, is_low_data):
+    temp_high_linear_data = []
+    temp_low_linear_data = []
+    start_index = 0
+    high_linear_fn_dict_data = {}
+    low_linear_fn_dict_data = {}
+    for date, close, is_high, is_low in zip(dates, close_data, is_high_data, is_low_data):
+        combine_data = [date,close,start_index]
+        handle_point(is_high,temp_high_linear_data,high_linear_fn_dict_data,len(dates),combine_data)
+        handle_point(is_low,temp_low_linear_data,low_linear_fn_dict_data,len(dates),combine_data)
+        start_index += 1
+
+    linear_result = {"high":{},"low":{}}
+    cal_seq_linear_point(high_linear_fn_dict_data,linear_result,'high')
+    cal_seq_linear_point(low_linear_fn_dict_data,linear_result,'low')
+    return linear_result
+
 if __name__ == '__main__':
     pass

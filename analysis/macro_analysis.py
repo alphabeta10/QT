@@ -1,6 +1,6 @@
 import akshare as ak
 import google.generativeai as genai
-from datetime import datetime, timedelta
+from datetime import datetime
 from big_models.google_api import *
 from utils.tool import load_json_data
 from pymongo import UpdateOne
@@ -305,6 +305,8 @@ def cn_traffic_data_analysis():
         "gk_traffic": "港口吞吐量(万吨)",
         "gk_teu_traffic": "港口集装箱吞吐量(万标箱)",
         "gs_traffic": "货车通行(万辆)",
+        "lj_traffic": "邮政揽件",
+        "td_traffic": "邮政投递",
     }
     convert_type_col = list(traffic_mapping_dict.keys())
     for col in convert_type_col:
@@ -313,7 +315,6 @@ def cn_traffic_data_analysis():
     data = data[convert_type_col]
     for k in traffic_mapping_dict.keys():
         add_pct(data, k)
-    show_data(data)
     for k, k_name in traffic_mapping_dict.items():
         plot_bar_value_line_same_rate_data(data.index.values, data[k].values, data[f'{k}_pct_1'].values, k_name,
                                            f'{k_name}环比比', '时间', f'{k_name}分析')

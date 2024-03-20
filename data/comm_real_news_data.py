@@ -71,7 +71,7 @@ def get_all_detail_data(names=None):
                         print(url)
     return ret_news
 def stock_telegraph_cls_news():
-    stock_telegraph_cls_df = try_get_action(ak.stock_telegraph_cls,try_count=3)
+    stock_telegraph_cls_df = try_get_action(ak.stock_info_global_cls,try_count=3)
     datas = []
     for index in stock_telegraph_cls_df.index:
         data = dict(stock_telegraph_cls_df.loc[index])

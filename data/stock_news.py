@@ -126,7 +126,7 @@ def get_html_xitu():
 
 
 def stock_telegraph_cls_news():
-    stock_telegraph_cls_df = try_get_action(ak.stock_telegraph_cls,try_count=3)
+    stock_telegraph_cls_df = try_get_action(ak.stock_info_global_cls,try_count=3)
     datas = []
     news = get_mongo_table(database='stock', collection='news')
     for index in stock_telegraph_cls_df.index:
