@@ -213,7 +213,7 @@ def get_data():
         print(ele)
 
 if __name__ == '__main__':
-    handle_fin_data(start_date='2022-09-01')
+    handle_fin_data(start_date='2018-01-01')
 
 
 

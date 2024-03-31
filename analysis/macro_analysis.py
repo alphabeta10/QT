@@ -2,7 +2,7 @@ import akshare as ak
 import google.generativeai as genai
 from datetime import datetime
 from big_models.google_api import *
-from utils.tool import load_json_data
+from utils.tool import load_json_data,get_data_from_mongo
 from pymongo import UpdateOne
 from data.mongodb import get_mongo_table
 from utils.tool import mongo_bulk_write_data
@@ -348,6 +348,40 @@ def wci_index_data_analysis():
         plot_bar_value_line_same_rate_data(data.index.values, data['wci'].values, data[f'wci_pct_1'].values, name,
                                            f'{name}环比比', '时间', f'{name}分析')
 
+def analysis_us_debt():
+    condition = {"data_name":"Total Public Debt Outstanding","data_time":{"$gt":'2001-01-01'}}
+    database = 'stock'
+    collection = 'micro'
+    projection = {'_id': False}
+    sort_key = "data_time"
+
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    show_data(data)
+    data[['value']] = data[['value']].astype(float)/1e6
+    data.set_index(keys='data_time',inplace=True)
+    data.sort_index(inplace=True)
+    data['value'].plot(kind='line', title='美国债务（万亿）', rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+def analysis_us_m0():
+    condition = {"data_name": "M0", "data_time": {"$gt": '2001-01-01'}}
+    database = 'stock'
+    collection = 'micro'
+    projection = {'_id': False}
+    sort_key = "data_time"
+
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    show_data(data)
+    data[['value']] = data[['value']].astype(float) / 1e6
+    data.set_index(keys='data_time', inplace=True)
+    data.sort_index(inplace=True)
+    data['value'].plot(kind='line', title='美国m0（万亿）', rot=45, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+
 
 if __name__ == '__main__':
-    enter_big_model_analysis_macro()
+    #enter_big_model_analysis_macro()
+    analysis_us_m0()

@@ -75,6 +75,20 @@ def load_names(filename):
         return list(keys)
 
 
+def sort_by_last_time(dict_data:dict):
+    list_data = []
+    for k,v in dict_data.items():
+        for ele in v:
+            ele['data_type'] = k
+            list_data.append(ele)
+    list_data = sorted(list_data,key=lambda ele:ele['time'],reverse=True)
+    new_dict_data = {}
+    for ele in list_data:
+        data_type = ele['data_type']
+        new_dict_data.setdefault(data_type,[])
+        new_dict_data[data_type].append(ele)
+    return new_dict_data
+
 def get_real_future_news_data():
     mail_msg = ""
     names = load_names("tele_keys.txt")
@@ -88,10 +102,10 @@ def get_real_future_news_data():
                     filter_dict_data[name] = []
                 filter_dict_data[name].append(dict_data)
     filter_dict_data = filter_shenyishe_new_data(filter_dict_data, 'tele_ai_new_data.txt', 'title')
-
+    filter_dict_data = sort_by_last_time(filter_dict_data)
     for name, list_new in filter_dict_data.items():
         mail_msg += f"<p>{name}财联社最新消息如下</p>"
-        mail_msg += f"<table>"
+        mail_msg += f"<table border=\"1\">"
         mail_msg += f"<tr> <th>时间</th> <th>标题</th><th>详细内容</th> <th>地区</th> <th>情感类别</th> </tr>"
         list_new.sort(key=lambda ele:ele['time'],reverse=True)
         pd_data = pd.DataFrame(list_new)
@@ -122,7 +136,7 @@ def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "AI行业数据监控", mail_msg)
+        sender.send_html_data(['905198301@qq.com','791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控", mail_msg)
         sender.close()
     else:
         print("没有数据可发")

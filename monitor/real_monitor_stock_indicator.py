@@ -55,7 +55,7 @@ def real_monitor_stock_and_cal_indicator():
             new_data = st_peak_data(new_data,sort_key)
             new_data['name'] = code_dict.get(code)
             common_indictator_cal(new_data, ma_timeperiod=20)
-            new_data['stop_rate'] = round((new_data['atr14'] * 3) / new_data['close'], 4)
+            new_data['stop_rate'] = round((new_data['atr14'] * 2) / new_data['close'], 4)
             show_data(new_data.tail(1))
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), buy_indicator_config)
             name = code_dict.get(code)

@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 
 def handle_battery_data():
-    with open("battery/2023电池数据.txt", mode='r') as f:
+    with open("battery/2024电池数据.txt", mode='r') as f:
         lines = f.readlines()
         dict_data = {}
         for line in lines:
@@ -195,13 +195,13 @@ def handle_battery_data():
             if storage_power_battery_acc_export != -1:
                 dict_data[t_day]['storage_power_battery_acc_export'] = storage_power_battery_acc_export
 
-        ele_of_data = dict_data['20230101']
+        ele_of_data = dict_data['20240101']
         ele_of_data['power_battery_production_acc'] = ele_of_data['power_battery_production']
         ele_of_data['power_battery_production_acc_same'] = ele_of_data['power_battery_production_same']
         ele_of_data['power_battery_loading_acc'] = ele_of_data['power_battery_loading']
         ele_of_data['power_battery_loading_acc_same'] = ele_of_data['power_battery_loading_same']
         ele_of_data['power_battery_acc_export'] = ele_of_data['power_battery_export']
-        dict_data['20230101'] = ele_of_data
+        dict_data['20240101'] = ele_of_data
 
         update_request = []
         for k, v in dict_data.items():
@@ -318,6 +318,6 @@ def find_data():
 
 if __name__ == '__main__':
     handle_battery_data()
-    for filename in ['battery/2023company.txt','battery/2023company_acc.txt']:
+    for filename in ['battery/2024company.txt','battery/2024company_acc.txt']:
         handle_company_battery_data(filename)
     find_data()

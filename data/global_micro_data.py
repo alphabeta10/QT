@@ -127,6 +127,28 @@ def get_jp_cross_border_data_from_bis(start_year=None):
             upsert=True))
     return data_list
 
+def get_us_treasury_debt(start_time=None):
+    if start_time is None:
+        start_time = (datetime.now()-timedelta(days=60)).strftime("%Y-%m-%d")
+    url = f'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/mspd/mspd_table_4?filter=record_date:gte:{start_time}&page[number]=1&page[size]=10000'
+    ret = requests.get(url)
+    json_data = ret.json()
+    datas = json_data['data']
+    data_list = []
+    micro = get_mongo_table(database='stock', collection='micro')
+    for data in datas:
+        record_date = data['record_date']
+        security_class_desc = data['security_class_desc']
+        curr_mth_mil_amt = data['curr_mth_mil_amt']
+        data = {"data_name": security_class_desc, "data_time": record_date, "value": curr_mth_mil_amt,
+                "unit": 'mil_amt'}
+        data_list.append(UpdateOne(
+            {"data_name": data['data_name'], "data_time": data['data_time']},
+            {"$set": data},
+            upsert=True))
+    mongo_bulk_write_data(micro,data_list)
+
+
 def find_data():
     series_id_list = [{"name": "M0", "category": "finance", "series_id": "BOGMBASE", "unit": "Millions of Dollars"},
                       {"name": "M1", "category": "finance", "series_id": "M1SL",
@@ -151,3 +173,4 @@ if __name__ == '__main__':
     global_micro_data()
     us_monetary_data_to_mongo()
     jp_cross_boarder_data_to_db()
+    get_us_treasury_debt()

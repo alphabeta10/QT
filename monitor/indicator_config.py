@@ -37,7 +37,7 @@ sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[
                          "dead_obv20_cross": {"eq": 1, "name": "能量潮信号",
                                               "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di',
                                                                        'slow_obv_diff', 'rsi12']},
-                         "down": {"gt": 3, "name": "小于3个峰点",
+                         "down": {"gt": 3, "name": "大于3个峰点",
                                   "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di',
                                                            'slow_obv_diff', 'rsi12']}
                          }
