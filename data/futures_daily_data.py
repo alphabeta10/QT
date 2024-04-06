@@ -161,15 +161,16 @@ def handle_futures_dce_warehouse_receipt(trade_dates=None):
             for k, v in futures_dce_warehouse_receipt_df.items():
                 code = f"{k}小计"
                 data = v[v['品种'] == code]
-                ele_dict_data = dict(data.iloc[0])
-                dict_data = {"code": k, "data_type": "futures_warehouse_receipt"}
-                dict_data['value_chg'] = float(ele_dict_data['增减'])
-                dict_data['value'] = float(ele_dict_data['今日仓单量'])
-                dict_data['date'] = trade_date
-                datas.append(UpdateOne(
-                    {"code": dict_data['code'], "data_type": dict_data['data_type'], "date": dict_data['date']},
-                    {"$set": dict_data},
-                    upsert=True))
+                if data is not None and len(data)>0:
+                    ele_dict_data = dict(data.iloc[0])
+                    dict_data = {"code": k, "data_type": "futures_warehouse_receipt"}
+                    dict_data['value_chg'] = float(ele_dict_data['增减'])
+                    dict_data['value'] = float(ele_dict_data['今日仓单量'])
+                    dict_data['date'] = trade_date
+                    datas.append(UpdateOne(
+                        {"code": dict_data['code'], "data_type": dict_data['data_type'], "date": dict_data['date']},
+                        {"$set": dict_data},
+                        upsert=True))
             if len(datas) > 50:
                 mongo_bulk_write_data(futures_basic_info, datas)
                 datas.clear()

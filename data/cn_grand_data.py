@@ -474,7 +474,7 @@ def create_db_index():
 if __name__ == '__main__':
     #find_mata_data()
     #find_all_data()
-    #handle_gov_jd_data()
+    handle_gov_jd_data()
     #find_mata_data()
     handle_gov_yd_data()
     # energy_cov_data()

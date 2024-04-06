@@ -41,7 +41,7 @@ def get_fin_futures_long_short_rate(codes=None, start_time=None, is_fin=True):
             time = code[2:6]
             long_short_rate = val['long_short_rate']
             code_name = code_dict.get(code[0:2], None)
-            if time!='' and int(time) >= int(cur_time) and code_name is not None and str(long_short_rate) != 'nan':
+            if time != '' and int(time) >= int(cur_time) and code_name is not None and str(long_short_rate) != 'nan':
                 leve_risk = "无评级"
                 if long_short_rate >= 1:
                     leve_risk = "无风险"
@@ -220,7 +220,7 @@ def get_stock_holder_or_reduce_risk(codes, start_time=None):
     """
     stock_seq_daily = get_mongo_table(collection='stock_seq_daily')
     if start_time is None:
-        start_time = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_time = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
     print(f"before day {start_time}")
     result_dict_data = {}
     for ele in stock_seq_daily.find({"metric_key": {"$in": codes}, "ann_time": {"$gte": start_time}},
@@ -244,41 +244,43 @@ def get_stock_holder_or_reduce_risk(codes, start_time=None):
             risk_level[k] = {"risk_level": "有风险", "risk_value": 0.6}
     return result_dict_data, risk_level
 
-def get_stock_cyq_risk(codes,start_time=None):
+
+def get_stock_cyq_risk(codes, start_time=None):
     """筹码上升，风险减少，筹码下降风险增大"""
     if start_time is None:
         start_time = (datetime.now() - timedelta(days=31)).strftime("%Y-%m-%d")
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     cyq_datas = []
-    for ele in stock_common.find({"metric_code": {"$in": codes}, "time": {"$gte": start_time},"data_type":"stock_cyq"},
-                                    projection={'_id': False,'metric_code':True,'time':True,'avg_cost':True}):
+    for ele in stock_common.find(
+            {"metric_code": {"$in": codes}, "time": {"$gte": start_time}, "data_type": "stock_cyq"},
+            projection={'_id': False, 'metric_code': True, 'time': True, 'avg_cost': True}):
         ele['code'] = ele['metric_code']
         cyq_datas.append(ele)
     condition = {"code": {"$in": codes}, "time": {"$gte": start_time}}
     database = 'stock'
     collection = 'ticker_daily'
-    projection = {'_id': False,'time':True,'code':True,'close':True}
+    projection = {'_id': False, 'time': True, 'code': True, 'close': True}
     sort_key = "time"
     cyq_df = pd.DataFrame(cyq_datas)
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
     new_data = pd.merge(cyq_df, data, on=['time', 'code'], how='left')
-    avg_cost_data = pd.pivot_table(new_data,values='avg_cost',index='time',columns='code')
+    avg_cost_data = pd.pivot_table(new_data, values='avg_cost', index='time', columns='code')
     avg_cost_data.sort_index(inplace=True)
 
     avg_pct = avg_cost_data.pct_change(1)
     avg_pct.dropna(inplace=True)
     count = avg_pct.shape[0]
-    avg_cost_risk = dict(avg_pct[avg_pct<0].count())
-    avg_cost_risk = {k:round(v/count,4) for k,v in avg_cost_risk.items()}
-    new_data['up_rate'] = round((new_data['avg_cost']-new_data['close'])/new_data['close'],4)
-    up_rate = pd.pivot_table(new_data,values='up_rate',index='time',columns='code')
+    avg_cost_risk = dict(avg_pct[avg_pct < 0].count())
+    avg_cost_risk = {k: round(v / count, 4) for k, v in avg_cost_risk.items()}
+    new_data['up_rate'] = round((new_data['avg_cost'] - new_data['close']) / new_data['close'], 4)
+    up_rate = pd.pivot_table(new_data, values='up_rate', index='time', columns='code')
     up_rate.sort_index(inplace=True)
     up_rate_dict = dict(up_rate.tail(1).iloc[0])
-    return new_data,up_rate_dict,avg_cost_risk
+    return new_data, up_rate_dict, avg_cost_risk
 
 
-def get_stock_vol_risk(codes,start_time=None):
+def get_stock_vol_risk(codes, start_time=None):
     if start_time is None:
         start_time = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
     condition = {"code": {"$in": codes}, "time": {"$gte": start_time}}
@@ -290,18 +292,63 @@ def get_stock_vol_risk(codes,start_time=None):
                                sort_key=sort_key)
     result_dict = {}
     for code in codes:
-        ele_pd_data = data[data['code']==code]
-        ele_pd_data.sort_values(by=sort_key,inplace=True)
+        ele_pd_data = data[data['code'] == code]
+        ele_pd_data.sort_values(by=sort_key, inplace=True)
         ele_pd_data['atr14'] = ta.ATR(ele_pd_data.high, ele_pd_data.low, ele_pd_data.close, timeperiod=14)
-        ele_pd_data['atr14_rate'] = round(ele_pd_data['atr14']/ele_pd_data['close'],4)
-        std_val = ele_pd_data['close'].std()
+        ele_pd_data['atr14_rate'] = round(ele_pd_data['atr14'] / ele_pd_data['close'], 4)
+        std_val = ele_pd_data['close'].pct_change(1).std()
         val_dict_data = {}
-        val_dict_data["std"] = round(std_val,4)
+        val_dict_data["std"] = round(std_val, 4)
         atr14_rate = ele_pd_data['atr14_rate'].tail(1).values[0]
         val_dict_data['atr14_rate'] = atr14_rate
         result_dict[code] = val_dict_data
 
     return result_dict
+
+def metric_up_or_dow_risk(metric_data:pd.DataFrame):
+    last_dict_data = dict(metric_data.tail(1).iloc[0])
+    last_dict_data['index'] = str(metric_data.tail(1).index.values[0])
+    result_dict_data = {}
+    num = metric_data.shape[0] - 1
+
+    for i,index in enumerate(metric_data.index):
+        ele = dict(metric_data.loc[index])
+        if index != last_dict_data['index']:
+            for k, v in ele.items():
+                result_dict_data.setdefault(k, {"up": 0, "down": 0})
+                if v < last_dict_data[k]:
+                    result_dict_data[k]['up'] += 0.1*(1/num)*pow(0.9,num-i-1)
+                if v > last_dict_data[k]:
+                    result_dict_data[k]['down'] += 0.1*(1/num)*pow(0.9,num-i-1)
+    return result_dict_data
+
+
+def get_stock_fin_risk(codes, start_time=None,metric_dict_data = None):
+    if metric_dict_data is None:
+        metric_dict_data = {"lrb":['income_cycle','total_revenue_cycle'],
+                            "zcfz":['assets_cycle','lia_assets_cycle'],
+                            "xjll":['net_cash_flow_cycle'],
+                            }
+
+    if start_time is None:
+        start_time = (datetime.now() - timedelta(days=365*10)).strftime("%Y0101")
+    condition = {"code": {"$in": codes}, "date": {"$gte": start_time}}
+    database = 'stock'
+    collection = 'fin_simple'
+    projection = {'_id': False}
+    sort_key = "date"
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+
+    result_dict_data = {}
+    data = data[data['date'].str.contains('0930')]
+    for data_type,metric_cols in metric_dict_data.items():
+        for metric_col in metric_cols:
+            metric_data = data[data['data_type'] == data_type][['code', metric_col, 'date']]
+            metric_data = pd.pivot_table(metric_data, index='date', values=metric_col, columns='code')
+            metric_data.sort_index(inplace=True)
+            result_dict_data[f'{metric_col}_risk'] = metric_up_or_dow_risk(metric_data)
+    return result_dict_data
 
 
 if __name__ == '__main__':
