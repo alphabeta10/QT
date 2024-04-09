@@ -20,10 +20,12 @@ def handle_margin_sz_sh_total_data():
     if macro_china_market_margin_sz_df is not None:
         for index in macro_china_market_margin_sz_df.index:
             dict_data = dict(macro_china_market_margin_sz_df.loc[index])
-            time = str(index)[0:10]
+            time = str(dict_data['日期'])[0:10]
 
             in_db_data = {"data_type": "margin_data", "metric_code": "margin_sz", "time": time}
             for k, v in dict_data.items():
+                if sz_mapping_cf.get(k) is None:
+                    continue
                 in_db_data[sz_mapping_cf.get(k)] = v
             update_request.append(
                 UpdateOne(

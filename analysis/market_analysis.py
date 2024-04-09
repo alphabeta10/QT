@@ -146,7 +146,6 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
     count_dict = {}
     for index in data.index:
         ele = data.loc[index]
-        # print(dict(ele))
         time = ele['time']
         code = code_dict.get(ele['code'])
         val = ele['data']

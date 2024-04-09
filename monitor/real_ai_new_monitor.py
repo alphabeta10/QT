@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import google.generativeai as genai
 
 import pandas as pd
 import schedule
@@ -7,6 +8,7 @@ import time
 from data.comm_real_news_data import stock_telegraph_cls_news
 from analysis.ai_industry_analysis import common_ai_new_analysis
 from utils.send_msg import MailSender
+from utils.tool import load_json_data
 
 
 def unique_key_to_file(file_name: str, data_list: set):
@@ -67,7 +69,6 @@ def filter_shenyishe_new_data(data_dict: dict, file_name, new_key, before_day=3)
             return {}
 
 
-
 def load_names(filename):
     with open(filename, mode='r') as f:
         lines = f.readlines()
@@ -75,19 +76,20 @@ def load_names(filename):
         return list(keys)
 
 
-def sort_by_last_time(dict_data:dict):
+def sort_by_last_time(dict_data: dict):
     list_data = []
-    for k,v in dict_data.items():
+    for k, v in dict_data.items():
         for ele in v:
             ele['data_type'] = k
             list_data.append(ele)
-    list_data = sorted(list_data,key=lambda ele:ele['time'],reverse=True)
+    list_data = sorted(list_data, key=lambda ele: ele['time'], reverse=True)
     new_dict_data = {}
     for ele in list_data:
         data_type = ele['data_type']
-        new_dict_data.setdefault(data_type,[])
+        new_dict_data.setdefault(data_type, [])
         new_dict_data[data_type].append(ele)
     return new_dict_data
+
 
 def get_real_future_news_data():
     mail_msg = ""
@@ -101,34 +103,46 @@ def get_real_future_news_data():
                 if name not in filter_dict_data.keys():
                     filter_dict_data[name] = []
                 filter_dict_data[name].append(dict_data)
+
     filter_dict_data = filter_shenyishe_new_data(filter_dict_data, 'tele_ai_new_data.txt', 'title')
     filter_dict_data = sort_by_last_time(filter_dict_data)
-    for name, list_new in filter_dict_data.items():
-        mail_msg += f"<p>{name}财联社最新消息如下</p>"
-        mail_msg += f"<table border=\"1\">"
-        mail_msg += f"<tr> <th>时间</th> <th>标题</th><th>详细内容</th> <th>地区</th> <th>情感类别</th> </tr>"
-        list_new.sort(key=lambda ele:ele['time'],reverse=True)
-        pd_data = pd.DataFrame(list_new)
-        ret_list = common_ai_new_analysis(pd_data,is_in_db=True,pub_content_key='content',pub_time_key='time',ret_key=['title'])
-        if ret_list is not None:
-            for new in ret_list:
-                kys = new.keys()
-                if '情感分类' in kys:
-                    sentiment = new['情感分类']
-                else:
-                    print(new, '解析出错')
-                    sentiment = ''
+    if len(filter_dict_data.keys()) > 0:
+        api_key_json = load_json_data("google_api.json")
+        api_key = api_key_json['api_key']
+        version = api_key_json['version']
+        genai.configure(api_key=api_key, transport='rest')
+        for m in genai.list_models():
+            if "generateContent" in m.supported_generation_methods:
+                print(m.name)
+        model = genai.GenerativeModel(version)
 
-                if '涉及的国家' in kys:
-                    region = ",".join(new['涉及的国家'])
-                else:
-                    print(new,'解析出错')
-                    region = ''
+        for name, list_new in filter_dict_data.items():
+            mail_msg += f"<p>{name}财联社最新消息如下</p>"
+            mail_msg += f"<table border=\"1\">"
+            mail_msg += f"<tr> <th>时间</th> <th>标题</th><th>详细内容</th> <th>地区</th> <th>情感类别</th> </tr>"
+            list_new.sort(key=lambda ele: ele['time'], reverse=True)
+            pd_data = pd.DataFrame(list_new)
+            ret_list = common_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content', pub_time_key='time',
+                                              ret_key=['title'], model=model)
+            if ret_list is not None:
+                for new in ret_list:
+                    kys = new.keys()
+                    if '情感分类' in kys:
+                        sentiment = new['情感分类']
+                    else:
+                        print(new, '解析出错')
+                        sentiment = ''
 
-                mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
-            mail_msg += "</table>"
-        else:
-            mail_msg += "无数据分析</table>"
+                    if '涉及的国家' in kys:
+                        region = ",".join(new['涉及的国家'])
+                    else:
+                        print(new, '解析出错')
+                        region = ''
+
+                    mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
+                mail_msg += "</table>"
+            else:
+                mail_msg += "无数据分析</table>"
     return mail_msg
 
 
@@ -136,11 +150,11 @@ def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com','791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控", mail_msg)
+        sender.send_html_data(['905198301@qq.com', '791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
+                              mail_msg)
         sender.close()
     else:
         print("没有数据可发")
-
 
 
 if __name__ == '__main__':

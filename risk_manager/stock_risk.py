@@ -6,13 +6,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.tool import sort_dict_data_by
+from risk_manager.industry_risk import get_new_industry_op_profit_risk, get_new_industry_num_loss_risk
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 
 warnings.filterwarnings('ignore')
-
 
 
 def read_industry_dict_code():
@@ -110,10 +110,57 @@ def main_risk():
             print(name, rate, invent_cash, code, up_rate[code], total_risk[code])
         print(f'end handel {type_}')
     # 行业风险
-    print(sort_dict_data_by(industry_risk_dict,by='value'))
-    for k,v in sort_dict_data_by(industry_risk_dict,by='value').items():
-        print(k,(1-v)*cash,v)
+    print(sort_dict_data_by(industry_risk_dict, by='value'))
+    for k, v in sort_dict_data_by(industry_risk_dict, by='value').items():
+        print(k, (1 - v) * cash, v)
+
+
+def stock_industry_risk(file_name: str = None):
+    """
+    股票行业风险
+    :param file_name:
+    :return:
+    """
+    if file_name is None:
+        file_name = '../cur_my_stock_industry.txt'
+    with open(file_name, mode='r') as f:
+        lines = f.readlines()
+        lines = [line.replace("\n", "") for line in lines]
+        stock_industry_dict = {}
+        for line in lines:
+            splits = line.split(",")
+            code, name = splits[0], splits[1]
+            industry_list = splits[2:]
+            stock_industry_dict[code] = {"name": name, "industry_list": industry_list}
+    industry_op_profit_risk = get_new_industry_op_profit_risk()
+    datas = []
+    industry_num_loss_risk = get_new_industry_num_loss_risk()
+
+    for time, risk_combine_dict in industry_op_profit_risk.items():
+        loss_risk = industry_num_loss_risk[time]['total_risk']
+        op_risk = industry_op_profit_risk[time]['total_risk']
+        for code, combine_dict in stock_industry_dict.items():
+            industry_list = combine_dict['industry_list']
+            name = combine_dict['name']
+            industry_loss_val, industry_profit_val = 0, 0
+            for industry in industry_list:
+                loss_key = industry + "亏损企业单位数_增减"
+                profit_key = industry + "营业利润_累计增长"
+                industry_loss_val += loss_risk[loss_key] * (1 / len(industry_list))
+                industry_profit_val += op_risk[profit_key] * (1 / len(industry_list))
+            industry_profit_val = round(industry_profit_val, 4)
+            industry_loss_val = round(industry_loss_val, 4)
+            total_risk = round((industry_loss_val + industry_profit_val) / 2, 4)
+            datas.append(
+                {"code": code, "name": name, "total_risk": total_risk, "industry_profit_risk": industry_profit_val,
+                 "industry_loss_risk": industry_loss_val, "time": time})
+    return datas
+
+
+def total_macro_risk():
+    pass
 
 
 if __name__ == '__main__':
-    main_risk()
+    datas = stock_industry_risk()
+    print(datas)

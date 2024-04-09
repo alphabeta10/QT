@@ -278,6 +278,7 @@ def plot_bar_value_line_same_rate_data(x, y, same_y, y_label, same_y_label, x_la
 
 
 def add_pct(data: pd.DataFrame, data_key):
+    data[data_key] = data[data_key].astype(float)
     data[f'{data_key}_pct_1'] = round(data[data_key].pct_change(1), 4)
     data[f'{data_key}_pct_2'] = round(data[data_key].pct_change(2), 4)
     data[f'{data_key}_pct_3'] = round(data[data_key].pct_change(3), 4)
@@ -346,6 +347,30 @@ def wci_index_data_analysis():
         data.set_index(keys=['time'], inplace=True)
         add_pct(data, 'wci')
         plot_bar_value_line_same_rate_data(data.index.values, data['wci'].values, data[f'wci_pct_1'].values, name,
+                                           f'{name}环比比', '时间', f'{name}分析')
+
+def cn_wci_index_data_analysis():
+    """
+    集装箱指数分析
+    :return:
+    """
+    wci_index_mapping_dict = {"综合指数": "综合指数", "欧洲航线": "欧洲航线",
+                              "美西航线": "美西航线"}
+
+    news = get_mongo_table(database='stock', collection='common_seq_data')
+    datas = []
+    before_year = datetime.now().year-1
+
+
+    for ele in news.find({"data_type": "cn_wci_index", "time": {"$gt": f"{before_year}0101"}},
+                         projection={'_id': False}).sort("time"):
+        datas.append(ele)
+    pd_data = pd.DataFrame(data=datas)
+    for metric_code, name in wci_index_mapping_dict.items():
+        data = pd_data[pd_data['metric_code'] == metric_code]
+        data.set_index(keys=['time'], inplace=True)
+        add_pct(data, 'cur_month_data')
+        plot_bar_value_line_same_rate_data(data.index.values, data['cur_month_data'].values, data[f'cur_month_data_pct_1'].values, name,
                                            f'{name}环比比', '时间', f'{name}分析')
 
 def analysis_us_debt():

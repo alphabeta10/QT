@@ -443,7 +443,7 @@ def handel_futures_long_short_data_czce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_czce_rank_table, try_count=3, date=date, vars_list=codes)
+        data = try_get_action(ak.get_czce_rank_table, try_count=3, date=date)
         if data is not None:
             for k, v in data.items():
                 v['long_open_interest'] = v.apply(

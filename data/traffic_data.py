@@ -281,15 +281,14 @@ def traffic():
 
 
 def wci_index_data():
-
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     update_request = []
     symbols = ["composite", "shanghai-rotterdam", "rotterdam-shanghai", "shanghai-los angeles", "los angeles-shanghai",
                "shanghai-genoa", "new york-rotterdam", "rotterdam-new york"]
     for symbol in symbols:
         print(f"handle {symbol}")
-        drewry_wci_index_df = try_get_action(ak.drewry_wci_index,try_count=3,symbol=symbol)
-        if drewry_wci_index_df is not None and len(drewry_wci_index_df)>0:
+        drewry_wci_index_df = try_get_action(ak.drewry_wci_index, try_count=3, symbol=symbol)
+        if drewry_wci_index_df is not None and len(drewry_wci_index_df) > 0:
             for index in drewry_wci_index_df.index:
                 dict_data = dict(drewry_wci_index_df.loc[index])
                 date = str(dict_data['date'])
@@ -304,9 +303,76 @@ def wci_index_data():
                         {"$set": new_dict_data},
                         upsert=True)
                 )
-        if len(update_request)>0:
-            mongo_bulk_write_data(stock_common,update_request)
+        if len(update_request) > 0:
+            mongo_bulk_write_data(stock_common, update_request)
 
+
+def cn_wci_index_data(url):
+    respond = requests.get(url, headers={
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+        "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
+    html = respond.content
+    html_doc = str(html, 'utf-8')
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    all_ue_div = soup.find_all("div", 'ue_table')
+    update_request = []
+    if all_ue_div is not None and len(all_ue_div) > 0:
+        tables = all_ue_div[0].find_all("table")
+        if tables is not None and len(tables) > 0:
+            table = tables[0]
+            trs = table.find_all('tr')
+            tds = trs[0].find_all("td")
+            header = [td.text.replace("\n", "").replace(" ", "") for td in tds]
+            now_year = int(header[2][0:4])
+            now_month = int(header[3].replace('月', ''))
+            if int(now_month) < 10:
+                now_month = f"0{now_month}"
+            for tr in trs[1:]:
+                tds = tr.find_all('td')
+                data_list = [td.text.replace("\n", "").replace(" ", "") for td in tds]
+                name = data_list[0]
+                time = f"{now_year}{now_month}01"
+                before_year_data = data_list[1]
+                cur_year_data = data_list[2]
+                cur_month_data = data_list[3]
+                cycle_rate = data_list[4]
+
+                new_dict_data = {"time": time, "data_type": "cn_wci_index", "metric_code": name,
+                                 "before_year_data": before_year_data,
+                                 "cur_month_data": cur_month_data, "cycle_rate": cycle_rate,
+                                 "cur_year_data": cur_year_data}
+
+                update_request.append(
+                    UpdateOne(
+                        {"data_type": new_dict_data['data_type'], "time": new_dict_data['time'],
+                         "metric_code": new_dict_data['metric_code']},
+                        {"$set": new_dict_data},
+                        upsert=True)
+                )
+    return update_request
+
+
+def handle_cn_wci_data():
+    stock_common = get_mongo_table(database='stock', collection='common_seq_data')
+    common_url = 'https://www.mot.gov.cn/yunjiazhishu/chukoujizhuangxiangyjzs/'
+    for i in range(1):
+        if i==0:
+            url = 'https://www.mot.gov.cn/yunjiazhishu/chukoujizhuangxiangyjzs/'
+        else:
+            url = f'https://www.mot.gov.cn/yunjiazhishu/chukoujizhuangxiangyjzs/index_{i}.html'
+        respond = requests.get(url, headers={
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+            "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
+        html = respond.content
+        print(f"handle url {url}")
+        html_doc = str(html, 'utf-8')
+        soup = BeautifulSoup(html_doc, 'html.parser')
+        all_ue_div = soup.find_all("a",'list-group-item')
+        for a in all_ue_div:
+            if '中国出口集装箱运价指数' in a['title']:
+                combine_url = common_url + a['href'][2:]
+                datas = cn_wci_index_data(combine_url)
+                mongo_bulk_write_data(stock_common,datas)
 
 def find_data():
     news = get_mongo_table(database='stock', collection='common_seq_data')
@@ -330,6 +396,6 @@ def find_data():
 
 
 if __name__ == '__main__':
-    wci_index_data()
+    handle_cn_wci_data()
     traffic()
     find_data()
