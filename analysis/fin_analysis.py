@@ -6,7 +6,8 @@ import copy
 import google.generativeai as genai
 import numpy as np
 from utils.tool import load_json_data
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
+
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -16,17 +17,20 @@ from utils.actions import try_get_action
 warnings.filterwarnings('ignore')
 from data.stock_detail_fin import handle_comm_stock_fin_em, handle_fin_analysis_indicator
 from pymongo import UpdateOne
-from utils.tool import mongo_bulk_write_data,get_data_from_mongo, sort_dict_data_by
+from utils.tool import mongo_bulk_write_data, get_data_from_mongo, sort_dict_data_by
 from analysis.analysis_tool import convert_pd_data_to_month_data
-def get_data(cods=None, dtype="fin_indicator", projection=None,date=None):
+
+
+def get_data(cods=None, dtype="fin_indicator", projection=None, date=None):
     if projection is None:
         projection = {"_id": False}
     if cods is None:
         cods = ['603288', '601009', '600036', '002507', '002385', '603363']
     if date is None:
-        date = (datetime.now() -timedelta(days=1825)).strftime("%Y-%m-%d")
+        date = (datetime.now() - timedelta(days=1825)).strftime("%Y-%m-%d")
     fin_col = get_mongo_table(collection='fin')
-    ret = fin_col.find({"code": {"$in": cods},"date":{"$gte":date}, "data_type": dtype}, projection=projection).sort("date")
+    ret = fin_col.find({"code": {"$in": cods}, "date": {"$gte": date}, "data_type": dtype}, projection=projection).sort(
+        "date")
     datas = []
     for ele in ret:
         datas.append(ele)
@@ -84,7 +88,7 @@ def plot_bar_line(x, bar_y, line_z, bar_label, line_label):
     plt.show()
 
 
-def get_fin_assets_metric(code_list, isDataFromLocal=True,start_date=None):
+def get_fin_assets_metric(code_list, isDataFromLocal=True, start_date=None):
     """
     资产负债率
     财务状况分析 偿债能力指标
@@ -148,7 +152,7 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True,start_date=None):
     projection = {"code": True, "date": True}
     for k, _ in get_col_dict.items():
         projection[k] = True
-    zcfz_pd_data = get_data(dtype='zcfz_report_detail', cods=local_codes, projection=projection,date=start_date)
+    zcfz_pd_data = get_data(dtype='zcfz_report_detail', cods=local_codes, projection=projection, date=start_date)
     get_db_cols = list(zcfz_pd_data.columns)
     for col in get_col_dict.keys():
         if col in get_db_cols:
@@ -190,7 +194,7 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True,start_date=None):
     return zcfz_pd_data
 
 
-def get_fin_earning_metric(code_list, isDataFromLocal=True,start_date=None):
+def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
     """
     盈利能力指标
         1.毛利率 = (营业收入-营业成本)/营业收入 毛利率越高，市场竞争力大
@@ -224,11 +228,11 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True,start_date=None):
                     'TOTAL_PROFIT': '利润总额',
                     'OPERATE_TAX_ADD': '税金及附加',
                     'OPERATE_PROFIT': '营业利润',
-                    'RESEARCH_EXPENSE':'研发费用'
+                    'RESEARCH_EXPENSE': '研发费用'
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
-    profit_pd_data = get_data(dtype='profit_report_em_detail', cods=local_codes, projection=projection,date=start_date)
+    profit_pd_data = get_data(dtype='profit_report_em_detail', cods=local_codes, projection=projection, date=start_date)
     get_db_cols = list(profit_pd_data.columns)
     for col in get_col_dict.keys():
         if col in get_db_cols:
@@ -244,7 +248,7 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True,start_date=None):
     return profit_pd_data
 
 
-def get_fin_cash_flow_metric(code_list, isDataFromLocal=True,start_date=None):
+def get_fin_cash_flow_metric(code_list, isDataFromLocal=True, start_date=None):
     """
     计算现金流量相关数据
     :param code_list:
@@ -274,7 +278,8 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True,start_date=None):
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
-    profit_pd_data = get_data(dtype='cash_flow_report_em_detail', cods=local_codes, projection=projection,date=start_date)
+    profit_pd_data = get_data(dtype='cash_flow_report_em_detail', cods=local_codes, projection=projection,
+                              date=start_date)
     get_db_cols = list(profit_pd_data.columns)
     for col in get_col_dict.keys():
         if col in get_db_cols:
@@ -284,7 +289,8 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True,start_date=None):
     return profit_pd_data
 
 
-def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromLocal=True, isCashDataFromLocal=True,start_date=None):
+def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromLocal=True, isCashDataFromLocal=True,
+                          start_date=None):
     """
 
     盈利指标
@@ -316,9 +322,9 @@ def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromL
     :param isCashDataFromLocal:
     :return:
     """
-    zcfc_data = get_fin_assets_metric(code_list, isZcfcDataFromLocal,start_date)
-    profit_data = get_fin_earning_metric(code_list, isProfitDataFromLocal,start_date)
-    cash_flow_data = get_fin_cash_flow_metric(code_list, isCashDataFromLocal,start_date)
+    zcfc_data = get_fin_assets_metric(code_list, isZcfcDataFromLocal, start_date)
+    profit_data = get_fin_earning_metric(code_list, isProfitDataFromLocal, start_date)
+    cash_flow_data = get_fin_cash_flow_metric(code_list, isCashDataFromLocal, start_date)
     pd_merge_data = pd.merge(zcfc_data, profit_data, on=['date', 'code'], how='left')
     pd_merge_data = pd.merge(pd_merge_data, cash_flow_data, on=['date', 'code'], how='left')
     pd_merge_data['总资产收益率'] = pd_merge_data['NETPROFIT'] / pd_merge_data['AVG_TOTAL_ASSETS']
@@ -378,7 +384,7 @@ def credit_funds_fin_inst_analysis():
     data = pd_data.rename(columns=re_all_config)
     for col in income_config.keys():
         data[[col]] = data[[col]].astype(float)
-    data.dropna(inplace=True,axis=0)
+    data.dropna(inplace=True, axis=0)
     data.set_index(keys=['time'], inplace=True)
     print("*" * 50)
     show_data(data)
@@ -423,8 +429,7 @@ def stock_score(pd_data: pd.DataFrame, metric, sort_type=False):
     return score_df
 
 
-def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,start_date=None):
-
+def analysis_fin_by_metric(code_dict=None, isLocal=False, quarter=4, is_show=True, start_date=None):
     def fin_data_same_rate(pd_data, val_col, rename_col):
         temp_data = pd.pivot_table(pd_data, values=val_col, index='date', columns='code')
         temp_data.sort_index(inplace=True)
@@ -436,8 +441,9 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,
                 data_list.append({"code": code, rename_col: value, "date": index})
         return pd.DataFrame(data_list)
 
-    quarter_mapping = {1:"03-31",2:"06-30",3:"09-30",4:"12-31"}
+    quarter_mapping = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
     quarter_month = quarter_mapping[quarter]
+
     def handle_score(row, col_list):
         total_score = 0
         for col in col_list:
@@ -446,16 +452,18 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,
 
     if code_dict is None:
         code_dict = {"sh603019": "中科曙光", "sz002230": "科大讯飞", "sz000977": "浪潮信息", "sz300474": "景嘉微"}
+    if len(code_dict.keys()) == 0:
+        return
     rename_code = {}
     for k, v in code_dict.items():
         rename_code[k[2:]] = v
     codes = list(code_dict.keys())
     data = get_fin_common_metric(code_list=codes, isZcfcDataFromLocal=isLocal, isProfitDataFromLocal=isLocal,
-                                 isCashDataFromLocal=isLocal,start_date=start_date)
+                                 isCashDataFromLocal=isLocal, start_date=start_date)
     pd_data = data[data['date'].str.contains(quarter_month)]
     # 同期的比较同比的指标 净利润增长率:NETPROFIT 营业收入增长率:OPERATE_INCOME 总资产增长率:TOTAL_ASSETS 净资产增长率:TOTAL_EQUITY 营业利润增长率:OPERATE_PROFIT
 
-    same_df = fin_data_same_rate(pd_data,'NETPROFIT','净利润增长率')
+    same_df = fin_data_same_rate(pd_data, 'NETPROFIT', '净利润增长率')
     pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
 
     same_df = fin_data_same_rate(pd_data, 'OPERATE_INCOME', '营业收入增长率')
@@ -464,10 +472,8 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,
     same_df = fin_data_same_rate(pd_data, 'TOTAL_ASSETS', '总资产增长率')
     pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
 
-
     same_df = fin_data_same_rate(pd_data, 'TOTAL_EQUITY', '净资产增长率')
     pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
-
 
     same_df = fin_data_same_rate(pd_data, 'OPERATE_PROFIT', '营业利润增长率')
     pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
@@ -476,7 +482,8 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False,quarter=4,is_show=True,
     pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
 
     # 公司发展指标
-    future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率','研发费用增长率']
+    future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率',
+                              '研发费用增长率']
     # 盈利能力指标
     profitability_metric_cols = ['毛利率', '销售净利率', '总资产收益率', '净资产收益率', '资本收益率', '资本报酬率',
                                  '总资产利润率']
@@ -678,8 +685,8 @@ def big_model_stock_fin_data(local_codes, model):
 
     ret_json = try_get_action(simple_big_gen_model_fn, model=model, request_txt=input_txt)
     if ret_json is None:
-        return None,None
-    return ret_json,max([zcfz_max,profit_max,cash_max])
+        return None, None
+    return ret_json, max([zcfz_max, profit_max, cash_max])
 
 
 def enter_big_model_analysis_stock_fin(code_dict: dict = None):
@@ -729,47 +736,52 @@ def enter_big_model_analysis_stock_fin(code_dict: dict = None):
 
     update_request = []
     big_model_col = get_mongo_table(database='stock', collection="big_model")
-    for code,name in code_dict.items():
+    for code, name in code_dict.items():
         print(f"handel {name}")
 
-        ret_json,time = big_model_stock_fin_data([code],model)
+        ret_json, time = big_model_stock_fin_data([code], model)
         if ret_json is not None:
             new_dict = {"data_type": "stock_fin_summary",
                         "time": time, "code": code}
-            for k,v in ret_json.items():
+            for k, v in ret_json.items():
                 new_dict[k] = v
             update_request.append(
                 UpdateOne({"code": code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
                           {"$set": new_dict},
                           upsert=True)
             )
-            if len(update_request)%10==0:
-                mongo_bulk_write_data(big_model_col,update_request)
+            if len(update_request) % 10 == 0:
+                mongo_bulk_write_data(big_model_col, update_request)
                 update_request.clear()
-    if len(update_request)>0:
+    if len(update_request) > 0:
         mongo_bulk_write_data(big_model_col, update_request)
         update_request.clear()
+
+
 def m1_and_m2_diff_analysis():
     database = 'govstats'
     collection = 'data_info'
     projection = {'_id': False}
     sort_key = "time"
-    code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)","A0D0104_yd":"货币(M1)供应量同比增长(%)","A0D0106_yd":"流通中现金(M0)供应量同比增长(%)"}
+    code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)", "A0D0104_yd": "货币(M1)供应量同比增长(%)",
+                 "A0D0106_yd": "流通中现金(M0)供应量同比增长(%)"}
     code_list = {"$in": list(code_dict.keys())}
     condition = {"code": code_list}
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
-    cols = ['time', 'data','code']
+    cols = ['time', 'data', 'code']
     data = data[cols]
-    data = pd.pivot_table(data,values='data',index='time',columns='code')
-    data.rename(columns=code_dict,inplace=True)
-    data['m1_m2_diff'] = round(data['货币(M1)供应量同比增长(%)'] - data['货币和准货币(M2)供应量同比增长(%)'],4)
+    data = pd.pivot_table(data, values='data', index='time', columns='code')
+    data.rename(columns=code_dict, inplace=True)
+    data['m1_m2_diff'] = round(data['货币(M1)供应量同比增长(%)'] - data['货币和准货币(M2)供应量同比增长(%)'], 4)
     data['time'] = data.index
     data['code'] = 'm1与m2增速之差'
-    data = convert_pd_data_to_month_data(data,'time','m1_m2_diff','code')
+    data = convert_pd_data_to_month_data(data, 'time', 'm1_m2_diff', 'code')
     show_data(data)
     data.plot(kind='line', title='m1与m2增速之差', rot=45, figsize=(15, 8), fontsize=10)
     plt.show()
+
+
 def money_multiply_analysis():
     """
     中国货币乘数
@@ -783,29 +795,25 @@ def money_multiply_analysis():
     code_list = {"$in": list(code_dict.keys())}
     condition = {"code": code_list}
     m2_data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
-                               sort_key=sort_key)
+                                  sort_key=sort_key)
     cols = ['time', 'data']
     m2_data = m2_data[cols]
     database = 'stock'
     collection = 'common_seq_data'
-    projection = {'_id': False,'reserve_money':True,'time':True}
+    projection = {'_id': False, 'reserve_money': True, 'time': True}
     sort_key = "time"
-    condition = {"data_type":"fin_monetary","metric_code":"balance_monetary_authority","time":{"$gt":"20170101"}}
-    base_data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
-                               sort_key=sort_key)
-    base_data['time'] = base_data['time'].apply(lambda key:key[0:6])
+    condition = {"data_type": "fin_monetary", "metric_code": "balance_monetary_authority", "time": {"$gt": "20170101"}}
+    base_data = get_data_from_mongo(database=database, collection=collection, projection=projection,
+                                    condition=condition,
+                                    sort_key=sort_key)
+    base_data['time'] = base_data['time'].apply(lambda key: key[0:6])
 
-    merge_data = pd.merge(base_data,m2_data,on=['time'])
-    merge_data['m_multiply'] = round(merge_data['data']/merge_data['reserve_money'],4)
-    merge_data.set_index(keys='time',inplace=True)
+    merge_data = pd.merge(base_data, m2_data, on=['time'])
+    merge_data['m_multiply'] = round(merge_data['data'] / merge_data['reserve_money'], 4)
+    merge_data.set_index(keys='time', inplace=True)
     merge_data['m_multiply'].plot(kind='line', title='中国货币乘数', rot=45, figsize=(15, 8), fontsize=10)
     show_data(merge_data)
     plt.show()
-
-
-
-
-
 
 
 if __name__ == '__main__':

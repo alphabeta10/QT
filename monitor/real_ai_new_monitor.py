@@ -123,7 +123,7 @@ def get_real_future_news_data():
             list_new.sort(key=lambda ele: ele['time'], reverse=True)
             pd_data = pd.DataFrame(list_new)
             ret_list = common_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content', pub_time_key='time',
-                                              ret_key=['title'], model=model)
+                                              ret_key=['title'], model=model,themes=names)
             if ret_list is not None:
                 for new in ret_list:
                     kys = new.keys()
@@ -150,7 +150,7 @@ def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com', '791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
+        sender.send_html_data(['905198301@qq.com','791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
                               mail_msg)
         sender.close()
     else:

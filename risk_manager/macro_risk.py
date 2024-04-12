@@ -412,7 +412,7 @@ def comm_down_or_up_risk(data: pd.DataFrame, cal_cols: list, before_num_list: li
     return all_detail_risk, all_datas
 
 
-def cn_traffic_risk(is_show=True):
+def cn_traffic_risk(is_show=False):
     database = 'stock'
     collection = 'common_seq_data'
     projection = {'_id': False}
@@ -454,7 +454,7 @@ def cn_traffic_risk(is_show=True):
     return risks[-1], datas[-1], new_data
 
 
-def cn_gloable_wci_risk(is_show=False):
+def cn_global_wci_risk(is_show=False):
     database = 'stock'
     collection = 'common_seq_data'
     projection = {'_id': False}
@@ -533,6 +533,68 @@ def cn_electric_risk(is_show=False):
         plt.show()
     return risks[-1], datas[-1], new_data
 
+def cn_fin_risk(is_show=False):
+    """
+    中国社融减少风险
+    :return:
+    """
+    database = 'stock'
+    collection = 'common_seq_data'
+    cols = ['afre','rmb_loans','gov_bonds']
+    projection = {'_id': False}
+    time = (datetime.now() - timedelta(days=365*2)).strftime("%Y0101")
+    condition = {"data_type":"credit_funds", "time": {"$gte": time},"metric_code":"agg_fin_flow"}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    data.set_index(keys='time',inplace=True)
+    data = data[cols]
+    data[cols] = data[cols].astype(float)
+    data = data.pct_change(12)
+    data.dropna(inplace=True)
+    risks, datas = comm_down_or_up_risk(data, cols, [1, 2, 3, 4, 5, 6],
+                                        {}, 'index')
+    new_data = pd.DataFrame(datas)
+    new_data.set_index(keys='time', inplace=True)
+    new_data.dropna(inplace=True)
+    if is_show:
+        new_data['total_risk'].plot(kind='line', title='社融风险', rot=45, figsize=(15, 8),
+                                    fontsize=10)
+        show_data(new_data)
+        plt.show()
+    return risks[-1], datas[-1], new_data
+
+
+def cn_board_risk(is_show=False):
+    """
+    中国进出口数据风险
+    :return:
+    """
+    database = 'govstats'
+    collection = 'customs_goods'
+    cols = ['acc_export_import_amount_cyc','acc_export_amount_cyc','acc_import_amount_cyc']
+    projection = {'_id': False}
+    time = (datetime.now() - timedelta(days=365*2)).strftime("%Y-01-01")
+    condition = {"data_type":"country_export_import","name":"总值", "date": {"$gte": time}}
+    sort_key = 'date'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    data.set_index(keys='date',inplace=True)
+    data = data[cols]
+    data[cols] = data[cols].astype(float)
+    risks, datas = comm_down_or_up_risk(data, cols, [1, 2, 3, 4, 5, 6],
+                                        {}, 'index')
+    new_data = pd.DataFrame(datas)
+    new_data.set_index(keys='time', inplace=True)
+    new_data.dropna(inplace=True)
+    if is_show:
+        new_data['total_risk'].plot(kind='line', title='进出口风险', rot=45, figsize=(15, 8),
+                                    fontsize=10)
+        show_data(new_data)
+        plt.show()
+    return risks[-1], datas[-1], new_data
+
+
 
 
 def traffic_analysis():
@@ -542,5 +604,4 @@ def traffic_analysis():
 
 
 if __name__ == '__main__':
-    result = cn_electric_risk(is_show=True)
-    print(result)
+    cn_board_risk(is_show=True)
