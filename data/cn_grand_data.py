@@ -155,11 +155,11 @@ def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_typ
                 update_result = data_info.bulk_write(upsert_datas, ordered=False)
                 print('数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
                       flush=True)
-            # upsert_datas = to_meta_data(data, data_type)
-            # if len(upsert_datas) > 0:
-            #     update_result = meta_info.bulk_write(upsert_datas, ordered=False)
-            #     print('元数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
-            #           flush=True)
+            upsert_datas = to_meta_data(data, data_type)
+            if len(upsert_datas) > 0:
+                update_result = meta_info.bulk_write(upsert_datas, ordered=False)
+                print('元数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
+                      flush=True)
         time.sleep(10)
 
     else:
@@ -182,7 +182,7 @@ def handle_gov_yd_data():
     #ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     #ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
-    #ids = ['A06']
+    ids = ['A01']
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "yd"
@@ -474,7 +474,7 @@ def create_db_index():
 if __name__ == '__main__':
     #find_mata_data()
     #find_all_data()
-    handle_gov_jd_data()
+    #handle_gov_jd_data()
     #find_mata_data()
     handle_gov_yd_data()
     # energy_cov_data()

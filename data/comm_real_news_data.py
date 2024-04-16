@@ -73,14 +73,18 @@ def get_all_detail_data(names=None):
 def stock_telegraph_cls_news():
     stock_telegraph_cls_df = try_get_action(ak.stock_info_global_cls,try_count=3)
     datas = []
+    filter_dup = set()
     for index in stock_telegraph_cls_df.index:
         data = dict(stock_telegraph_cls_df.loc[index])
         pub_time = str(data['发布时间'])
         pub_day = str(data['发布日期'])
         title = data['标题']
         content = data['内容']
+        key = f"{title}_{content}"
         dict_data = {"time":f"{pub_day} {pub_time}","day":pub_day,"title":title,"content":content,"data_type":"cls_telegraph"}
-        datas.append(dict_data)
+        if key not in filter_dup:
+            datas.append(dict_data)
+        filter_dup.add(key)
     return datas
 
 

@@ -375,6 +375,7 @@ def comm_portfolio_analysis(code_dict_data, start_date, end_date):
     DF_Alloc_R = DF_Alloc_R.round(4)
     print('Optimal allocation (in %) for specified target return:')
     print(DF_Alloc_R)
+    return DF_Alloc_R
 
 
 def index_stock_portfolio():
