@@ -62,8 +62,8 @@ def post_or_get_data(url, params=None, method="post"):
     elif method == "get":
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gTI0ZTg3ZaBlxhSxgDE3NS4wLjIyNy4xNzmCZmM1ZWUx; u=2; JSESSIONID=uCiN98AbKmlUi2XoZQX5ZuSvMCOF2jKcJh1g37RXqAEW96KmRw1K!460167158"}
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=oGYenO+AMTQuMTU1LjEzOS4xNTOBMDJhYWFhgmZjNWVlMQ==; u=2; JSESSIONID=DIfu5jBC7Rk_wHgprZXDGNikJl7W0d6pkaMD7LMCQZX8rb7Z4oge!460167158; wzws_cid=0fd9f5b2faab8659d5dd69df23c2814722c6acaff4f558615968963c3a9392071577c0015b12aaeedf5ab7b5701849eca6564a3d1be89a7794c7e7d5c3f6fd637fe956cb95f77ec62ef646d8643596e3"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):
@@ -85,12 +85,18 @@ def concat_param(dict_pramas: dict):
     return query_str
 
 
-def to_meta_data(dict_data, data_type: str):
+def to_meta_data(dict_data, data_type: str, before_class_list: list = None):
     request_update = []
+    class_dict = {}
+    for i, ele in enumerate(before_class_list):
+        class_dict[f'class_level_{i + 1}'] = ele
+    print(class_dict)
     metric_data = dict_data['returndata']['wdnodes'][0]
     if metric_data['wdname'] == '指标':
         for node in metric_data['nodes']:
             node['code'] = str(node['code']) + "_" + data_type
+            for k, v in class_dict.items():
+                node[k] = v
             request_update.append(
                 UpdateOne(
                     {"code": node['code']},
@@ -102,6 +108,8 @@ def to_meta_data(dict_data, data_type: str):
         if metric_data['wdname'] == '指标':
             for node in metric_data['nodes']:
                 node['code'] = str(node['code']) + "_" + data_type
+                for k, v in class_dict.items():
+                    node[k] = v
                 request_update.append(
                     UpdateOne(
                         {"code": node['code']},
@@ -139,11 +147,16 @@ def to_data(dict_data, data_type: str):
     return request_update
 
 
-def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_type: str, meta_info, data_info):
+def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_type: str, meta_info, data_info,
+                 before_class_list: list = None):
     is_parent = mete_data['isParent']
     id = mete_data['id']
     wdcode = mete_data['wdcode']
     if is_parent is False:
+        parent_class_list = []
+        if before_class_list is not None:
+            parent_class_list.extend(before_class_list)
+        parent_class_list.append(mete_data['name'])
         data_params["dfwds"][0]["valuecode"] = id
         data_params['dfwds'][0]["wdcode"] = wdcode
         url_str = get_comm_url + "?" + concat_param(data_params)
@@ -155,19 +168,22 @@ def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_typ
                 update_result = data_info.bulk_write(upsert_datas, ordered=False)
                 print('数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
                       flush=True)
-            upsert_datas = to_meta_data(data, data_type)
+            upsert_datas = to_meta_data(data, data_type, parent_class_list)
             if len(upsert_datas) > 0:
                 update_result = meta_info.bulk_write(upsert_datas, ordered=False)
                 print('元数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
                       flush=True)
         time.sleep(10)
 
+
     else:
         meta_params['id'] = id
         if id not in ['A0203', 'A010C', 'A0204', 'A0206', 'A0207', 'A020M', 'A020L', 'A020N', 'A010A', 'A0109']:
-            meta_data_rs = try_get_action(post_or_get_data,try_count=3,url=get_comm_url, params=meta_params)
+            if before_class_list is not None:
+                before_class_list.append(mete_data['name'])
+            meta_data_rs = try_get_action(post_or_get_data, try_count=3, url=get_comm_url, params=meta_params)
             for ele_meta in meta_data_rs:
-                rec_get_data(ele_meta, meta_params, data_params, data_type, meta_info, data_info)
+                rec_get_data(ele_meta, meta_params, data_params, data_type, meta_info, data_info,before_class_list)
 
 
 def handle_gov_yd_data():
@@ -177,23 +193,31 @@ def handle_gov_yd_data():
     ids = ['A0108']
     ids = ['A0101','A0102','A0103']
     ids = ['A01']
+    'A01': '价格指数',
     """
     ids = ['A01', 'A02', 'A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
-    #ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
-    #ids = ['A01', 'A02']
+    ids = {'A02': '工业', 'A03': '能源', 'A04': '固定资产投资(不含农户)', 'A05': '服务业生产指数',
+           'A0E': '城镇调查失业率', 'A06': '房地产', 'A07': '国内贸易', 'A08': '对外经济', 'A09': '交通运输',
+           'A0A': '邮电通信',
+           'A0B': '采购经理指数', 'A0C': '财政', 'A0D': '金融'}
+    # ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
+    # ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
-    ids = ['A01']
+    # ids = ['A01']
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "yd"
-    for id in ids:
+    for id, name in ids.items():
         get_yd_meta_params["id"] = id
-        meta_data_list = try_get_action(post_or_get_data,try_count=10,url=get_comm_url, params=get_yd_meta_params)
+        meta_data_list = try_get_action(post_or_get_data, try_count=10, url=get_comm_url, params=get_yd_meta_params)
+
         for meta_data in meta_data_list:
             print(meta_data)
             id = meta_data['id']
             if id not in ['A0203', 'A010C', 'A0204', 'A0206', 'A0207', 'A020M', 'A020L', 'A020N', 'A010A', 'A0109']:
-                rec_get_data(meta_data, get_yd_meta_params, get_yd_data_params, data_type, meta_info, data_info)
+                before_class_list = [name]
+                rec_get_data(meta_data, get_yd_meta_params, get_yd_data_params, data_type, meta_info, data_info,
+                             before_class_list)
             else:
                 print(f"filter {id}")
 
@@ -207,15 +231,26 @@ def handle_gov_jd_data():
     ids = ['A01']
     """
     ids = ['A01', 'A02', 'A0302', 'A04', 'A05', 'A06', 'A07', 'A08']
+    ids = {'A01': '国民经济核算', 'A02': '农业', 'A03': '工业', 'A04': '建筑业', 'A05': '人民生活', 'A06': '价格指数',
+           'A07': '国内贸易', 'A08': '文化'}
+    #ids = {'A03': '工业', 'A04': '建筑业', 'A05': '人民生活', 'A06': '价格指数', 'A07': '国内贸易', 'A08': '文化'}
     data_info = get_mongo_table(database='govstats', collection='data_info')
     meta_info = get_mongo_table(database='govstats', collection='meta_info')
     data_type = "jd"
-    for id in ids:
+    for id, name in ids.items():
         get_jd_meta_params["id"] = id
-        meta_data_list = try_get_action(post_or_get_data,4,url=get_comm_url, params=get_jd_meta_params)
+        meta_data_list = try_get_action(post_or_get_data, 4, url=get_comm_url, params=get_jd_meta_params)
         for meta_data in meta_data_list:
             print(meta_data)
-            rec_get_data(meta_data, get_jd_meta_params, get_jd_data_params, data_type, meta_info, data_info)
+            jd_parent_filter = {"jd": ['A0301']}
+            if data_type == 'jd':
+                id = meta_data['id']
+                if id in jd_parent_filter.get('jd'):
+                    print(f"filter jb {id}")
+                    continue
+            before_class_list = [name]
+            rec_get_data(meta_data, get_jd_meta_params, get_jd_data_params, data_type, meta_info, data_info,
+                         before_class_list)
 
 
 def find_mata_data():
@@ -387,33 +422,43 @@ def find_all_data():
                  "A02092J04_yd": "电子计算机整机产量_累计增长"}
 
     code_dict = {'A020O0903_yd': '工业企业营业收入_累计增长', 'A020O0906_yd': '采矿业营业收入_累计增长',
-     'A020O0909_yd': '煤炭开采和洗选业营业收入_累计增长', 'A020O090C_yd': '石油和天然气开采业营业收入_累计增长',
-     'A020O090F_yd': '黑色金属矿采选业营业收入_累计增长', 'A020O090I_yd': '有色金属矿采选业营业收入_累计增长',
-     'A020O090L_yd': '非金属矿采选业营业收入_累计增长', 'A020O090O_yd': '开采专业及辅助性活动营业收入_累计增长',
-     'A020O090R_yd': '其他采矿业营业收入_累计增长', 'A020O090U_yd': '制造业营业收入_累计增长',
-     'A020O090X_yd': '农副食品加工业营业收入_累计增长', 'A020O0910_yd': '食品制造业营业收入_累计增长',
-     'A020O0913_yd': '酒、饮料和精制茶制造业营业收入_累计增长', 'A020O0916_yd': '烟草制品业营业收入_累计增长',
-     'A020O0919_yd': '纺织业营业收入_累计增长', 'A020O091C_yd': '纺织服装、服饰业营业收入_累计增长',
-     'A020O091F_yd': '皮革、毛皮、羽毛及其制品和制鞋业营业收入_累计增长',
-     'A020O091I_yd': '木材加工和木、竹、藤、棕、草制品业营业收入_累计增长', 'A020O091L_yd': '家具制造业营业收入_累计增长',
-     'A020O091O_yd': '造纸和纸制品业营业收入_累计增长', 'A020O091R_yd': '印刷和记录媒介复制业营业收入_累计增长',
-     'A020O091U_yd': '文教、工美、体育和娱乐用品制造业营业收入_累计增长',
-     'A020O091X_yd': '石油、煤炭及其他燃料加工业营业收入_累计增长',
-     'A020O0920_yd': '化学原料和化学制品制造业营业收入_累计增长', 'A020O0923_yd': '医药制造业营业收入_累计增长',
-     'A020O0926_yd': '化学纤维制造业营业收入_累计增长', 'A020O0929_yd': '橡胶和塑料制品业营业收入_累计增长',
-     'A020O092C_yd': '非金属矿物制品业营业收入_累计增长', 'A020O092F_yd': '黑色金属冶炼和压延加工业营业收入_累计增长',
-     'A020O092I_yd': '有色金属冶炼和压延加工业营业收入_累计增长', 'A020O092L_yd': '金属制品业营业收入_累计增长',
-     'A020O092O_yd': '通用设备制造业营业收入_累计增长', 'A020O092R_yd': '专用设备制造业营业收入_累计增长',
-     'A020O092U_yd': '汽车制造业营业收入_累计增长',
-     'A020O092X_yd': '铁路、船舶、航空航天和其他运输设备制造业营业收入_累计增长',
-     'A020O0930_yd': '电气机械和器材制造业营业收入_累计增长',
-     'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入_累计增长',
-     'A020O0936_yd': '仪器仪表制造业营业收入_累计增长', 'A020O0939_yd': '其他制造业营业收入_累计增长',
-     'A020O093C_yd': '废弃资源综合利用业营业收入_累计增长',
-     'A020O093F_yd': '金属制品、机械和设备修理业营业收入_累计增长',
-     'A020O093I_yd': '电力、热力、燃气及水生产和供应业营业收入_累计增长',
-     'A020O093L_yd': '电力、热力生产和供应业营业收入_累计增长', 'A020O093O_yd': '燃气生产和供应业营业收入_累计增长',
-     'A020O093R_yd': '水的生产和供应业营业收入_累计增长'}
+                 'A020O0909_yd': '煤炭开采和洗选业营业收入_累计增长',
+                 'A020O090C_yd': '石油和天然气开采业营业收入_累计增长',
+                 'A020O090F_yd': '黑色金属矿采选业营业收入_累计增长',
+                 'A020O090I_yd': '有色金属矿采选业营业收入_累计增长',
+                 'A020O090L_yd': '非金属矿采选业营业收入_累计增长',
+                 'A020O090O_yd': '开采专业及辅助性活动营业收入_累计增长',
+                 'A020O090R_yd': '其他采矿业营业收入_累计增长', 'A020O090U_yd': '制造业营业收入_累计增长',
+                 'A020O090X_yd': '农副食品加工业营业收入_累计增长', 'A020O0910_yd': '食品制造业营业收入_累计增长',
+                 'A020O0913_yd': '酒、饮料和精制茶制造业营业收入_累计增长',
+                 'A020O0916_yd': '烟草制品业营业收入_累计增长',
+                 'A020O0919_yd': '纺织业营业收入_累计增长', 'A020O091C_yd': '纺织服装、服饰业营业收入_累计增长',
+                 'A020O091F_yd': '皮革、毛皮、羽毛及其制品和制鞋业营业收入_累计增长',
+                 'A020O091I_yd': '木材加工和木、竹、藤、棕、草制品业营业收入_累计增长',
+                 'A020O091L_yd': '家具制造业营业收入_累计增长',
+                 'A020O091O_yd': '造纸和纸制品业营业收入_累计增长',
+                 'A020O091R_yd': '印刷和记录媒介复制业营业收入_累计增长',
+                 'A020O091U_yd': '文教、工美、体育和娱乐用品制造业营业收入_累计增长',
+                 'A020O091X_yd': '石油、煤炭及其他燃料加工业营业收入_累计增长',
+                 'A020O0920_yd': '化学原料和化学制品制造业营业收入_累计增长',
+                 'A020O0923_yd': '医药制造业营业收入_累计增长',
+                 'A020O0926_yd': '化学纤维制造业营业收入_累计增长', 'A020O0929_yd': '橡胶和塑料制品业营业收入_累计增长',
+                 'A020O092C_yd': '非金属矿物制品业营业收入_累计增长',
+                 'A020O092F_yd': '黑色金属冶炼和压延加工业营业收入_累计增长',
+                 'A020O092I_yd': '有色金属冶炼和压延加工业营业收入_累计增长',
+                 'A020O092L_yd': '金属制品业营业收入_累计增长',
+                 'A020O092O_yd': '通用设备制造业营业收入_累计增长', 'A020O092R_yd': '专用设备制造业营业收入_累计增长',
+                 'A020O092U_yd': '汽车制造业营业收入_累计增长',
+                 'A020O092X_yd': '铁路、船舶、航空航天和其他运输设备制造业营业收入_累计增长',
+                 'A020O0930_yd': '电气机械和器材制造业营业收入_累计增长',
+                 'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入_累计增长',
+                 'A020O0936_yd': '仪器仪表制造业营业收入_累计增长', 'A020O0939_yd': '其他制造业营业收入_累计增长',
+                 'A020O093C_yd': '废弃资源综合利用业营业收入_累计增长',
+                 'A020O093F_yd': '金属制品、机械和设备修理业营业收入_累计增长',
+                 'A020O093I_yd': '电力、热力、燃气及水生产和供应业营业收入_累计增长',
+                 'A020O093L_yd': '电力、热力生产和供应业营业收入_累计增长',
+                 'A020O093O_yd': '燃气生产和供应业营业收入_累计增长',
+                 'A020O093R_yd': '水的生产和供应业营业收入_累计增长'}
 
     data_info = get_mongo_table(database='govstats', collection='data_info')
     datas = []
@@ -466,16 +511,18 @@ def energy_cov_data():
     corr = pd_data.corr()
     for index in corr.index:
         print(sort_dict_data_by(dict(corr.loc[index]), by='value'))
+
+
 def create_db_index():
     data_info = get_mongo_table(database='govstats', collection='data_info')
     data_info.create_index([("code", 1), ("time", 1)], unique=True, background=True)
 
 
 if __name__ == '__main__':
-    #find_mata_data()
-    #find_all_data()
+    # find_mata_data()
+    # find_all_data()
     #handle_gov_jd_data()
-    #find_mata_data()
+    # find_mata_data()
     handle_gov_yd_data()
     # energy_cov_data()
-    #find_data()
+    # find_data()

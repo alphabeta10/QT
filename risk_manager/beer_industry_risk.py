@@ -45,9 +45,9 @@ class BeerIndustryRisk(BasicIndustryRisk):
         self.mid_risk = None
         self.down_risk = None
 
-        self.up_risk = None
-        self.mid_risk = None
-        self.down_risk = None
+        self.up_show_result = None
+        self.mid_show_result = None
+        self.down_show_result = None
 
     def up_data(self):
         total_risk = 0
@@ -76,7 +76,9 @@ class BeerIndustryRisk(BasicIndustryRisk):
             result = f"原材料端价格上涨风险{total_risk}，对于{self.name}是坏事，原材料有上涨风险，建议看下游消费情况"
         else:
             result = "原材料端,没有计算出风险，建议看下游消费情况"
+        print(result)
         self.up_risk = total_risk
+        self.up_show_result = result
         return result
 
     def mid_data(self):
@@ -99,6 +101,8 @@ class BeerIndustryRisk(BasicIndustryRisk):
         else:
             result = "中游风险,没有计算出风险，建议看下游消费情况"
         print(result)
+        self.mid_risk = total_risk
+        self.mid_show_result = result
         return result
 
     def down_data(self):
@@ -121,6 +125,8 @@ class BeerIndustryRisk(BasicIndustryRisk):
         else:
             result = "中游风险,没有计算出风险，建议看下游消费情况"
         print(result)
+        self.down_risk = total_risk
+        self.down_show_result = result
         return result
 
 

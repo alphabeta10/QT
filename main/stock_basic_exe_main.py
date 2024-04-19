@@ -9,9 +9,6 @@ def stock_basic_main():
     股票基础信息，股票价格，大宗交易,筹码分布
     :return:
     """
-    save_stock_info_data()
-    handle_stock_daily_data()
-    stock_dzjy_main()
     handle_stock_cyq_main()
 def stock_index_main():
     """
