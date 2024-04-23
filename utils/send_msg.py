@@ -1,5 +1,6 @@
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
 import base64
@@ -34,6 +35,23 @@ class MailSender(object):
             message['Cc'] = Header(",".join(cc_mail), 'utf-8')
         message['Subject'] = Header(subject, 'utf-8')
         self.smtpObj.sendmail(self.from_mail,to_mail, message.as_string())
+
+    def send_html_with_img_data(self,to_mail, cc_mail, subject, html_msg,img_dict_data:dict):
+        message = MIMEMultipart()
+        html_msg = MIMEText(html_msg, 'html', 'utf-8')
+        message.attach(html_msg)
+        for id,img_stram in img_dict_data.items():
+            msg_image = MIMEImage(img_stram)
+            msg_image.add_header("Content-ID",id)
+            message.attach(msg_image)
+
+        message['From'] = Header(self.fromname64)
+        if to_mail is not None and isinstance(to_mail, list):
+            message['To'] = Header(",".join(to_mail), 'utf-8')
+        if cc_mail is not None and isinstance(cc_mail, list):
+            message['Cc'] = Header(",".join(cc_mail), 'utf-8')
+        message['Subject'] = Header(subject, 'utf-8')
+        self.smtpObj.sendmail(self.from_mail, to_mail, message.as_string())
 
     def close(self):
         self.smtpObj.quit()

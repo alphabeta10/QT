@@ -20,7 +20,7 @@ def comm_construct_html_data(goods_name_list: list = None, goods_type=None):
     pd_data = pd.DataFrame(datas)
     pd_data[['value']] = pd_data[['value']].astype(float)
     data = pd.pivot_table(pd_data, values='value', columns='name', index='time')
-    pct_change_list = [1, 7, 14, 30]
+    pct_change_list = [1, 7, 14, 30, 60, 120, 240]
     for name in goods_name_list:
         for num in pct_change_list:
             data[f'{name}_pct_{num}'] = data[name].pct_change(num)
@@ -31,7 +31,10 @@ def comm_construct_html_data(goods_name_list: list = None, goods_type=None):
     last_time = str(data.tail(1).index.values[0])
     html_str = f"<p>{goods_type}</p>"
     html_str += f"<table border=\"1\">"
-    html_str += "<tr> <th>名称</th> <th>价格</th> <th>1日变化率</th> <th>7日变化率</th> <th>14日变化率</th> <th>30日变化率</th> <th>涨跌统计</th> <th>时间</th> </tr>"
+    day_ch_html = ""
+    for day in pct_change_list:
+        day_ch_html+=f"<th>{day}日变化率</th>"
+    html_str += f"<tr> <th>名称</th> <th>价格</th> {day_ch_html}<th>涨跌统计</th> <th>时间</th> </tr>"
     for name in goods_name_list:
         detail_goods_inflation_risk_dict[name] = {"up": 0, "down": 0}
         html_str += "<tr>"
@@ -121,8 +124,9 @@ def daily_monitor_goods():
     goods_configs = [{"goods_type": "能源商品监控", "goods_list": ['WTI原油', 'Brent原油']},
                      {"goods_type": "避险商品监控", "goods_list": ['黄金', '白银']},
                      {"goods_type": "建材商品监控", "goods_list": ['螺纹钢', '玻璃']},
-                     {"goods_type": "包装材料商品监控","goods_list": ['针叶木浆', '白卡纸', '白板纸', '阔叶木浆', '瓦楞原纸', '废纸']},
-                     {"goods_type": "有色金属监控","goods_list": ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物']},
+                     {"goods_type": "包装材料商品监控",
+                      "goods_list": ['针叶木浆', '白卡纸', '白板纸', '阔叶木浆', '瓦楞原纸', '废纸']},
+                     {"goods_type": "有色金属监控", "goods_list": ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物']},
                      ]
     all_html_str = ''
     for ele in goods_configs:

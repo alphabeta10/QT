@@ -8,6 +8,12 @@ import requests
 import pandas as pd
 
 
+def get_all_main_contract_code():
+    symbols = ['czce', 'dce', 'shfe', 'cffex', 'gfex']
+    ret_syms = []
+    for symbol in symbols:
+        ret_syms += ak.match_main_contract(symbol=symbol).split(",")
+    return ret_syms
 def handle_futures_daily_data(symbols=None):
     if symbols is None:
         symbols = ['B0']

@@ -1,14 +1,16 @@
 from data.futures_daily_data import handle_futures_daily_data, handle_futures_inventory_data, \
     handle_futures_receipt_data, handle_futures_czce_warehouse_receipt, \
     handle_futures_dce_warehouse_receipt, handle_futures_shfe_warehouse_receipt, handle_futures_delivery_dce, \
-    handle_futures_delivery_czce,enter_futrures_long_short_main
+    handle_futures_delivery_czce,enter_futrures_long_short_main,get_all_main_contract_code
 import akshare as ak
 from datetime import datetime, timedelta
 
 
 def future_basic_info_data_main():
     # 行情数据
-    symbols = ['B0', 'FG0', 'FG2409', 'EG0', 'EG2409', 'RB0', 'RB2410', 'I0', 'UR2409', 'UR0', 'MA0', 'MA2409', 'BU0']
+    symbols = ['B0', 'FG0', 'EG0', 'RB0', 'I0', 'UR0', 'MA0', 'BU0']
+    symbols += get_all_main_contract_code()
+    symbols = list(set(symbols))
     handle_futures_daily_data(symbols=symbols)
     # 库存数据
     symbols = ['玻璃', '螺纹钢', '乙二醇', '豆二', '尿素', '沥青', '甲醇']

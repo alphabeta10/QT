@@ -21,7 +21,7 @@ def construct_html_msg_send_to_user(send_list: list, sender, msg_title):
             html_msg += f"<tr><td>{day} {time}</td> <td>{country}</td>  <td>{event}</td> <td>{pre_value}</td> <td>{predict_value}</td> <td>{important}</td></tr>"
         html_msg += "</table>"
         if html_msg != '':
-            sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
+            sender.send_html_data(['905198301@qq.com','2367243209@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
 
 
 def sender_important_fin_data_to_user():
@@ -32,7 +32,7 @@ def sender_important_fin_data_to_user():
     weekday = datetime.now().weekday()
     important_countrys = ['中国',"美国"]
     important_keys = ['GDP', 'PMI', 'CPI', 'PPI', 'M0货币供应年率', 'M1货币供应年率', 'M2货币供应年率',
-                      '人民币各项贷款余额年率', '新增人民币贷款', '社会融资规模']
+                      '人民币各项贷款余额年率', '新增人民币贷款', '社会融资规模','PCE','GDP']
     if weekday in [5, 6] or True:
         sender = MailSender()
         while int(now_str) < end_date_int:
