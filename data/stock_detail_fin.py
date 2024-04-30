@@ -4,7 +4,8 @@ import akshare as ak
 from tqdm import tqdm
 from data.mongodb import get_mongo_table
 from utils.tool import mongo_bulk_write_data
-
+import requests
+import pandas as pd
 
 def get_stock_info_data():
     ticker_info = get_mongo_table(collection='ticker_info')
@@ -95,6 +96,47 @@ def handle_comm_stock_fin_em(codes=None, data_type="zcfz_report_detail"):
             if len(request_update) > 5000:
                 mongo_bulk_write_data(fin_col, request_update)
                 request_update.clear()
+    if len(request_update) > 0:
+        mongo_bulk_write_data(fin_col, request_update)
+
+def get_stock_em_metric_data(request_update:list,code=None):
+    if code is None:
+        code = 'SZ000001'
+    if request_update is None:
+        request_update = []
+    url = f'https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/ZYZBAjaxNew?type=0&code={code}'
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=oGYenO+AMTQuMTU1LjEzOS4xNTOBMDJhYWFhgmZjNWVlMQ==; u=2; JSESSIONID=DIfu5jBC7Rk_wHgprZXDGNikJl7W0d6pkaMD7LMCQZX8rb7Z4oge!460167158; wzws_cid=0fd9f5b2faab8659d5dd69df23c2814722c6acaff4f558615968963c3a9392071577c0015b12aaeedf5ab7b5701849eca6564a3d1be89a7794c7e7d5c3f6fd637fe956cb95f77ec62ef646d8643596e3"}
+    response = requests.get(url, headers=headers)
+    if response.status_code==200:
+        df = pd.DataFrame(response.json()['data'])
+        for index in df.index:
+            dict_data = dict(df.loc[index])
+            dict_data['data_type'] = "stock_em_metric"
+            dict_data['code'] = dict_data['SECURITY_CODE']
+            dict_data['date'] = str(dict_data['REPORT_DATE'])[0:10]
+            new_dict = {}
+            for k, v in dict_data.items():
+                if str(v) in ['None', 'nan']:
+                    pass
+                else:
+                    new_dict[k] = str(v)
+            request_update.append(UpdateOne(
+                {"code": new_dict['code'], "date": new_dict['date'], "data_type": new_dict['data_type']},
+                {"$set": new_dict},
+                upsert=True))
+
+def handle_em_stock_metric(codes=None):
+    if codes is None:
+        return
+    request_update = []
+    fin_col = get_mongo_table(collection='fin')
+    for code in codes:
+        get_stock_em_metric_data(request_update,code)
+        if len(request_update) > 5000:
+            mongo_bulk_write_data(fin_col, request_update)
+            request_update.clear()
     if len(request_update) > 0:
         mongo_bulk_write_data(fin_col, request_update)
 

@@ -459,5 +459,6 @@ def find_industry_stock_data():
 
 
 if __name__ == '__main__':
-    get_common_concept_stock_pool(['人工智能'])
+    get_common_concept_stock_pool(['绿色电力'])
+    get_common_concept_stock_pool(['电力物联网'])
     get_news_top2_concept_stock_pool()

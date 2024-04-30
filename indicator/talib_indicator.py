@@ -11,6 +11,26 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+def adj_obv(high, low, close, volume):
+    """
+    自定义计算obv
+    :param high:
+    :param low:
+    :param close:
+    :param volume:
+    :return:
+    """
+    obv_list = []
+    for i, vol in enumerate(volume):
+        h, l, c = high[i], low[i], close[i]
+        weight = ((c - l) - (h - c)) / (h - l)
+        if i == 0:
+            obv_list.append(vol * weight)
+        else:
+            cur_vol = obv_list[i - 1] + vol * weight
+            obv_list.append(cur_vol)
+    return obv_list
+
 def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     mfi_timeperiod = 14
     if 'mfi_timeperiod' in kwargs.keys():

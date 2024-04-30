@@ -176,12 +176,13 @@ def handle_fin_data(start_date='2010-01-01', end_date=datetime.now().strftime("%
     dates.add(end_date[0:4])
     dates = list(set(dates))
     dates = sorted(dates)
+    start_date_int = int(start_date.replace("-",""))
     new_dates = []
     for quater in quater_list:
         for date in dates:
             cur = int(f"{date}{quater}")
             now_int = int(end_date.replace("-",""))
-            if now_int>=cur:
+            if now_int>=cur and cur>=start_date_int:
                 new_dates.append(f"{date}{quater}")
 
     fin_col = get_mongo_table(collection='fin_simple')
@@ -213,7 +214,7 @@ def get_data():
         print(ele)
 
 if __name__ == '__main__':
-    handle_fin_data(start_date='2018-01-01')
+    handle_fin_data(start_date='2023-11-01')
 
 
 

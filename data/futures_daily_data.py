@@ -21,21 +21,24 @@ def handle_futures_daily_data(symbols=None):
     for symbol in symbols:
         datas = []
         futures_zh_daily_sina_df = try_get_action(ak.futures_zh_daily_sina, try_count=3, symbol=symbol)
-        for index in futures_zh_daily_sina_df.index:
-            ele_dict = dict(futures_zh_daily_sina_df.loc[index])
-            dict_data = {}
-            for k, v in ele_dict.items():
-                if k == 'date':
-                    dict_data[k] = str(v)
-                else:
-                    dict_data[k] = float(v)
-            dict_data['symbol'] = symbol
-            datas.append(UpdateOne(
-                {"symbol": dict_data['symbol'], "date": dict_data['date']},
-                {"$set": dict_data},
-                upsert=True))
-        if len(datas) > 0:
-            mongo_bulk_write_data(futures_daily, datas)
+        if futures_zh_daily_sina_df is not None:
+            for index in futures_zh_daily_sina_df.index:
+                ele_dict = dict(futures_zh_daily_sina_df.loc[index])
+                dict_data = {}
+                for k, v in ele_dict.items():
+                    if k == 'date':
+                        dict_data[k] = str(v)
+                    else:
+                        dict_data[k] = float(v)
+                dict_data['symbol'] = symbol
+                datas.append(UpdateOne(
+                    {"symbol": dict_data['symbol'], "date": dict_data['date']},
+                    {"$set": dict_data},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_daily, datas)
+        else:
+            print(f"出错 {symbol}")
 
 
 def get_all_inventory_symbols():

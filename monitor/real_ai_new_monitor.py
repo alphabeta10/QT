@@ -150,7 +150,7 @@ def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com','791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
+        sender.send_html_data(['905198301@qq.com','791179751@qq.com','2367243209@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
                               mail_msg)
         sender.close()
     else:

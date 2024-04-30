@@ -31,7 +31,7 @@ def read_industry_dict_code():
         return dict_data
 
 
-def stock_risk(codes:list=None):
+def stock_risk(codes:list=None,quarter=3):
     """
     个股风险
     :param codes:
@@ -76,7 +76,8 @@ def stock_risk(codes:list=None):
     for code, combine_dict in result.items():
         total_risk[code] += combine_dict['atr14_rate']
     # 财报风险
-    data = get_stock_fin_risk(codes)
+    quarter_mapping = {1: "0331", 2: "0630", 3: "0930", 4: "1231"}
+    data = get_stock_fin_risk(codes,quarter_mapping[quarter])
     print(f"财报风险 {data}")
 
     for data_type, combine_dict in data.items():

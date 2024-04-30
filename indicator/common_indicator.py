@@ -323,7 +323,7 @@ def metric_up_or_dow_risk(metric_data:pd.DataFrame):
     return result_dict_data
 
 
-def get_stock_fin_risk(codes, start_time=None,metric_dict_data = None):
+def get_stock_fin_risk(codes, start_time=None,metric_dict_data = None,quarter='0930'):
     if metric_dict_data is None:
         metric_dict_data = {"lrb":['income_cycle','total_revenue_cycle'],
                             "zcfz":['assets_cycle','lia_assets_cycle'],
@@ -341,7 +341,7 @@ def get_stock_fin_risk(codes, start_time=None,metric_dict_data = None):
                                sort_key=sort_key)
 
     result_dict_data = {}
-    data = data[data['date'].str.contains('0930')]
+    data = data[data['date'].str.contains(quarter)]
     for data_type,metric_cols in metric_dict_data.items():
         for metric_col in metric_cols:
             metric_data = data[data['data_type'] == data_type][['code', metric_col, 'date']]

@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime, timedelta
 import os
-
+import math
 
 def unique_key_to_file(file_name: str, data_list: set):
     with open(file_name, mode='w') as f:
@@ -165,15 +165,17 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='å®æ
         sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
 
 
-def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6,before_low=-6):
+def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6, before_low=-6):
     data['pre_close'] = data['close'].shift(1)
     data['next_close'] = data['close'].shift(-1)
 
     data['is_peak'] = data.apply(
-        lambda row: 1 if row['close'] > row['pre_close'] and row['close'] > row['next_close'] else 0, axis=1)
+        lambda row: 1 if row['close'] >= row['pre_close'] and (
+                row['close'] >= row['next_close'] or pd.isnull(row['next_close'])) else 0, axis=1)
 
     data['is_low'] = data.apply(
-        lambda row: 1 if row['close'] < row['pre_close'] and row['close'] < row['next_close'] else 0, axis=1)
+        lambda row: 1 if row['close'] <= row['pre_close'] and (
+                row['close'] <= row['next_close'] or pd.isnull(row['next_close'])) else 0, axis=1)
 
     peak_data = []
     low_data = []
@@ -220,7 +222,8 @@ def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6,before_low=-6):
 def linear_fn(k, x1, y1, cal_x2):
     return k * (cal_x2 - x1) + y1
 
-def handle_point(is_high_or_low, temp_points_list:list, linear_fn_dict:dict, num, combine_data):
+
+def handle_point(is_high_or_low, temp_points_list: list, linear_fn_dict: dict, num, combine_data):
     if is_high_or_low == 1:
         temp_points_list.append(combine_data)
     if len(temp_points_list) == 2:
@@ -231,7 +234,9 @@ def handle_point(is_high_or_low, temp_points_list:list, linear_fn_dict:dict, num
         k = (y1 - y0) / (x1 - x0)
         linear_fn_dict[first_point[0]] = [k, y0, first_point[2], num, second_point]
         temp_points_list.pop(0)
-def cal_seq_linear_point(linear_fn_dict:dict,result:dict,type='high'):
+
+
+def cal_seq_linear_point(linear_fn_dict: dict, point_datas: list, result: dict, type='high'):
     for date, combine_list in linear_fn_dict.items():
         cal_list_data = []
         k, y0, start, end, x1 = combine_list
@@ -241,23 +246,49 @@ def cal_seq_linear_point(linear_fn_dict:dict,result:dict,type='high'):
         for i in range(start, end):
             ele = linear_fn(k, 0, y0, i - start)
             cal_list_data.append(ele)
+
+        dist_points = []
+        for t, py, p_start in point_datas:
+            if p_start > start:
+                px = p_start - start
+            else:
+                px = -(start - p_start)
+            distinct = (-px * k + py - y0) / (math.sqrt(1 + pow(k, 2)))
+            if distinct > 0:
+                target_price = cal_list_data[p_start] - distinct
+            else:
+                target_price = cal_list_data[p_start] + distinct
+            combine_data = {"time": t, "target_price": target_price, "dis": distinct,
+                            "linear_cal_price": cal_list_data[p_start], "cur_price": py}
+            dist_points.append(combine_data)
         result[type][date] = cal_list_data
+        result[f'dist{type}'] = {}
+        result[f'dist{type}'][date] = dist_points
+
+
 def cal_linear_data_fn(dates, close_data, is_high_data, is_low_data):
     temp_high_linear_data = []
     temp_low_linear_data = []
     start_index = 0
     high_linear_fn_dict_data = {}
     low_linear_fn_dict_data = {}
+    high_list_data = []
+    low_list_data = []
     for date, close, is_high, is_low in zip(dates, close_data, is_high_data, is_low_data):
-        combine_data = [date,close,start_index]
-        handle_point(is_high,temp_high_linear_data,high_linear_fn_dict_data,len(dates),combine_data)
-        handle_point(is_low,temp_low_linear_data,low_linear_fn_dict_data,len(dates),combine_data)
+        combine_data = [date, close, start_index]
+        if is_high == 1:
+            high_list_data.append(combine_data)
+        if is_low == 1:
+            low_list_data.append(combine_data)
+        handle_point(is_high, temp_high_linear_data, high_linear_fn_dict_data, len(dates), combine_data)
+        handle_point(is_low, temp_low_linear_data, low_linear_fn_dict_data, len(dates), combine_data)
         start_index += 1
 
-    linear_result = {"high":{},"low":{}}
-    cal_seq_linear_point(high_linear_fn_dict_data,linear_result,'high')
-    cal_seq_linear_point(low_linear_fn_dict_data,linear_result,'low')
+    linear_result = {"high": {}, "low": {}}
+    cal_seq_linear_point(high_linear_fn_dict_data, high_list_data, linear_result, 'high')
+    cal_seq_linear_point(low_linear_fn_dict_data, high_list_data, linear_result, 'low')
     return linear_result
+
 
 if __name__ == '__main__':
     pass
