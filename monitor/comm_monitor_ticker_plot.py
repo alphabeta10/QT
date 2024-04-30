@@ -9,7 +9,7 @@ from indicator.talib_indicator import adj_obv
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
-
+import os
 warnings.filterwarnings('ignore')
 
 
@@ -32,7 +32,7 @@ def get_market_data_by_code_name(database='stock', collection='index_data', sort
 def plot_bar_value_line_same_rate_data(dates, volume_data, close_data, is_high_data, is_low_data, is_linear_high_data,
                                        is_linear_low_data, filename='market.png', is_show=False, title='图形分析',
                                        futures_hold=None, adj_odv_values=None):
-    plt.figure(figsize=(24, 12))
+    plt.figure(figsize=(20, 10))
     plt.subplot(2, 1, 1)
     # 绘柱状图
     plt.bar(x=dates, height=volume_data, label='成交量', color='Coral', alpha=0.8)
@@ -109,8 +109,11 @@ def common_plot_send_mail(database='stock', collection='ticker_daily', sort_key=
         high_keys = list(linear_result['high'].keys())
         plot_bar_value_line_same_rate_data(x, y, close, is_high_data, is_low_data, linear_result['high'][high_keys[-1]],
                                            linear_result['low'][low_keys[-1]], filename=f'{cid}.png', title=header,adj_odv_values=adj_obv_val)
-
-        mail_msg += f"<p>{header}</p>"
+        high_price = round(linear_result['high'][high_keys[-1]][-1], 2)
+        lower_price = round(linear_result['low'][low_keys[-1]][-1], 2)
+        last_price = close[-1]
+        price_str = f"当前价格{last_price},反转价格:{lower_price},目标价格{high_price}"
+        mail_msg += f"<p>{header};价格判断:{price_str}</p>"
         mail_msg += f"<img src=\"cid:{cid}\" width=\"99%\">"
         with open(f"plot/{cid}.png", 'rb') as f:
             stram = f.read()
@@ -248,7 +251,12 @@ def daily_future_plot_notice():
                                            linear_result['low'][low_keys[-1]], filename=f'{cid}.png', title=header,
                                            futures_hold=hold, adj_odv_values=adj_obv_val)
         market_env = data.tail(1).iloc[0]['market_env']
-        mail_msg += f"<p>{header};市场判断{market_env}</p>"
+        high_price = round(linear_result['high'][high_keys[-1]][-1],2)
+        lower_price = round(linear_result['low'][low_keys[-1]][-1],2)
+        last_price = close[-1]
+
+        price_str = f"当前价格{last_price},反转价格:{lower_price},目标价格{high_price}"
+        mail_msg += f"<p>{header};市场判断:{market_env};价格判断:{price_str}</p>"
         mail_msg += f"<img src=\"cid:{cid}\" width=\"99%\">"
         with open(f"plot/{cid}.png", 'rb') as f:
             stram = f.read()
@@ -258,8 +266,15 @@ def daily_future_plot_notice():
     mail.send_html_with_img_data(['905198301@qq.com'], ['2394023336@qq.com'], mail_theme, mail_msg,
                                  name_stram_dict)
 
+def del_file(path_data):
+    for i in os.listdir(path_data):
+        file_data = path_data+"/"+i
+        if os.path.isfile(file_data) == True:
+            os.remove(file_data)
+            print(f"删除文件{file_data}")
 
 if __name__ == '__main__':
+    del_file('plot')
     daily_market_plot_notice()
     daily_stock_plot_notice()
     daily_future_plot_notice()

@@ -171,11 +171,11 @@ def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6, before_low=-6):
 
     data['is_peak'] = data.apply(
         lambda row: 1 if row['close'] >= row['pre_close'] and (
-                row['close'] >= row['next_close'] or pd.isnull(row['next_close'])) else 0, axis=1)
+                row['close'] >= row['next_close']) else 0, axis=1)
 
     data['is_low'] = data.apply(
         lambda row: 1 if row['close'] <= row['pre_close'] and (
-                row['close'] <= row['next_close'] or pd.isnull(row['next_close'])) else 0, axis=1)
+                row['close'] <= row['next_close']) else 0, axis=1)
 
     peak_data = []
     low_data = []
@@ -246,7 +246,6 @@ def cal_seq_linear_point(linear_fn_dict: dict, point_datas: list, result: dict, 
         for i in range(start, end):
             ele = linear_fn(k, 0, y0, i - start)
             cal_list_data.append(ele)
-
         dist_points = []
         for t, py, p_start in point_datas:
             if p_start > start:
