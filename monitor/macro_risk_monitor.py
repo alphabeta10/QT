@@ -1,6 +1,7 @@
 from risk_manager.industry_risk import cn_industry_metric_risk
 from risk_manager.macro_risk import cn_fin_risk, cn_electric_risk, cn_pmi_risk, cn_global_wci_risk, cn_traffic_risk, \
     cn_board_risk
+from risk_manager.gpr import global_risk
 from datetime import datetime
 from utils.send_msg import MailSender
 from monitor.comm_mail_utils import macro_risk_construct_mail_str
@@ -203,8 +204,18 @@ def cn_week_traffic_risk_mail_str(day=None):
     html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国运输风险', day)
     return html_str
 
+def global_gpr_mail_str(day=None):
+    mapping_dict = {"risk":"风险",
+                    "no_risk":"战争结束可能",
+                    "index":"时间"}
 
+    df = global_risk()
+    if day is None:
+        day = datetime.now().strftime("%Y%m%d")
+    html_str = macro_risk_construct_mail_str(mapping_dict, df, '地缘风险', day)
+    return html_str
 def mail_sender(html_str):
+
     sender = MailSender()
     if html_str != '':
         print("发送数据")
@@ -266,6 +277,21 @@ def week_monitor_main(arg_fn_dict: str = None):
     if html_str != '':
         mail_sender(html_str)
 
+def day_monitor_main(arg_fn_dict: str = None):
+    fn_mapping_dict = {
+        "gpr": global_gpr_mail_str,
+    }
+
+    if arg_fn_dict is None:
+        day = datetime.now().strftime("%Y%m%d")
+        arg_fn_dict = {
+            "gpr": day,
+        }
+    html_str = ""
+    for k, day in arg_fn_dict.items():
+        html_str += fn_mapping_dict.get(k)(day)
+    if html_str != '':
+        mail_sender(html_str)
 
 if __name__ == '__main__':
     month_monitor_main()
