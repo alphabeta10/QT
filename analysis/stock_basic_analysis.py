@@ -6,7 +6,7 @@ from big_models.google_api import *
 from analysis.analysis_tool import *
 import pandas as pd
 import matplotlib.pyplot as plt
-from utils.tool import load_json_data,comm_read_stock
+from utils.tool import load_json_data, comm_read_stock
 import google.generativeai as genai
 from utils.actions import try_get_action
 from data.mongodb import get_mongo_table
@@ -543,7 +543,8 @@ def big_model_stock_price_data(codes: list, model):
 输出：{"综合分析":"30日夏普为-0.23, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.19, 表明该股票在过去30天内的最大跌幅为19%。30日累计收益为-0.20, 表明该股票在过去30天内的总回报率为-20%。60日夏普为-0.13, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.24, 表明该股票在过去60天内的最大跌幅为24%。60日累计收益为-0.20, 表明该股票在过去60天内的总回报率为-20%。240日夏普为-0.01, 低于0, 表明该股票在过去240天内的表现不佳。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.53, 表明该股票在过去240天内的最大跌幅为53%。240日累计收益为-0.20, 表明该股票在过去240天内的总回报率为-20%。综合以上，002230在过去不同日期的表现都不佳，不建议投资","603019":"30日夏普为-0.28, 低于0, 表明该股票在过去30天内的表现不佳。30日波动率为0.03, 表明该股票在过去30天内的波动性较小。30日最大回撤为-0.21, 表明该股票在过去30天内的最大跌幅为21%。30日累计收益为-0.21, 表明该股票在过去30天内的总回报率为-21%。60日夏普为-0.15, 低于0, 表明该股票在过去60天内的表现不佳。60日波动率为0.03, 表明该股票在过去60天内的波动性较小。60日最大回撤为-0.25, 表明该股票在过去60天内的最大跌幅为25%。60日累计收益为-0.22, 表明该股票在过去60天内的总回报率为-22%。240日夏普为0.04, 高于0, 表明该股票在过去240天内的表现较好。240日波动率为0.04, 表明该股票在过去240天内的波动性较小。240日最大回撤为-0.49, 表明该股票在过去240天内的最大跌幅为49%。 240日累计收益为0.19, 表明该股票在过去240天内的总回报率为19%。综合以上，603019在过去不同日期的表现都不佳，不建议投资","投资分类":0}\n输入：${input_str}输出："""
     json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
                                request_txt=request_txt)
-    if json_data is not None and isinstance(json_data,dict) and ('综合分析' not in json_data.keys() or '投资分类' not in json_data.keys()):
+    if json_data is not None and isinstance(json_data, dict) and (
+            '综合分析' not in json_data.keys() or '投资分类' not in json_data.keys()):
         json_data = try_get_action(google_big_gen_model_comm_fn, try_count=3, data_df=result_df, model=model,
                                    request_txt=request_txt)
     return json_data
@@ -574,7 +575,7 @@ def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
                 invent_state = ret_json['投资分类']
             if summary is not None and invent_state is not None:
                 new_dict = {"data_type": "stock_price_summary", "abstract": summary,
-                            "time": year, "code": code,"invent_state":invent_state}
+                            "time": year, "code": code, "invent_state": invent_state}
 
                 update_request.append(
                     UpdateOne({"code": code, 'time': new_dict['time'], "data_type": new_dict['data_type']},
@@ -583,12 +584,33 @@ def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
                 )
             else:
                 print(f"返回 json 有问题 {ret_json}")
-            if len(update_request)>4:
+            if len(update_request) > 4:
                 mongo_bulk_write_data(big_model_col, update_request)
                 update_request.clear()
     if len(update_request) > 0:
         mongo_bulk_write_data(big_model_col, update_request)
         update_request.clear()
+
+
+class StockBasicAnalysis(object):
+    def __init__(self, *args, **kwargs):
+        self.code = kwargs['code']
+        if 'date' not in kwargs.keys():
+            self.date = str(datetime.now().year-1)+"年度"
+
+
+    def get_stock_industry(self):
+        database = 'stock'
+        collection = 'business'
+        condition = {"date":self.date, "code": self.code,"class_dire":"按产品分"}
+        projection = {"_id": False}
+        data = get_data_from_mongo(database=database, collection=collection,
+                                   condition=condition,
+                                   projection=projection)
+        data['营业收入-占主营收入比'] = data['营业收入-占主营收入比'].apply(lambda ele:round(float(ele.replace("%",""))/100.0,4))
+        data.sort_values(by='营业收入-占主营收入比', inplace=True, ascending=False)
+        data = data[data['class']!='合计']
+        return data
 
 if __name__ == '__main__':
     enter_big_model_analysis_stock_indicator()

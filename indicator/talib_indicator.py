@@ -23,11 +23,15 @@ def adj_obv(high, low, close, volume):
     obv_list = []
     for i, vol in enumerate(volume):
         h, l, c = high[i], low[i], close[i]
-        weight = ((c - l) - (h - c)) / (h - l)
+        if h-l==0:
+            d_num = 1
+        else:
+            d_num = h-l
+        weight = ((c - l) - (h - c)) /d_num
         if i == 0:
             obv_list.append(vol * weight)
         else:
-            cur_vol = obv_list[i - 1] + vol * weight
+            cur_vol = obv_list[i - 1] + float(vol) * weight
             obv_list.append(cur_vol)
     return obv_list
 

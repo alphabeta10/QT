@@ -1,8 +1,11 @@
 import akshare as ak
 import google.generativeai as genai
 from datetime import datetime
+
+import pandas as pd
+
 from big_models.google_api import *
-from utils.tool import load_json_data,get_data_from_mongo
+from utils.tool import load_json_data, get_data_from_mongo
 from pymongo import UpdateOne
 from data.mongodb import get_mongo_table
 from utils.tool import mongo_bulk_write_data
@@ -291,9 +294,9 @@ def cn_traffic_data_analysis():
     """
     news = get_mongo_table(database='stock', collection='common_seq_data')
     datas = []
-    before_year = datetime.now().year-1
+    before_year = datetime.now().year - 1
     start_time = f"{before_year}0101"
-    if "20230401">start_time:
+    if "20230401" > start_time:
         start_time = "20230401"
     for ele in news.find({"data_type": "traffic", "metric_code": "traffic", "time": {"$gt": start_time}},
                          projection={'_id': False}).sort("time"):
@@ -335,8 +338,7 @@ def wci_index_data_analysis():
 
     news = get_mongo_table(database='stock', collection='common_seq_data')
     datas = []
-    before_year = datetime.now().year-1
-
+    before_year = datetime.now().year - 1
 
     for ele in news.find({"data_type": "wci_index", "time": {"$gt": f"{before_year}-01-01"}},
                          projection={'_id': False}).sort("time"):
@@ -349,6 +351,7 @@ def wci_index_data_analysis():
         plot_bar_value_line_same_rate_data(data.index.values, data['wci'].values, data[f'wci_pct_1'].values, name,
                                            f'{name}环比比', '时间', f'{name}分析')
 
+
 def cn_wci_index_data_analysis():
     """
     集装箱指数分析
@@ -359,8 +362,7 @@ def cn_wci_index_data_analysis():
 
     news = get_mongo_table(database='stock', collection='common_seq_data')
     datas = []
-    before_year = datetime.now().year-1
-
+    before_year = datetime.now().year - 1
 
     for ele in news.find({"data_type": "cn_wci_index", "time": {"$gt": f"{before_year}0101"}},
                          projection={'_id': False}).sort("time"):
@@ -370,11 +372,13 @@ def cn_wci_index_data_analysis():
         data = pd_data[pd_data['metric_code'] == metric_code]
         data.set_index(keys=['time'], inplace=True)
         add_pct(data, 'cur_month_data')
-        plot_bar_value_line_same_rate_data(data.index.values, data['cur_month_data'].values, data[f'cur_month_data_pct_1'].values, name,
+        plot_bar_value_line_same_rate_data(data.index.values, data['cur_month_data'].values,
+                                           data[f'cur_month_data_pct_1'].values, name,
                                            f'{name}环比比', '时间', f'{name}分析')
 
+
 def analysis_us_debt():
-    condition = {"data_name":"Total Public Debt Outstanding","data_time":{"$gt":'2001-01-01'}}
+    condition = {"data_name": "Total Public Debt Outstanding", "data_time": {"$gt": '2001-01-01'}}
     database = 'stock'
     collection = 'micro'
     projection = {'_id': False}
@@ -383,11 +387,12 @@ def analysis_us_debt():
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
     show_data(data)
-    data[['value']] = data[['value']].astype(float)/1e6
-    data.set_index(keys='data_time',inplace=True)
+    data[['value']] = data[['value']].astype(float) / 1e6
+    data.set_index(keys='data_time', inplace=True)
     data.sort_index(inplace=True)
     data['value'].plot(kind='line', title='美国债务（万亿）', rot=45, figsize=(15, 8), fontsize=10)
     plt.show()
+
 
 def analysis_us_m0():
     condition = {"data_name": "M0", "data_time": {"$gt": '2001-01-01'}}
@@ -406,7 +411,118 @@ def analysis_us_m0():
     plt.show()
 
 
+def cn_pmi_analysis():
+    code_dict = {'A0B0101_yd': '制造业采购经理指数', 'A0B0102_yd': '生产指数', 'A0B0103_yd': '新订单指数',
+                 'A0B0104_yd': '新出口订单指数', 'A0B0105_yd': '在手订单指数', 'A0B0106_yd': '产成品库存指数',
+                 'A0B0107_yd': '采购量指数', 'A0B0108_yd': '进口指数', 'A0B0109_yd': '出厂价格指数',
+                 'A0B010A_yd': '主要原材料购进价格指数', 'A0B010B_yd': '原材料库存指数', 'A0B010C_yd': '从业人员指数',
+                 'A0B010D_yd': '供应商配送时间指数', 'A0B010E_yd': '生产经营活动预期指数'}
+
+    database = 'govstats'
+    collection = 'data_info'
+    projection = {'_id': False}
+
+    time = "201801"
+    code_list = {"$in": list(code_dict.keys())}
+    condition = {"code": code_list, "time": {"$gte": time}}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+
+    """
+    产成品库存指数,原材料库存指数,结论
+    up,up,主动补库存预期未来需求向好
+    down,down,去库存周期，降价处理自己仓库里的库存
+    down,up,需求向好，被动去库存
+    up,down,需求不好，
+    """
+
+    inventory_dict = {
+        'A0B0106_yd': {"up": 0, "down": 1},
+        'A0B010B_yd': {"up": 0, "down": 1},
+    }
+    inventory_conclude_dict = {
+        "00": "主动补库存预期未来需求向好",
+        "01": "需求不好",
+        "10": "需求向好，被动去库存",
+        "11": "去库存周期，降价处理自己仓库里的库存",
+    }
+    """
+    采购量指数,结论
+    up,需求上升
+    down,需求放缓
+    """
+    purchase_dict = {'A0B0107_yd': {"up": "需求上升", "down": "需求放缓"}}
+
+    """
+    生产指数,结论
+    up,供给增大
+    down,供给放缓
+    """
+    product_dict = {
+        'A0B0102_yd': {"up": "供给增大", "down": "供给放缓"}
+    }
+
+    """
+    新订单指数,新出口订单指数,在手订单指数,结论
+    up，内需好
+    up,外需好
+    """
+    need_dict = {
+        'A0B0103_yd': {"up": "内需向好", "down": "内需放缓"},
+        'A0B0104_yd': {"up": "外需向好", "down": "外需放缓"},
+        'A0B0105_yd': {"up": "订单完成进度慢", "down": "订单完成进度快"},
+    }
+
+    class_conclude_mapping = {
+        "需求": need_dict,
+        "供给": product_dict,
+        "采购量": purchase_dict,
+        "存货": inventory_dict,
+    }
+    new_data = pd.pivot_table(data, index='time', columns='code', values='data')
+    diff_new_data = new_data.diff()
+    result_data = {}
+    final_concludes = []
+    for index in diff_new_data.index:
+        dict_data = dict(diff_new_data.loc[index])
+        result_data.setdefault(index, {})
+        final_conclude = ""
+        for name, config_dict in class_conclude_mapping.items():
+            concludes = []
+            if name != '存货':
+                for k, conclude_dict in config_dict.items():
+                    v = dict_data.get(k, None)
+                    if v is not None and v >= 0:
+                        res = "up"
+                    else:
+                        res = "down"
+                    conclude = conclude_dict[res]
+                    result_data[index].setdefault(name, [])
+                    result_data[index][name].append(conclude)
+                    concludes.append(f"{conclude}")
+            else:
+                conclude = ""
+                for k, conclude_dict in config_dict.items():
+                    v = dict_data.get(k, None)
+                    if v is not None and v >= 0:
+                        res = "up"
+                    else:
+                        res = "down"
+                    conclude += str(conclude_dict[res])
+                conclude = inventory_conclude_dict[conclude]
+                concludes.append(f"{conclude}")
+                result_data[index].setdefault(name, [])
+                result_data[index][name].append(conclude)
+            final_conclude += name + "[" + ";".join(concludes) + "]"
+        final_concludes.append({"time": index, "conclude": final_conclude})
+    conclude_df = pd.DataFrame(data=final_concludes)
+    new_data.reset_index(inplace=True)
+    new_data = pd.merge(new_data, conclude_df, on=['time'], how='left')
+    return new_data
+
 
 if __name__ == '__main__':
-    #enter_big_model_analysis_macro()
-    analysis_us_m0()
+    # enter_big_model_analysis_macro()
+    df = cn_pmi_analysis()
+    print(df)

@@ -4,7 +4,7 @@ from data.mongodb import get_mongo_table
 from data.stock_metric_data import stock_indicator, stock_vol_and_name
 from utils.tool import sort_dict_data_by, dump_json_data, load_json_data
 from utils.actions import show_data
-from indicator.common_indicator import get_stock_last_dzjy,get_batch_stock_margin_indicator
+from indicator.common_indicator import get_stock_last_dzjy, get_batch_stock_margin_indicator
 import os
 from datetime import datetime, timedelta
 import akshare as ak
@@ -116,7 +116,7 @@ def get_stock_holder_or_reduce(codes):
     return risk_level
 
 
-def get_stock_by_roe(codes,get_date=None):
+def get_stock_by_roe(codes, get_date=None):
     fin_col = get_mongo_table(collection='fin_simple')
     before_year_str = (datetime.now() - timedelta(days=365)).strftime("%Y0101")
     result_roe = {}
@@ -135,7 +135,7 @@ def get_stock_by_roe(codes,get_date=None):
                 result_roe[date][code] = {"income": income}
             else:
                 result_roe[date][code]['income'] = income
-        if data_type=='zcfz':
+        if data_type == 'zcfz':
             lia_assets = ele['lia_assets']
             total_assets = ele['total_assets']
             net_assets = total_assets - lia_assets
@@ -144,15 +144,15 @@ def get_stock_by_roe(codes,get_date=None):
             else:
                 result_roe[date][code]['net_assets'] = net_assets
     final_result = {}
-    result_roe = sort_dict_data_by(result_roe,reverse=True)
-    for time,combine in result_roe.items():
-        if get_date is None and len(final_result.keys())==0:
+    result_roe = sort_dict_data_by(result_roe, reverse=True)
+    for time, combine in result_roe.items():
+        if get_date is None and len(final_result.keys()) == 0:
             final_result[time] = {}
-            for code,cv in combine.items():
+            for code, cv in combine.items():
                 if 'income' in cv.keys() and 'net_assets' in cv.keys():
-                    net_profit = round(cv['income']/cv['net_assets'],4)
+                    net_profit = round(cv['income'] / cv['net_assets'], 4)
                     final_result[time][code] = net_profit
-        if get_date is not None and get_date==time:
+        if get_date is not None and get_date == time:
             final_result[time] = {}
             for code, cv in combine.items():
                 if 'income' in cv.keys() and 'net_assets' in cv.keys():
@@ -160,27 +160,29 @@ def get_stock_by_roe(codes,get_date=None):
                     final_result[time][code] = net_profit
     return final_result.values()
 
+
 def handle_score(row, col_list):
     total_score = 0
     for col in col_list:
         total_score += row[col]
-    total_score = round(total_score,4)
+    total_score = round(total_score, 4)
     return total_score
 
-def metric_rank_score(dict_data,metric,sort_type=False):
+
+def metric_rank_score(dict_data, metric, sort_type=False):
     dict_list = []
     sort_dict_data = sort_dict_data_by(dict_data, by='value', reverse=sort_type)
     num = len(sort_dict_data)
-    before_rank,before_ele = 0,0
+    before_rank, before_ele = 0, 0
     for i, combine in enumerate(sort_dict_data.items()):
         k, v = combine
-        if i==0:
-            before_rank, before_ele = i+1,v
+        if i == 0:
+            before_rank, before_ele = i + 1, v
         else:
-            if before_ele!=v:
+            if before_ele != v:
                 before_rank += 1
             before_ele = v
-        score = round((before_rank / num) * 100,4)
+        score = round((before_rank / num) * 100, 4)
         dict_list.append({"code": k, f"{metric}_score": score})
     return dict_list
 
@@ -209,8 +211,8 @@ def get_common_concept_stock_pool(concept_names):
         concept_code_pd[concept_name] = code_pd
 
     code_mapping = {}
-    metric_core_col = ['pe_score','turn_over_score','flow_mv_score','roe_score']
-    score_dict = {"pe":True,"turn_over":True}
+    metric_core_col = ['pe_score', 'turn_over_score', 'flow_mv_score', 'roe_score']
+    score_dict = {"pe": True, "turn_over": True}
     for k, v in concept_code_pd.items():
         print(f"handle name={k}")
         codes = []
@@ -229,28 +231,31 @@ def get_common_concept_stock_pool(concept_names):
             pe = dict_data['pe']
             flow_mv = dict_data['flow_mv']
             turn_over = dict_data['turn_over']
+            if pe != '--' and float(pe) < 0:
+                pe = 100000000000 * 2
             if pe == '--':
                 pe = 100000000000
             else:
                 pe = float(pe)
+            if turn_over == '--':
+                turn_over = 100000000000
             pe_dict_data[code] = pe
             turn_over_dict[code] = float(turn_over)
             flow_mv_dict[code] = float(flow_mv.replace("亿", ""))
 
-        res = metric_rank_score(pe_dict_data,'pe',sort_type=score_dict.get('pe',False))
+        res = metric_rank_score(pe_dict_data, 'pe', sort_type=score_dict.get('pe', False))
         score_df = pd.DataFrame(res)
 
-        res = metric_rank_score(turn_over_dict,'turn_over',sort_type=score_dict.get('turn_over',False))
+        res = metric_rank_score(turn_over_dict, 'turn_over', sort_type=score_dict.get('turn_over', False))
         turn_over_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, turn_over_score_df, on=['code'], how='left')
 
-        res = metric_rank_score(flow_mv_dict, 'flow_mv',sort_type=score_dict.get('flow_mv',False))
+        res = metric_rank_score(flow_mv_dict, 'flow_mv', sort_type=score_dict.get('flow_mv', False))
         flow_mv_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, flow_mv_score_df, on=['code'], how='left')
 
-
-        roe = list(get_stock_by_roe(codes,get_date='20230930'))[0]
-        res = metric_rank_score(roe, 'roe', sort_type=score_dict.get('roe',False))
+        roe = list(get_stock_by_roe(codes, get_date='20230930'))[0]
+        res = metric_rank_score(roe, 'roe', sort_type=score_dict.get('roe', False))
         roe_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, roe_score_df, on=['code'], how='left')
 
@@ -269,19 +274,20 @@ def get_common_concept_stock_pool(concept_names):
                 convert_margin_str += "有风险=" + str(combine_risk.get('有风险'))
             convert_margin_risk_dict[code] = convert_margin_str
 
-        score_df.fillna(0,inplace=True)
+        score_df.fillna(0, inplace=True)
         score_df['total_score'] = score_df.apply(handle_score, axis=1, args=(metric_core_col,))
-        score_df.sort_values(by='total_score',ascending=False,inplace=True)
+        score_df.sort_values(by='total_score', ascending=False, inplace=True)
         new_data_list = []
         for index in score_df.index:
             dict_data = dict(score_df.loc[index])
             dict_data['name'] = code_mapping.get(dict_data.get("code"))
-            dict_data['30day_reduce_risk'] = holder_or_reduce.get(dict_data.get("code"),'无风险')
-            dict_data['7day_dajy_risk'] = dzjy_dict.get(dict_data.get("code"),'无风险')
-            dict_data['margin_risk'] = convert_margin_risk_dict.get(dict_data.get("code"),'无风险')
+            dict_data['30day_reduce_risk'] = holder_or_reduce.get(dict_data.get("code"), '无风险')
+            dict_data['7day_dajy_risk'] = dzjy_dict.get(dict_data.get("code"), '无风险')
+            dict_data['margin_risk'] = convert_margin_risk_dict.get(dict_data.get("code"), '无风险')
             new_data_list.append(dict_data)
-        pd.DataFrame(new_data_list).to_csv(f"{now_str}_{k}_stock.csv",index=False)
+        pd.DataFrame(new_data_list).to_csv(f"{now_str}_{k}_stock.csv", index=False)
         print("*" * 50)
+
 
 def get_news_top2_concept_stock_pool():
     """
@@ -297,7 +303,7 @@ def get_news_top2_concept_stock_pool():
     else:
         concept_names = ak.stock_board_concept_name_ths()
         concept_names.to_csv(concept_path, index=False)
-    concept_names.sort_values(by='日期',inplace=True,ascending=False)
+    concept_names.sort_values(by='日期', inplace=True, ascending=False)
     show_data(concept_names.head(10))
     concept_names_top2 = concept_names.head(2)['概念名称'].values
     concept_code_pd = {}
@@ -321,8 +327,8 @@ def get_news_top2_concept_stock_pool():
         concept_code_pd[concept_name] = code_pd
 
     code_mapping = {}
-    metric_core_col = ['pe_score','turn_over_score','flow_mv_score','roe_score']
-    score_dict = {"pe":True,"turn_over":True}
+    metric_core_col = ['pe_score', 'turn_over_score', 'flow_mv_score', 'roe_score']
+    score_dict = {"pe": True, "turn_over": True}
     for k, v in concept_code_pd.items():
         print(f"handle name={k}")
         codes = []
@@ -341,6 +347,8 @@ def get_news_top2_concept_stock_pool():
             pe = dict_data['pe']
             flow_mv = dict_data['flow_mv']
             turn_over = dict_data['turn_over']
+            if pe!='--' and float(pe)<0:
+                pe = 100000000000*2
             if pe == '--':
                 pe = 100000000000
             else:
@@ -349,50 +357,49 @@ def get_news_top2_concept_stock_pool():
             turn_over_dict[code] = float(turn_over)
             flow_mv_dict[code] = float(flow_mv.replace("亿", ""))
 
-        res = metric_rank_score(pe_dict_data,'pe',sort_type=score_dict.get('pe',False))
+        res = metric_rank_score(pe_dict_data, 'pe', sort_type=score_dict.get('pe', False))
         score_df = pd.DataFrame(res)
 
-        res = metric_rank_score(turn_over_dict,'turn_over',sort_type=score_dict.get('turn_over',False))
+        res = metric_rank_score(turn_over_dict, 'turn_over', sort_type=score_dict.get('turn_over', False))
         turn_over_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, turn_over_score_df, on=['code'], how='left')
 
-        res = metric_rank_score(flow_mv_dict, 'flow_mv',sort_type=score_dict.get('flow_mv',False))
+        res = metric_rank_score(flow_mv_dict, 'flow_mv', sort_type=score_dict.get('flow_mv', False))
         flow_mv_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, flow_mv_score_df, on=['code'], how='left')
 
-
         roe = list(get_stock_by_roe(codes))[0]
-        res = metric_rank_score(roe, 'roe', sort_type=score_dict.get('roe',False))
+        res = metric_rank_score(roe, 'roe', sort_type=score_dict.get('roe', False))
         roe_score_df = pd.DataFrame(res)
         score_df = pd.merge(score_df, roe_score_df, on=['code'], how='left')
 
         holder_or_reduce = get_stock_holder_or_reduce(codes)
 
-        dzjy_dict = get_stock_last_dzjy(codes,before_7_day_str)
-        dzjy_dict = {code:ele['risk_level'] for code,ele in dzjy_dict.items()}
+        dzjy_dict = get_stock_last_dzjy(codes, before_7_day_str)
+        dzjy_dict = {code: ele['risk_level'] for code, ele in dzjy_dict.items()}
 
         margin_risk_dict = get_batch_stock_margin_indicator(codes)
         convert_margin_risk_dict = {}
-        for code,combine_risk in margin_risk_dict.items():
+        for code, combine_risk in margin_risk_dict.items():
             convert_margin_str = ''
             if '低风险' in combine_risk.keys():
-                convert_margin_str+="低风险="+str(combine_risk.get('低风险'))
+                convert_margin_str += "低风险=" + str(combine_risk.get('低风险'))
             if '有风险' in combine_risk.keys():
                 convert_margin_str += "有风险=" + str(combine_risk.get('有风险'))
             convert_margin_risk_dict[code] = convert_margin_str
 
-        score_df.fillna(0,inplace=True)
+        score_df.fillna(0, inplace=True)
         score_df['total_score'] = score_df.apply(handle_score, axis=1, args=(metric_core_col,))
-        score_df.sort_values(by='total_score',ascending=True,inplace=True)
+        score_df.sort_values(by='total_score', ascending=False, inplace=True)
         new_data_list = []
         for index in score_df.index:
             dict_data = dict(score_df.loc[index])
             dict_data['name'] = code_mapping.get(dict_data.get("code"))
-            dict_data['30day_reduce_risk'] = holder_or_reduce.get(dict_data.get("code"),'无风险')
-            dict_data['7day_dajy_risk'] = dzjy_dict.get(dict_data.get("code"),'无风险')
-            dict_data['margin_risk'] = convert_margin_risk_dict.get(dict_data.get("code"),'无风险')
+            dict_data['30day_reduce_risk'] = holder_or_reduce.get(dict_data.get("code"), '无风险')
+            dict_data['7day_dajy_risk'] = dzjy_dict.get(dict_data.get("code"), '无风险')
+            dict_data['margin_risk'] = convert_margin_risk_dict.get(dict_data.get("code"), '无风险')
             new_data_list.append(dict_data)
-        pd.DataFrame(new_data_list).to_csv(f"concept_new_top2_{now_str}_{k}_stock.csv",index=False)
+        pd.DataFrame(new_data_list).to_csv(f"concept_new_top2_{now_str}_{k}_stock.csv", index=False)
         print("*" * 50)
 
 

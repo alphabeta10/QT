@@ -532,6 +532,166 @@ def analysis_fin_by_metric(code_dict=None, isLocal=False, quarter=4, is_show=Tru
     return ret_data
 
 
+def analysis_detail_fin_by_metric(code_dict=None, isLocal=False, quarter=4, is_show=True, start_date=None,
+                                  custom_metrics=None):
+    def fin_data_same_rate(pd_data, val_col, rename_col):
+        temp_data = pd.pivot_table(pd_data, values=val_col, index='date', columns='code')
+        temp_data.sort_index(inplace=True)
+        pct_change_data = temp_data.pct_change(1)
+        data_list = []
+        for index in pct_change_data.index:
+            dict_data = dict(pct_change_data.loc[index])
+            for code, value in dict_data.items():
+                data_list.append({"code": code, rename_col: value, "date": index})
+        return pd.DataFrame(data_list)
+
+    quarter_mapping = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+    quarter_month = quarter_mapping[quarter]
+
+    def handle_score(row, col_list):
+        total_score = 0
+        for col in col_list:
+            total_score += row[col]
+        return total_score
+
+    if code_dict is None:
+        code_dict = {"sh603019": "中科曙光", "sz002230": "科大讯飞", "sz000977": "浪潮信息", "sz300474": "景嘉微"}
+    if len(code_dict.keys()) == 0:
+        return
+    rename_code = {}
+    for k, v in code_dict.items():
+        rename_code[k[2:]] = v
+    codes = list(code_dict.keys())
+    data = get_fin_common_metric(code_list=codes, isZcfcDataFromLocal=isLocal, isProfitDataFromLocal=isLocal,
+                                 isCashDataFromLocal=isLocal, start_date=start_date)
+    pd_data = data[data['date'].str.contains(quarter_month)]
+    # 同期的比较同比的指标 净利润增长率:NETPROFIT 营业收入增长率:OPERATE_INCOME 总资产增长率:TOTAL_ASSETS 净资产增长率:TOTAL_EQUITY 营业利润增长率:OPERATE_PROFIT
+
+    same_df = fin_data_same_rate(pd_data, 'NETPROFIT', '净利润增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'OPERATE_INCOME', '营业收入增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'TOTAL_ASSETS', '总资产增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'TOTAL_EQUITY', '净资产增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'OPERATE_PROFIT', '营业利润增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'RESEARCH_EXPENSE', '研发费用增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    same_df = fin_data_same_rate(pd_data, 'CIP', '在建工程增长率')
+    pd_data = pd.merge(pd_data, same_df, on=['date', 'code'], how='left')
+
+    # 公司发展指标
+    future_dev_metric_cols = ['净利润增长率', '营业收入增长率', '总资产增长率', '净资产增长率', '营业利润增长率',
+                              '研发费用增长率', '在建工程增长率']
+    # 盈利能力指标
+    profitability_metric_cols = ['毛利率', '销售净利率', '总资产收益率', '净资产收益率', '资本收益率', '资本报酬率',
+                                 '总资产利润率']
+    # 偿债能力指标
+    pay_debt_metric_cols = ['资产负债率', '流动比率', '速动比率', '现金比率', '产权比率']
+
+    operator_metric_cols = ['全部资产现金回收率', '销售现金比率', '现金流动负债率', '应收账款周转率', '存货周转率',
+                            '流动资产周转率', '固定资产周转率', '总资产周转率']
+
+    metric_rel_col_dict = {
+        "净利润增长率": {"NETPROFIT": "净利润"},
+        "营业收入增长率": {"OPERATE_INCOME": "营业收入"},
+        "总资产增长率": {"TOTAL_ASSETS": "总资产"},
+        "净资产增长率": {"TOTAL_EQUITY": "净资产"},
+        "营业利润增长率": {"OPERATE_PROFIT": "营业利润"},
+        "研发费用增长率": {"RESEARCH_EXPENSE": "研发费用"},
+        "在建工程增长率": {"CIP": "在建工程"},
+        "毛利率": {"OPERATE_INCOME": "营业收入", "OPERATE_COST": "营业成本"},
+        "销售净利率": {"NETPROFIT": "净利润", "OPERATE_INCOME": "营业收入"},
+        "总资产收益率": {"NETPROFIT": "净利润", "AVG_TOTAL_ASSETS": "平均总资产"},
+        "净资产收益率": {"NETPROFIT": "净利润", "AVG_TOTAL_EQUITY": "平均净资产"},
+        "资本报酬率": {"NETPROFIT": "净利润", "TOTAL_EQUITY": "平均净资产"},
+        "总资产利润率": {"TOTAL_PROFIT": "利润总额", "AVG_TOTAL_ASSETS": "平均总资产"},
+        "资产负债率": {"TOTAL_LIABILITIES": "总负债", "TOTAL_ASSETS": "总资产"},
+        "流动比率": {"TOTAL_CURRENT_ASSETS": "总流动资产", "TOTAL_CURRENT_LIAB": "总流动负债"},
+        "速动比率": {"TOTAL_CURRENT_ASSETS": "总流动资产", "INVENTORY": "存货", "TOTAL_CURRENT_LIAB": "总流动负债"},
+        "现金比率": {"MONETARYFUNDS": "货币资金", "TRADE_FINASSET_NOTFVTPL": "交易性金融资产",
+                     "TOTAL_CURRENT_LIAB": "总流动负债"},
+        "产权比率": {"TOTAL_LIABILITIES": "总负债", "TOTAL_EQUITY": "净资产"},
+        "全部资产现金回收率": {"NETCASH_OPERATE": "经营活动产生的现金流量净额",
+                               "NETCASH_INVEST": "投资活动产生的现金流量净额", "TOTAL_ASSETS": "总资产"},
+        "销售现金比率": {"NETCASH_OPERATE": "经营活动产生的现金流量净额", "OPERATE_INCOME": "营业收入"},
+        "现金流动负债率": {"NETCASH_OPERATE": "经营活动产生的现金流量净额", "TOTAL_CURRENT_LIAB": "总流动负债"},
+        "应收账款周转率": {"OPERATE_INCOME": "营业收入", "AVG_ACCOUNTS_RECE": "平均应收账款"},
+        "存货周转率": {"OPERATE_COST": "营业成本", "AVG_INVENTORY": "平均存货"},
+        "流动资产周转率": {"OPERATE_COST": "营业成本", "AVG_TOTAL_CURRENT_ASSETS": "平均流动资产"},
+        "固定资产周转率": {"OPERATE_INCOME": "营业收入", "AVG_FIXED_ASSET": "平均固定资产"},
+        "总资产周转率": {"OPERATE_INCOME": "营业收入", "AVG_TOTAL_ASSETS": "平均总资产"},
+    }
+
+    # 净资产收益率=销售净利率*总资产周转率*权益乘数
+    # (净利润/营业收入)*(营业收入/平均资产)*(平均资产/平均净资产)
+
+    pay_debt_score_sort_type = {'资产负债率': True, "产权比率": True}
+    # 财务指标分类打分
+    metric_sort_type = pay_debt_score_sort_type  # 有指标要评分，倒序指定就行
+    metric_col = operator_metric_cols + pay_debt_metric_cols + profitability_metric_cols + future_dev_metric_cols
+
+    if custom_metrics is None:
+        custom_metrics = ['在建工程增长率', '研发费用增长率', '营业收入增长率', '营业利润增长率', '净利润增长率',
+                          '资产负债率']
+
+    for check_metric in custom_metrics:
+        if check_metric not in metric_col:
+            print(f"自定义指标没有在规定指标内{metric_col}")
+            return
+    show_col_map = {}
+    for metric in custom_metrics:
+        ele_dict = metric_rel_col_dict.get(metric,{})
+        for k,v in ele_dict.items():
+            show_col_map[k] = v
+    print(show_col_map)
+    score_df_list = []
+    metric_core_col = []
+    for metric in custom_metrics:
+        metric_core_col.append(f"{metric}_score")
+        sort_type = False
+        if metric in metric_sort_type.keys():
+            sort_type = metric_sort_type.get(metric)
+        score_df = stock_score(pd_data, metric, sort_type=sort_type)
+        score_df_list.append(score_df)
+        data = pd.pivot_table(pd_data, values=metric, index=['date'], columns=['code'])
+        data = data.rename(columns=rename_code)
+        if is_show:
+            show_data(data)
+            data.plot(kind='bar', title=metric, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+            plt.show()
+
+    score_df = score_df_list[0]
+    for ele in score_df_list[1:]:
+        score_df = pd.merge(score_df, ele, left_on=['code', 'date'], right_on=['code', 'date'])
+    score_df['total_score'] = score_df.apply(handle_score, axis=1, args=(metric_core_col,))
+    get_row_data = pd_data[list(show_col_map.keys())+['date','code']].rename(columns=show_col_map)
+    for k in show_col_map.values():
+        get_row_data[k] = np.round(get_row_data[k] / 1e8, 4)
+    detail_data = pd.merge(score_df, get_row_data, left_on=['code', 'date'], right_on=['code', 'date'])
+    detail_data.sort_values(by=['date','total_score'],inplace=True)
+    detail_data['name'] = detail_data.apply(
+        lambda row:rename_code.get(row['code'],'no_code_name'),
+        axis=1)
+    show_data(detail_data)
+    data = pd.pivot_table(score_df, values='total_score', index=['date'], columns=['code'])
+    ret_data = copy.deepcopy(data)
+    data = data.rename(columns=rename_code)
+    if is_show:
+        show_data(data)
+        data.plot(kind='bar', title='分数', rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+        plt.show()
+    return ret_data
+
+
 def handle_fin_avg_data(pd_data, local_codes, handle_key):
     data = pd.pivot_table(pd_data, values=handle_key, index='date', columns='code')
     data.reset_index(level=0, inplace=True)
@@ -815,6 +975,81 @@ def money_multiply_analysis():
     show_data(merge_data)
     plt.show()
 
+def afre_analysis():
+    #第一步分析总体增量，环比，同比
+    # 1,3,6,9,11 旺季
+    # 4，5，7，10，12 淡季
+    """
+    债券
+        企业债券
+        政府债券
+
+    非标=信托贷款+委托贷款+未贴现银行承兑汇票 (trust_loans+entrusted_loans+undiscounted_banker_acceptances)
+
+    信贷
+        居民部
+            短期贷款
+            中长期贷款
+        企业部
+            短期贷款
+            中长期贷款
+
+    :return:
+    """
+    database = 'stock'
+    collection = 'common_seq_data'
+    projection = {'_id': False}
+
+    time = "2020"
+    condition = {"data_type": "credit_funds", "time": {"$gte": time},"metric_code":"agg_fin_flow"}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    # all_metric_dict = {
+    #     "afre": "社融规模增量",
+    #     "net_fin_cor_bonds":"企业债券",
+    #     "gov_bonds":"政府债券",
+    # }
+    #
+    # for k,name in all_metric_dict.items():
+    #     data[k] = data[k].astype(float)
+    #     convert_afre_month_df = convert_pd_data_to_month_data(data,'time',k,'metric_code',{"agg_fin_flow":name})
+    #     convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
+    #     plt.show()
+
+
+    database = 'stock'
+    collection = 'common_seq_data'
+    projection = {'_id': False}
+
+    time = "2018"
+    condition = {"data_type": "credit_funds", "time": {"$gte": time}, "metric_code": "credit_funds_fin_inst_rmb"}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    income_config = {
+        "住户贷款": "loans_to_households",
+        "住户短期贷款": "short_term_loans",
+        "住户中长期贷款": "mid_long_term_loans",
+        "(事)业单位贷款": "loans_to_non_financial_enterprises_and_government_departments_organizations",
+        "企业短期贷款": "short_term_loans_1",
+        "企业中长期贷款": "mid_long_term_loans_1",
+        "债券投资": "portfolio_investments",
+    }
+    for k in income_config.values():
+        data[k] = data[k].astype(float)
+    data.set_index(keys=['time'], inplace=True)
+    flow_credit_data = data[list(income_config.values())].diff()
+    flow_credit_data.reset_index(inplace=True)
+    flow_credit_data['metric_code'] = 'credit_funds_fin_inst_rmb_foreign'
+    show_data(flow_credit_data)
+    for name,k in income_config.items():
+        data[k] = data[k].astype(float)
+        convert_afre_month_df = convert_pd_data_to_month_data(flow_credit_data,'time',k,'metric_code',{"credit_funds_fin_inst_rmb_foreign":name})
+        convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
+        plt.show()
+
+
 
 if __name__ == '__main__':
-    enter_big_model_analysis_stock_fin()
+    afre_analysis()

@@ -8,7 +8,7 @@ from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 from tqdm import tqdm
 
-rename_cols = {"报告期":"report_date","分类方向":"class_dire","分类":"class"}
+rename_cols = {"报告期":"date","分类方向":"class_dire","分类":"class"}
 
 def get_zygc_ym(code='000001'):
     stock_zygc_ym_df = try_get_action(ak.stock_zygc_ym,try_count=3,symbol=code)
@@ -20,24 +20,22 @@ def get_zygc_ym(code='000001'):
 
 def product_data_to_mongo():
     codes = get_stock_info_data()
-    graph_col = get_mongo_table(collection='graph')
+    business = get_mongo_table(collection='business')
     for code in tqdm(codes):
         if "sz" in code or "sh" in code:
             code = code[2:]
             pd_data = get_zygc_ym(code)
             if pd_data is not None:
                 request_update = []
-                data_type = 'main_business'
                 pd_data = pd_data.rename(columns=rename_cols)
                 for index in pd_data.index:
                     dict_data = dict(pd_data.loc[index])
                     dict_data['code'] = code
                     request_update.append(UpdateOne(
-                        {"code": dict_data['code'], "date": dict_data['report_date'],
-                         "date_type": data_type,"class_dire":dict_data['class_dire'],"class":dict_data['class']},
+                        {"code": dict_data['code'], "date": dict_data['date'],"class_dire":dict_data['class_dire'],"class":dict_data['class']},
                         {"$set": dict_data},
                         upsert=True))
-                mongo_bulk_write_data(graph_col,request_update)
+                mongo_bulk_write_data(business,request_update)
 
 
 
@@ -79,11 +77,11 @@ def construct_graph():
                 print(report_dict)
 
 
+def create_index():
+    business = get_mongo_table(database='stock', collection='business')
+    business.create_index([("code", 1), ("date", 1),("class_dire",1),("class",1)],unique=True,background=True)
+
 
 if __name__ == '__main__':
-    construct_graph()
-    list_data = [1,2,3]
-    print(len(list_data))
-    list_data.clear()
-    print(len(list_data))
+    product_data_to_mongo()
 
