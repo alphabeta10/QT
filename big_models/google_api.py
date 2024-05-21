@@ -48,8 +48,14 @@ def simple_big_gen_model_fn(model,request_txt:str,is_ret_json=True):
     ]
     response = model.generate_content(request_txt, safety_settings=safety_settings)
     if is_ret_json is True:
-        json_data = json.loads(response.text)
-        return json_data
+        import re
+        match = re.search(r"\{(.+)\}", response.text)
+        if match:
+            json_str = match.group(0)
+            data = json.loads(json_str)
+            return data
+        else:
+            return None
     else:
         return response.text
 

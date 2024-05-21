@@ -6,9 +6,10 @@ import pandas as pd
 import schedule
 import time
 from data.comm_real_news_data import stock_telegraph_cls_news
-from analysis.ai_industry_analysis import common_ai_new_analysis
+from analysis.ai_industry_analysis import common_ai_new_analysis, common_kimi_ai_new_analysis
 from utils.send_msg import MailSender
 from utils.tool import load_json_data
+from openai import OpenAI
 
 
 def unique_key_to_file(file_name: str, data_list: set):
@@ -123,26 +124,123 @@ def get_real_future_news_data():
             list_new.sort(key=lambda ele: ele['time'], reverse=True)
             pd_data = pd.DataFrame(list_new)
             ret_list = common_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content', pub_time_key='time',
-                                              ret_key=['title'], model=model,themes=names)
-            if ret_list is not None:
+                                              ret_key=['title'], model=model, themes=names)
+            if ret_list is not None and len(ret_list) != 0:
                 for new in ret_list:
                     kys = new.keys()
                     if '情感分类' in kys:
                         sentiment = new['情感分类']
                     else:
                         print(new, '解析出错')
-                        sentiment = ''
+                        sentiment = '解析出错'
 
                     if '涉及的国家' in kys:
                         region = ",".join(new['涉及的国家'])
                     else:
                         print(new, '解析出错')
-                        region = ''
+                        region = '解析出错'
 
                     mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
                 mail_msg += "</table>"
             else:
-                mail_msg += "无数据分析</table>"
+                for new in list_new:
+                    kys = new.keys()
+                    if '情感分类' in kys:
+                        sentiment = new['情感分类']
+                    else:
+                        print(new, '解析出错')
+                        sentiment = '解析出错'
+
+                    if '涉及的国家' in kys:
+                        region = ",".join(new['涉及的国家'])
+                    else:
+                        print(new, '解析出错')
+                        region = '解析出错'
+
+                    mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
+                mail_msg += "</table>"
+    return mail_msg
+
+
+def get_real_future_news_data_kimi_model():
+    mail_msg = ""
+    names = load_names("tele_keys.txt")
+    tele_news = stock_telegraph_cls_news()
+    filter_dict_data = {}
+    for dict_data in tele_news:
+        content = dict_data['content']
+        for name in names:
+            if name in content:
+                if name not in filter_dict_data.keys():
+                    filter_dict_data[name] = []
+                filter_dict_data[name].append(dict_data)
+
+    filter_dict_data = filter_shenyishe_new_data(filter_dict_data, 'tele_ai_new_data.txt', 'title')
+    filter_dict_data = sort_by_last_time(filter_dict_data)
+    if len(filter_dict_data.keys()) > 0:
+        request_count_dict = {"rc": 0}
+        model_config = load_json_data('kimi_api_key.json')
+        api_key = model_config['api_key']
+        base_url = model_config['base_url']
+        model = model_config['model']
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+        )
+        model_list = client.models.list()
+        model_data = model_list.data
+        for i, mode in enumerate(model_data):
+            print(f"model[{i}]:", mode.id)
+        for name, list_new in filter_dict_data.items():
+            mail_msg += f"<p>{name}财联社最新消息如下</p>"
+            mail_msg += f"<table border=\"1\">"
+            mail_msg += f"<tr> <th>时间</th> <th>标题</th><th>详细内容</th> <th>地区</th> <th>情感类别</th> </tr>"
+            list_new.sort(key=lambda ele: ele['time'], reverse=True)
+            pd_data = pd.DataFrame(list_new)
+            ret_list = common_kimi_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content',
+                                                   pub_time_key='time',
+                                                   ret_key=['title'], client=client, model=model, name=name,
+                                                   request_count_dict=request_count_dict)
+            if ret_list is not None and len(ret_list) != 0:
+                for new in ret_list:
+                    kys = new.keys()
+                    if '情感分类' in kys:
+                        sentiment = new['情感分类']
+                    else:
+                        print(new, '解析出错')
+                        sentiment = '解析出错'
+
+                    if '涉及的国家' in kys:
+                        if isinstance(new['涉及的国家'], str):
+                            region = new['涉及的国家']
+                        elif isinstance(new['涉及的国家'], list):
+                            region = ",".join(new['涉及的国家'])
+                        else:
+                            print(new, '解析出错')
+                            region = ''
+                    else:
+                        print(new, '解析出错')
+                        region = '解析出错'
+
+                    mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
+                mail_msg += "</table>"
+            else:
+                for new in list_new:
+                    kys = new.keys()
+                    if '情感分类' in kys:
+                        sentiment = new['情感分类']
+                    else:
+                        print(new, '解析出错')
+                        sentiment = '解析出错'
+
+                    if '涉及的国家' in kys:
+                        region = ",".join(new['涉及的国家'])
+                    else:
+                        print(new, '解析出错')
+                        region = '解析出错'
+
+                    mail_msg += f"<tr> <td>{new['time']}</td> <td>{new['title']}</td> <td>{new['content']}</td>  <td>{region}</td> <td>{sentiment}</td></tr>"
+                mail_msg += "</table>"
     return mail_msg
 
 
@@ -150,7 +248,7 @@ def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com','791179751@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
+        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com', '791179751@qq.com'], "AI行业数据监控",
                               mail_msg)
         sender.close()
     else:

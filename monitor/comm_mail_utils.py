@@ -32,7 +32,7 @@ def macro_risk_construct_mail_str(col_dict: dict, df: pd.DataFrame, title: str, 
         html_str += "</table>"
         return html_str
 
-def comm_construct_mail_str(col_dict: dict, df: pd.DataFrame, title: str, day: str, num=6,is_tail=True,format_cols=None):
+def comm_construct_mail_str(col_dict: dict, df: pd.DataFrame, title: str, day: str='', num=6,is_tail=True,format_cols=None):
     """
     宏观风险构建发送邮件
     :param col_dict:

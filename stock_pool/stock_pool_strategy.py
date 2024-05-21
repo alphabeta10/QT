@@ -354,6 +354,8 @@ def get_news_top2_concept_stock_pool():
             else:
                 pe = float(pe)
             pe_dict_data[code] = pe
+            if turn_over == '--':
+                turn_over = 100000000000
             turn_over_dict[code] = float(turn_over)
             flow_mv_dict[code] = float(flow_mv.replace("亿", ""))
 

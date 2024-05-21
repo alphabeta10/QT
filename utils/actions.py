@@ -1,6 +1,6 @@
 import time
 
-def try_get_action(func, try_count=1, *args, **kwargs):
+def try_get_action(func, try_count=1,delay=10, *args, **kwargs):
     """
     重试调用函数
     :param func: 函数名称
@@ -23,7 +23,7 @@ def try_get_action(func, try_count=1, *args, **kwargs):
         except Exception as e:
             print(e)
             index += 1
-            time.sleep(10)
+            time.sleep(delay)
             print("try again")
     return None
 

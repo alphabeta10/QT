@@ -75,7 +75,7 @@ def big_model_stock_news_data(big_model_col, model, symbol='002527'):
 def big_model_detail_stock_news_data(big_model_col, model, symbol='002527', before_day_str=None):
     stock_news_em_df = try_get_action(ak.stock_news_em, try_count=3, symbol=symbol)
     update_request = []
-    temp_input_str = '给定新闻内容，分析新闻分类以及该新闻对公司股价情感分类[悲观，中性，积极]。\n输入：天眼查经营风险信息显示，近日，济南爱尔眼科医院有限公司因未取得医疗机构执业许可证擅自执业，违反了基本医疗卫生与健康促进法，被济南市市中区卫生健康局罚款5万元。\n输出：{"新闻分类":"医疗卫生","情感分类":"悲观"}\n输入：'
+    temp_input_str = '给定新闻内容，分析新闻分类以及该新闻对公司股价情感分类[悲观，中性，积极]。\n输入：天眼查经营风险信息显示，近日，济南爱尔眼科医院有限公司因未取得医疗机构执业许可证擅自执业，违反了基本医疗卫生与健康促进法，被济南市市中区卫生健康局罚款5万元。\n输出：```{"新闻分类":"医疗卫生","情感分类":"悲观"}```\n输入：'
     if stock_news_em_df is not None and len(stock_news_em_df) > 0:
         data = stock_news_em_df[['发布时间', '新闻内容', '新闻标题']]
         if before_day_str is not None:
@@ -85,11 +85,11 @@ def big_model_detail_stock_news_data(big_model_col, model, symbol='002527', befo
             dict_ele = dict(data.loc[index])
             news_content = dict_ele['新闻内容']
             request_txt = temp_input_str + news_content + "\n输出："
-            ret_data = try_get_action(simple_big_gen_model_fn, try_count=3, model=model, request_txt=request_txt,
+            ret_data = try_get_action(simple_big_gen_model_fn, try_count=3,delay=70, model=model, request_txt=request_txt,
                                       is_ret_json=True)
             if ret_data is not None and ('新闻分类' not in ret_data.keys() or '情感分类' not in ret_data.keys()):
                 print(f"ret data is illegal try again for {symbol}")
-                ret_data = try_get_action(simple_big_gen_model_fn, try_count=3, model=model, request_txt=request_txt,
+                ret_data = try_get_action(simple_big_gen_model_fn, try_count=3,delay=70, model=model, request_txt=request_txt,
                                           is_ret_json=True)
             if ret_data is not None and '新闻分类' in ret_data.keys() and '情感分类' in ret_data.keys():
                 new_dict = {"sentiment": ret_data['情感分类']}

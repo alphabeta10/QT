@@ -163,10 +163,11 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
                                     index=show_index)
         convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
         plt.show()
-    if plot_type=='line':
+    if plot_type == 'line':
         convert_data = pd.DataFrame(data=year_dict_data,
                                     index=value_index)
-        plot_marker_line(convert_data,value_index,show_index,title)
+        plot_marker_line(convert_data, value_index, show_index, title)
+
 
 def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=None, data_type=None):
     database = 'govstats'
@@ -225,7 +226,7 @@ def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=Non
     plt.show()
 
 
-def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_key=None, data_type=None,is_show=False):
+def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_key=None, data_type=None, is_show=False):
     database = 'govstats'
     collection = 'customs_goods'
     if name is None:
@@ -242,12 +243,12 @@ def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_k
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
     dict_fs = {
-        "acc_price":{"dnum":"acc_month_volume","num":"acc_month_amount"},
-        "cur_price":{"dnum":"month_volume","num":"month_amount"}
+        "acc_price": {"dnum": "acc_month_volume", "num": "acc_month_amount"},
+        "cur_price": {"dnum": "month_volume", "num": "month_amount"}
     }
     dict_name_mapping = {
-        "acc_price":"累计价格",
-        "cur_price":"当前价格"
+        "acc_price": "累计价格",
+        "cur_price": "当前价格"
     }
     if val_key is None:
         val_key = 'cur_price'
@@ -267,7 +268,7 @@ def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_k
         ele = data.loc[index]
         time = ele['date']
         code = ele['name']
-        val = round(ele[num_key] / ele[dnum_key],4)
+        val = round(ele[num_key] / ele[dnum_key], 4)
         year = time[0:4]
         metric = dict_name_mapping.get(val_key)
         combine_key = f"{year}年{code}{metric}"
@@ -282,6 +283,7 @@ def board_st_month_market_price_analysis(name=None, unit=None, title=None, val_k
         show_data(convert_data)
     convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
     plt.show()
+
 
 def cn_st_month_industry_revene_rate_analysis():
     """
@@ -618,23 +620,83 @@ def rate_gdb():
     data.sort_values(by='2022_rank', inplace=True, ascending=False)
 
 
-if __name__ == '__main__':
-    # code_dict = {'A020O0923_yd': '医药制造业营业收入累计增长率'}
-    # code_dict = {'A020O0933_yd': '计算机、通信和其他电子设备制造业营业收入累计增长率'}
-    code_dict = {'A02090901_yd': '白酒（折65度，商品量）产量当期值(万千升)'}
-    # code_dict = {'A02090A01_yd': '啤酒产量当期值(万千升)'}
-    # cn_st_month_market_analysis(code_dict=code_dict)
-    # cn_st_month_industry_revene_rate_analysis()
-    # board_st_month_market_analysis(name='干鲜瓜果及坚果',unit='万吨',title='干鲜瓜果及坚果进口',data_type='import_goods_detail',val_key='month_volume')
-    # cn_st_analysis_industry_goods_peak()
-    # board_st_month_market_analysis(name='中药材',unit='吨',val_key='acc_month_volume_cyc')
-    # board_st_month_market_analysis(name='中药材',unit='吨',val_key='month_volume_cyc')
-    # energy_product_analysis()
-    board_st_month_market_analysis(val_key='month_volume', name='大豆', data_type='import_goods_detail',
-                                   title='大豆进口数据')
-    # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '农用氮、磷、钾化学肥料（折纯）产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
-    # cn_st_month_market_analysis(code_dict={'A02090N01_yd': '啤酒产量'},title="农用氮、磷、钾化学肥料（折纯）产量",time='201001')
+def cn_st_structure_analysis(code_dict: dict = None, time=None, title=None):
+    if code_dict is None:
+        code_dict = {'A07040102_yd': '粮油、食品、饮料、烟酒类商品',
+                     'A07040106_yd': '粮油、食品类商品', 'A0704010I_yd': '饮料类商品',
+                     'A0704010M_yd': '烟酒类商品',
+                     'A07040202_yd': '服装鞋帽、针、纺织品类商品',
+                     'A07040206_yd': '服装类商品', 'A07040302_yd': '化妆品类商品',
+                     'A07040402_yd': '金银珠宝类商品', 'A07040502_yd': '日用品类商品',
+                     'A07040602_yd': '体育、娱乐用品类商品',
+                     'A07040702_yd': '书报杂志类商品',
+                     'A07040802_yd': '家用电器和音像器材类商品',
+                     'A07040902_yd': '中西药品类商品',
+                     'A07040A02_yd': '文化办公用品类商品', 'A07040B02_yd': '家具类商品',
+                     'A07040C02_yd': '通讯器材类商品', 'A07040D02_yd': '石油及制品类商品',
+                     'A07040E02_yd': '建筑及装潢材料类商品', 'A07040F02_yd': '汽车类商品',
+                     'A07040G02_yd': '其他商品'}
 
-    # rate_gdb()
-    # json_data = cn_st_gdp_cpi_add_rate() # GDP 增长率+ 通货膨胀率
-    # print(json_data)
+    database = 'govstats'
+    collection = 'data_info'
+    projection = {'_id': False}
+    if code_dict is None:
+        code_dict = {'A020O0913_yd': '酒、饮料和精制茶制造业营业收入累计增长率'}
+    if time is None:
+        time = "202312"
+    if title is None:
+        title = "国家统计局相关月频分析"
+    code_list = {"$in": list(code_dict.keys())}
+    condition = {"code": code_list, "time": time}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    data.sort_values(by='data', inplace=True, ascending=False)
+    data['code'] = data['code'].apply(lambda ele: code_dict.get(ele))
+    data.set_index(keys='code', inplace=True)
+    show_data(data)
+    # data['data'].plot.pie(subplots=True, figsize=(8, 4))
+    data['data'].plot(kind='bar', title=title, rot=60, width=0.5, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+
+def cn_board_structure_analysis(names: list = None, unit=None, data_type=None, time=None, val_key=None, title=None):
+    database = 'govstats'
+    collection = 'customs_goods'
+    condition = {}
+    if names is None:
+        names = ['亚洲','非洲','欧洲','拉丁美洲','北美洲','大洋洲','东南亚国家联盟','欧洲联盟','亚太经济合作组织']
+    condition['name'] = {"$in": names}
+    if unit is None:
+        pass
+    else:
+        condition['unit'] = unit
+
+    if data_type is None:
+        data_type = "country_export_import"
+    condition['data_type'] = data_type
+    if val_key is None:
+        val_key = 'export_amount'
+
+    if time is None:
+        time = '2024-04-01'
+    condition['date'] =time
+    print(condition)
+
+    projection = {'_id': False}
+    sort_key = "date"
+    if title is None:
+        title = '出口数据分析'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    data[val_key] = data[val_key].apply(lambda ele:ele.replace("-","0"))
+    data[val_key] =data[val_key].astype(float)
+    data.sort_values(by=val_key, inplace=True, ascending=False)
+    data.set_index(keys='name', inplace=True)
+    show_data(data)
+    data[val_key].plot(kind='bar', title=title, rot=60, width=0.5, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+
+if __name__ == '__main__':
+    cn_board_structure_analysis()
