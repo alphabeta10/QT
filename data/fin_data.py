@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 import re
+
+import requests
+from bs4 import BeautifulSoup
 from utils.actions import show_data
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
@@ -15,15 +18,27 @@ warnings.filterwarnings('ignore')
 
 
 def extract_data(name, raw_line):
+    data, same_data = None, None
     result = re.findall(name + "(\d+\.?\d?)亿元，同比增长(\d+\.?\d?)%", raw_line)
     if len(result) > 0:
-        first, other = result[0]
-        return first, float(other) * 1
+        data, same_data = result[0]
+        same_data = float(same_data)
     else:
+        result = re.findall(name + "(\d+\.?\d?)亿元，与上年同期持平", raw_line)
+        if len(result) > 0:
+            data = result[0]
+            same_data = 0.0
         result = re.findall(name + "(\d+\.?\d?)亿元，同比下降(\d+\.?\d?)%", raw_line)
         if len(result) > 0:
-            first, other = result[0]
-            return first, float(other) * -1
+            data, same_data = result[0]
+            same_data = float(same_data) * -1
+    if data is None:
+        result = re.findall(name + "(\d+\.?\d?)亿元", raw_line)
+        if len(result) > 0:
+            data = result[0]
+            same_data = 0.0
+    if data is not None:
+        return data,same_data
     return None
 
 
@@ -89,6 +104,7 @@ def gks_fin_data(filename="fin_txt20230601.txt"):
         "全国政府性基金预算支出": "gov_fund_budget_expenditure",
         "中央政府性基金预算本级支出": "center_gov_fund_budget_expenditure",
         "地方政府性基金预算支出": "region_gov_fund_budget_expenditure",
+        "地方政府性基金预算相关支出": "region_gov_fund_budget_expenditure",
         "国有土地使用权出让收入相关支出": "state_owned_land_expenditure",
     }
 
@@ -98,54 +114,54 @@ def gks_fin_data(filename="fin_txt20230601.txt"):
     with open(filename, mode='r') as f:
         lines = f.readlines()
         for line in lines:
-            if '全国一般公共预算收入' in line:
-                for key, val in all_income_config.items():
-                    if key in line:
-                        result = extract_data(key, line)
-                        if result is not None:
-                            raw_data, raw_data_same = result
-                            print(key + "=" + raw_data + "=" + str(raw_data_same))
-                            data_dict[val] = raw_data
-                            val_same = f"{val}_same"
-                            data_dict[val_same] = raw_data_same
-                        else:
-                            print(f"{key}没有数据")
-            if "全国一般公共预算支出" in line:
-                for key, val in all_expenditure_config.items():
-                    if key in line:
-                        result = extract_data(key, line)
-                        if result is not None:
-                            raw_data, raw_data_same = result
-                            print(key + "=" + raw_data + "=" + str(raw_data_same))
-                            data_dict[val] = raw_data
-                            val_same = f"{val}_same"
-                            data_dict[val_same] = raw_data_same
-                        else:
-                            print(f"{key}没有数据")
-            if "全国政府性基金预算收入" in line:
-                for key, val in gov_fund_income_config.items():
-                    if key in line:
-                        result = extract_data(key, line)
-                        if result is not None:
-                            raw_data, raw_data_same = result
-                            print(key + "=" + raw_data + "=" + str(raw_data_same))
-                            data_dict[val] = raw_data
-                            val_same = f"{val}_same"
-                            data_dict[val_same] = raw_data_same
-                        else:
-                            print(f"{key}没有数据")
-            if "全国政府性基金预算支出" in line:
-                for key, val in gov_expenditure_config.items():
-                    if key in line:
-                        result = extract_data(key, line)
-                        if result is not None:
-                            raw_data, raw_data_same = result
-                            print(key + "=" + raw_data + "=" + str(raw_data_same))
-                            data_dict[val] = raw_data
-                            val_same = f"{val}_same"
-                            data_dict[val_same] = raw_data_same
-                        else:
-                            print(f"{key}没有数据")
+            # if '全国一般公共预算收入' in line:
+            for key, val in all_income_config.items():
+                if key in line:
+                    result = extract_data(key, line)
+                    if result is not None:
+                        raw_data, raw_data_same = result
+                        print(key + "=" + raw_data + "=" + str(raw_data_same))
+                        data_dict[val] = raw_data
+                        val_same = f"{val}_same"
+                        data_dict[val_same] = raw_data_same
+                    else:
+                        print(f"{key}没有数据")
+            # if "全国一般公共预算支出" in line:
+            for key, val in all_expenditure_config.items():
+                if key in line:
+                    result = extract_data(key, line)
+                    if result is not None:
+                        raw_data, raw_data_same = result
+                        print(key + "=" + raw_data + "=" + str(raw_data_same))
+                        data_dict[val] = raw_data
+                        val_same = f"{val}_same"
+                        data_dict[val_same] = raw_data_same
+                    else:
+                        print(f"{key}没有数据")
+            # if "全国政府性基金预算收入" in line:
+            for key, val in gov_fund_income_config.items():
+                if key in line:
+                    result = extract_data(key, line)
+                    if result is not None:
+                        raw_data, raw_data_same = result
+                        print(key + "=" + raw_data + "=" + str(raw_data_same))
+                        data_dict[val] = raw_data
+                        val_same = f"{val}_same"
+                        data_dict[val_same] = raw_data_same
+                    else:
+                        print(f"{key}没有数据")
+            # if "全国政府性基金预算支出" in line:
+            for key, val in gov_expenditure_config.items():
+                if key in line:
+                    result = extract_data(key, line)
+                    if result is not None:
+                        raw_data, raw_data_same = result
+                        print(key + "=" + raw_data + "=" + str(raw_data_same))
+                        data_dict[val] = raw_data
+                        val_same = f"{val}_same"
+                        data_dict[val_same] = raw_data_same
+                    else:
+                        print(f"{key}没有数据")
 
             for key, val in tax_config.items():
                 if key in line:
@@ -173,7 +189,7 @@ def gks_fin_data(filename="fin_txt20230601.txt"):
     is_pass = True
     for key in all_values:
         if key not in data_dict.keys():
-            print(key)
+            print(key, 'no pass')
             is_pass = False
     if is_pass:
         data_dict['metric_code'] = 'gov_fin_data'
@@ -186,12 +202,13 @@ def gks_fin_data(filename="fin_txt20230601.txt"):
 def get_gov_data():
     dir = 'gov_fin_data2023'
     file_list = os.listdir(dir)
-    print(file_list)
     update_request = []
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     for file_name in file_list:
         file_path = os.path.join(dir, file_name)
+        print(f"start handle {file_path}")
         dict_data = gks_fin_data(file_path)
+        print(f"end handle {file_path}")
         if dict_data is not None:
             update_request.append(
                 UpdateOne(
@@ -549,8 +566,8 @@ def handle_balance_sheet_of_monetary_authority(handle_dir=None):
                     col_name = header_dict.get(item_name)
                     if col_name is not None:
                         for key, time_name in meta_cols.items():
-                            value = str(dict_data.get(key)).replace("\u3000","")
-                            if str(value) == 'nan' or value=='':
+                            value = str(dict_data.get(key)).replace("\u3000", "")
+                            if str(value) == 'nan' or value == '':
                                 value = 0
                             else:
                                 value = float(value)
@@ -591,8 +608,79 @@ def enter_credit_fin_agg_flow():
         handle_credit_agg_stock_data(file_dir=file_dir, type_name=key, time='2024')
 
 
+def gov_revenue_expenditure(url):
+    respond = requests.get(url)
+    html = respond.content
+    html_doc = str(html, 'utf-8')
+
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    h2s = soup.find_all("h2", "title_con")
+    print(h2s)
+    if h2s is not None and len(h2s) > 0:
+        h2 = h2s[0]
+        header = h2.text
+        year = int(header[0:4])
+        result = re.findall("(\d+)年(\d+)月", header)
+        month = None
+        if len(result) > 0:
+            month = int(result[0][1])
+        result = re.findall("(\d+)年(\d+)-(\d+)月", header)
+        if len(result) > 0:
+            month = int(result[0][2])
+        if '一季度' in header:
+            month = '3'
+        if '二季度' in header:
+            month = '6'
+        if '三季度' in header:
+            month = '9'
+        if '四季度' in header:
+            month = '12'
+        if '上半年' in header:
+            month = '6'
+        if '季度' not in header and '月' not in header and '上半年' not in header:
+            month = '12'
+        if month is not None:
+            if int(month) < 10:
+                month = int(month)
+                month = f"0{month}"
+            day = f"{year}{month}01"
+            file_name = f'gov_fin_data2023/fin_txt{day}.txt'
+            search_div = soup.find_all("div", 'TRS_Editor')
+            if search_div is not None and len(search_div) > 0:
+
+                print(search_div[0])
+                ps = search_div[0].find_all("p")
+                with open(file_name, mode='w') as f:
+                    for p in ps:
+                        print(p.text.replace(" ", "").replace('　　', ''))
+                        f.write(p.text.replace(" ", "").replace('　　', '').replace(" ", "") + "\n")
+
+
+def craw_gov_revenue_expenditure_data():
+    for i in range(3):
+        if i == 0:
+            url = 'https://gks.mof.gov.cn/tongjishuju/index.htm'
+        else:
+            url = f'https://gks.mof.gov.cn/tongjishuju/index_{i}.htm'
+        respond = requests.get(url)
+        html = respond.content
+        html_doc = str(html, 'utf-8')
+        soup = BeautifulSoup(html_doc, 'html.parser')
+        uls = soup.find_all("ul", "liBox")
+        if uls is not None and len(uls) > 0:
+            ul = uls[0]
+            a_s = ul.find_all("a")
+            if a_s is not None:
+                for a_ in a_s:
+                    if '财政收支情况' in a_.text:
+                        print(a_)
+                        detail_url = 'https://gks.mof.gov.cn/tongjishuju' + a_['href'][1:]
+                        gov_revenue_expenditure(detail_url)
+
+
 if __name__ == '__main__':
-    enter_credit_fin()
-    enter_credit_fin_agg_flow()
-    handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
-    find_data()
+    # enter_credit_fin()
+    # enter_credit_fin_agg_flow()
+    # handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
+    # find_data()
+    get_gov_data()

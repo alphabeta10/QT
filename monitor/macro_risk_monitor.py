@@ -201,7 +201,7 @@ def cn_week_traffic_risk_mail_str(day=None):
     }
     if day is None:
         day = datetime.now().strftime("%Y%m%d")
-    html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国运输风险', day)
+    html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国运输风险', day,num=10)
     return html_str
 
 def global_gpr_mail_str(day=None):

@@ -4,6 +4,15 @@ buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,2
                                   "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                         "自定义20日均线": {"gt": "close", "name": "20日均线大于收盘价",
                                            "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                        "M_line_40": {"gt": "close", "name": "小于40日布林中线",
+                                      "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                        "L_line_40": {"gt": "close", "name": "小于40日布林低线",
+                                      "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+
+                        "1年均线": {"gt": "close", "name": "1年均线",
+                                    "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                        "半年均线": {"gt": "close", "name": "半年均线",
+                                     "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                         "D": {"range": [0, 20], "name": "KDJ的D值在范围[0,20]",
                               "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                         "pre_D": {"range": [0, 20], "name": "prd_KDJ的D值在范围[0,20]",
@@ -23,6 +32,10 @@ buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,2
 
 sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[70, 100]",
                                "other_show_indicator": ['D', 'ADX', 'plus_di', 'minus_di']},
+                         "M_line_40": {"lt": "close", "name": "大于40日布林中线",
+                                       "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                         "H_line_40": {"lt": "close", "name": "大于40日布林中线",
+                                       "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                          "pre_K": {"range": [70, 100], "name": "pre_KDJ的K值在范围[70, 100]",
                                    "other_show_indicator": ['D', 'ADX', 'plus_di', 'minus_di']},
                          "D": {"range": [70, 100], "name": "KDJ的D值在范围[70, 100]",
@@ -42,11 +55,16 @@ sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[
                                                            'slow_obv_diff', 'rsi12']}
                          }
 
-#指数告警信号
+# 指数告警信号
 index_buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范围[0,20]",
                                     "other_show_indicator": ['D', 'ADX', 'plus_di', 'minus_di']},
                               "pre_K": {"range": [0, 20], "name": "pre_KDJ的K值在范围[0,20]",
                                         "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                              "M_line_40": {"gt": "close", "name": "小于40日布林中线",
+                                            "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                              "L_line_40": {"gt": "close", "name": "小于40日布林低线",
+                                            "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+
                               "D": {"range": [0, 20], "name": "KDJ的D值在范围[0,20]",
                                     "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                               "pre_D": {"range": [0, 20], "name": "prd_KDJ的D值在范围[0,20]",
@@ -63,7 +81,7 @@ index_buy_indicator_config = {"K": {"range": [0, 20], "name": "KDJ的K值在范�
                                      "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di',
                                                               'slow_obv_diff', 'rsi12']},
                               }
-#指数告警指标信号
+# 指数告警指标信号
 index_sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在范围[70, 100]",
                                      "other_show_indicator": ['D', 'ADX', 'plus_di', 'minus_di']},
                                "pre_K": {"range": [70, 100], "name": "pre_KDJ的K值在范围[70, 100]",
@@ -84,5 +102,5 @@ index_sell_indicator_config = {"K": {"range": [70, 100], "name": "KDJ的K值在�
                                         "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di',
                                                                  'slow_obv_diff', 'rsi12']},
                                "low_linear": {"gt": "close", "name": "穿出底谷线，行情可能反转，告警信号",
-                                                  "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
+                                              "other_show_indicator": ['D', 'K', 'ADX', 'plus_di', 'minus_di']},
                                }

@@ -124,12 +124,14 @@ def get_real_future_news_data():
             list_new.sort(key=lambda ele: ele['time'], reverse=True)
             pd_data = pd.DataFrame(list_new)
             ret_list = common_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content', pub_time_key='time',
-                                              ret_key=['title'], model=model, themes=names)
+                                              ret_key=['title'], model=model, themes=names,name=name)
             if ret_list is not None and len(ret_list) != 0:
                 for new in ret_list:
                     kys = new.keys()
                     if '情感分类' in kys:
                         sentiment = new['情感分类']
+                        if isinstance(sentiment,list):
+                            sentiment = ",".join(sentiment)
                     else:
                         print(new, '解析出错')
                         sentiment = '解析出错'

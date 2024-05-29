@@ -68,6 +68,8 @@ def result_to_db(datas: list, model_indicator_col):
             continue
         if '情感分类' in kys:
             sentiment = data['情感分类']
+            if isinstance(sentiment,list):
+                sentiment = sentiment[0]
         else:
             print(data)
             continue
@@ -214,8 +216,105 @@ def common_kimi_ai_new_analysis(pd_data, is_in_db, pub_time_key='发布时间', 
     return None
 
 
+def common_baidu_ai_new_analysis(pd_data, is_in_db, pub_time_key='发布时间', pub_content_key='新闻内容', ret_key=None,
+                                client=None, model=None, name=None, request_count_dict: dict = None):
+    global model_indicator_col
+    if name is None:
+        name = 'default'
+    if request_count_dict is None:
+        print("请求统计为空！！！")
+        request_count_dict = {"rc": 0}
+    if pd_data is not None and len(pd_data) > 0:
+        if client is None or model is None:
+            model_config = load_json_data('kimi_api_key.json')
+            api_key = model_config['api_key']
+            base_url = model_config['base_url']
+            model = model_config['model']
+
+            client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+
+            model_list = client.models.list()
+            model_data = model_list.data
+            for i, mode in enumerate(model_data):
+                print(f"model[{i}]:", mode.id)
+        result_data = []
+        batch = 0
+        batch_data = []
+        contents = []
+        if is_in_db:
+            model_indicator_col = get_mongo_table(database='stock', collection="model_new_indicator")
+        for index in pd_data.index:
+            dict_data = dict(pd_data.loc[index])
+            content = dict_data[pub_content_key]
+            batch_data.append(dict_data)
+            contents.append(f"<article>{content}</article>")
+            batch += 1
+            if batch == 5:
+                batch_content = "".join(contents)
+                batch = 0
+                history = [{"role": "system",
+                            "content": "你将收到多段新闻用XML标签分割。首先概括新闻的摘要，给出情感分类为[积极，中性，悲观]，给出新闻涉及的国家，返回数据格式是json数组[{\"摘要\":\"新闻的摘要\",\"情感分类\":\"新闻的情感类别\",\"涉及的国家\":\"新闻涉及的国家\"}]"}]
+                history += [{"role": "user", "content": batch_content}]
+                ret_data = try_get_action(get_result_from_kimi_model, try_count=3, delay=65, client=client,
+                                          history=history,
+                                          model=model,
+                                          is_ret_json=True)
+                if ret_data is not None and len(ret_data) > 0:
+                    for i, ret in enumerate(ret_data):
+                        ret['time'] = batch_data[i][pub_time_key]
+                        ret['content'] = batch_data[i][pub_content_key]
+                        ret['主题'] = name
+                        if ret_key is not None:
+                            for key in ret_key:
+                                ret[key] = batch_data[i][key]
+                        result_data.append(ret)
+                    if is_in_db and len(result_data) > 0:
+                        result_to_db(result_data, model_indicator_col)
+                        result_data.clear()
+                batch_data.clear()
+                contents.clear()
+                request_count_dict['rc'] += 1
+                if request_count_dict['rc'] >= 3:
+                    print("等待下一次调度kimi模型")
+                    time.sleep(65)
+                    request_count_dict['rc'] = 0
+        if batch > 0:
+            batch_content = "".join(contents)
+            history = [{"role": "system",
+                        "content": "你将收到多段新闻用XML标签分割。首先概括新闻的摘要，给出情感分类为[积极，中性，悲观]，给出新闻涉及的国家，返回数据格式是json数组[{\"摘要\":\"新闻的摘要\",\"情感分类\":\"新闻的情感类别\",\"涉及的国家\":\"新闻涉及的国家\"}]"}]
+            history += [{"role": "user", "content": batch_content}]
+            ret_data = try_get_action(get_result_from_kimi_model, try_count=3, delay=65, client=client,
+                                      history=history,
+                                      model=model,
+                                      is_ret_json=True)
+            if isinstance(ret_data,dict):
+                print("ret error ",ret_data)
+                ret_data = [ret_data]
+            if ret_data is not None and len(ret_data) > 0:
+                for i, ret in enumerate(ret_data):
+                    ret['time'] = batch_data[i][pub_time_key]
+                    ret['content'] = batch_data[i][pub_content_key]
+                    ret['主题'] = name
+                    if ret_key is not None:
+                        for key in ret_key:
+                            ret[key] = batch_data[i][key]
+                    result_data.append(ret)
+                if is_in_db and len(result_data) > 0:
+                    result_to_db(result_data, model_indicator_col)
+            request_count_dict['rc'] += 1
+            if request_count_dict['rc'] >= 3:
+                print("等待下一次调度kimi模型")
+                time.sleep(65)
+                request_count_dict['rc'] = 0
+        return result_data
+    return None
+
+
 def common_ai_new_analysis(pd_data, is_in_db, pub_time_key='发布时间', pub_content_key='新闻内容', ret_key=None,
-                           model=None, themes=None):
+                           model=None, themes=None,name=None):
     if pd_data is not None and len(pd_data) > 0:
         if model is None:
             api_key_json = load_json_data("google_api.json")
@@ -243,6 +342,8 @@ def common_ai_new_analysis(pd_data, is_in_db, pub_time_key='发布时间', pub_c
             if ret is not None:
                 ret['time'] = time
                 ret['content'] = content
+                if name is not None:
+                    ret['主题'] = name
                 if ret_key is not None:
                     for key in ret_key:
                         ret[key] = dict_data[key]

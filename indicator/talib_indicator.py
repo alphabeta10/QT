@@ -37,8 +37,14 @@ def adj_obv(high, low, close, volume):
 
 def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     mfi_timeperiod = 14
+    b_line_timeperiod = 40
     if 'mfi_timeperiod' in kwargs.keys():
         mfi_timeperiod = kwargs['mfi_timeperiod']
+    if 'b_line_timeperiod' in kwargs.keys():
+        user_b_line_timeperiod = kwargs['b_line_timeperiod']
+        data[f'H_line_user_{user_b_line_timeperiod}'], data[f'M_line_user_{user_b_line_timeperiod}'], data[f'L_line_user_{user_b_line_timeperiod}'] = ta.BBANDS(data.close, timeperiod=user_b_line_timeperiod,
+                                                                            nbdevup=2, nbdevdn=2,
+                                                                            matype=0)
     data['mfi'] = ta.MFI(data.high, data.low, data.close, data.volume, timeperiod=mfi_timeperiod)
     data['1年均线'] = ta.SMA(data.close, timeperiod=240)
     data['半年均线'] = ta.SMA(data.close, timeperiod=120)
@@ -58,6 +64,8 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     data['plus_di'] = ta.PLUS_DI(data.high, data.low, data.close, timeperiod=14)
     data['obv'] = ta.OBV(data.close, data.volume)
     data['slow_obv_diff'] = ta.EMA(data.obv, 7) - ta.EMA(data.obv, 14)
+    data['H_line_40'], data['M_line_40'], data['L_line_40'] = ta.BBANDS(data.close, timeperiod=b_line_timeperiod, nbdevup=2, nbdevdn=2,
+                                                               matype=0)
 
     addSignal(data, sign_type='mfi')
     addSignal(data, sign_type='KDJ')

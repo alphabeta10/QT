@@ -68,21 +68,28 @@ def real_monitor_stock_index_and_cal_indicator():
             new_data['low_linear'] = linear_result['low'][low_keys[-1]]
             new_data['high_linear'] = linear_result['high'][high_keys[-1]]
             new_data['name'] = code_dict.get(code)
-            common_indictator_cal(new_data, ma_timeperiod=20)
+            common_indictator_cal(new_data, ma_timeperiod=20,b_line_timeperiod=120)
             new_data['stop_rate'] = round((new_data['atr14'] * 3) / new_data['close'], 4)
             show_data(new_data.tail(1))
 
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), index_buy_indicator_config)
             name = code_dict.get(code)
 
-            if len(ret_send_msg.keys()) > 0 and buy_trigger_count.get(name, 0) < 2:
-                construct_buy_msg_list.append(ret_send_msg)
-                buy_trigger_count[name] = buy_trigger_count.get(name, 0) + 1
+            for indicator_name in ret_send_msg.keys():
+                if indicator_name not in ['row_data', 'other_show_indicator']:
+                    combine_name = f"{name}_{indicator_name}"
+                    if buy_trigger_count.get(combine_name, 0) < 2:
+                        construct_buy_msg_list.append(ret_send_msg)
+                        buy_trigger_count[combine_name] = buy_trigger_count.get(combine_name, 0) + 1
 
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), index_sell_indicator_config)
-            if len(ret_send_msg.keys()) > 0 and sell_trigger_count.get(name, 0) < 2:
-                construct_sell_msg_list.append(ret_send_msg)
-                sell_trigger_count[name] = sell_trigger_count.get(name, 0) + 1
+            for indicator_name in ret_send_msg.keys():
+                if indicator_name not in ['row_data', 'other_show_indicator']:
+                    combine_name = f"{name}_{indicator_name}"
+                    if sell_trigger_count.get(combine_name, 0) < 2:
+                        construct_sell_msg_list.append(ret_send_msg)
+                        sell_trigger_count[combine_name] = sell_trigger_count.get(combine_name, 0) + 1
+
         trigger_json_data = {}
         if len(construct_buy_msg_list) > 0:
             comm_indicator_send_msg_by_email(construct_buy_msg_list, sender, msg_title='实时指数指标触发买入的信号')
