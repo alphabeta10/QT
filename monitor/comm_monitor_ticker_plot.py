@@ -4,15 +4,49 @@ from utils.tool import *
 import matplotlib.pyplot as plt
 from utils.send_msg import MailSender
 from monitor.real_common import cal_linear_data_fn
-from indicator.talib_indicator import adj_obv
+from indicator.talib_indicator import adj_obv,common_indictator_cal
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 import os
+import akshare as ak
+
 warnings.filterwarnings('ignore')
+show_indicators = ['ADX', 'minus_di', 'plus_di', 'H_line_40', 'M_line_40', 'L_line_40', 'K', 'D', 'obv120_cross']
 
 
+
+def index_future_long_short_rate_image():
+    database = 'futures'
+    collection = 'futures_basic_info'
+    sort_key = "date"
+    codes = ak.match_main_contract(symbol='cffex').split(",")
+    start_time = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+    projection = {'_id': False}
+    condition = {"data_type": "futures_long_short_rate", "date": {"$gt": start_time}, "code": {"$in": codes}}
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    code_dict = {
+        "IM": "中证1000",
+        "IH": "上证50",
+        "IC": "中证500",
+        "IF": "沪深300",
+    }
+
+    fig, axes = plt.subplots(4, 1, figsize=(20, 10))
+    i = 0
+    for code in codes:
+        name = code_dict.get(code[0:2])
+        if name is not None:
+            future_date = code[2:]
+            name = f"{future_date}{name}"
+            ele_data = data[data['code'] == code]
+            ele_data.set_index(keys='date', inplace=True)
+            ele_data[['long_short_rate']].plot(ax=axes[i], grid=True, title=f'{name}多空比')
+            plt.legend(loc='best', shadow=True)
+            i += 1
+    plt.savefig("plot/future_market_date.png")
 def get_market_data_by_code_name(database='stock', collection='index_data', sort_key="date", codes=None,
                                  code_name='code'):
     start_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
@@ -78,7 +112,7 @@ def plot_bar_value_line_same_rate_data(dates, volume_data, close_data, is_high_d
 
 
 def common_plot_send_mail(database='stock', collection='ticker_daily', sort_key="time", mail_theme='股票走势图',
-                          ticker_config=None, code_name='code'):
+                          ticker_config=None, code_name='code',is_index_future_send=False):
     if ticker_config is None:
         ticker_config = {
             "汇川技术": {"code": "300124", "cid": "300124", "header": "汇川技术成交量以及走势图"},
@@ -93,10 +127,14 @@ def common_plot_send_mail(database='stock', collection='ticker_daily', sort_key=
     mail_msg = ""
     for name, combine_dict in ticker_config.items():
         code = combine_dict['code']
-        cid = combine_dict['cid']
-        header = combine_dict['header']
+        cid = combine_dict['code']
+        if 'header' not in combine_dict.keys():
+            header = f'{name}成交量以及走势图'
+        else:
+            header = combine_dict['header']
         data = get_market_data_by_code_name(database=database, collection=collection, sort_key=sort_key, codes=[code],
                                             code_name=code_name)
+        common_indictator_cal(data,ma_timeperiod=20)
         data = data.tail(50)
         x = data[sort_key].values
         y = data['volume'].values
@@ -104,21 +142,34 @@ def common_plot_send_mail(database='stock', collection='ticker_daily', sort_key=
         is_low_data = data['is_low']
         is_high_data = data['is_peak']
         adj_obv_val = data['adj_obv'].values
+
+        indicator_text = ''
+        for indicator in show_indicators:
+            val = round(data[indicator].values[-1],2)
+            indicator_text += f"{indicator}={val}&ensp;;"
+
         linear_result = cal_linear_data_fn(x, close, is_high_data, is_low_data)
         low_keys = list(linear_result['low'].keys())
         high_keys = list(linear_result['high'].keys())
         plot_bar_value_line_same_rate_data(x, y, close, is_high_data, is_low_data, linear_result['high'][high_keys[-1]],
-                                           linear_result['low'][low_keys[-1]], filename=f'{cid}.png', title=header,adj_odv_values=adj_obv_val)
+                                           linear_result['low'][low_keys[-1]], filename=f'{cid}.png', title=header,
+                                           adj_odv_values=adj_obv_val)
         high_price = round(linear_result['high'][high_keys[-1]][-1], 2)
         lower_price = round(linear_result['low'][low_keys[-1]][-1], 2)
         last_price = close[-1]
         price_str = f"当前价格{last_price},反转价格:{lower_price},目标价格{high_price}"
-        mail_msg += f"<p>{header};价格判断:{price_str}</p>"
+        mail_msg += f"<p>{header};价格判断:{price_str}</p><p>指标:{indicator_text}</p>"
         mail_msg += f"<img src=\"cid:{cid}\" width=\"99%\">"
         with open(f"plot/{cid}.png", 'rb') as f:
             stram = f.read()
             name_stram_dict.setdefault(cid, stram)
-
+    if is_index_future_send:
+        if os.path.exists('plot/future_market_date.png'):
+            mail_msg += "<p>股指期货多空比走势图</p>"
+            mail_msg += f"<img src=\"cid:future_market_date\" width=\"99%\">"
+            with open(f"plot/future_market_date.png", 'rb') as f:
+                stram = f.read()
+                name_stram_dict.setdefault('future_market_date', stram)
     mail = MailSender()
     mail.send_html_with_img_data(['905198301@qq.com'], ['2394023336@qq.com'], mail_theme, mail_msg, name_stram_dict)
 
@@ -135,7 +186,9 @@ def daily_market_plot_notice():
     collection = 'index_data'
     sort_key = "date"
     mail_theme = '大盘走势'
-    common_plot_send_mail(database, collection, sort_key, mail_theme, market_config)
+    #股指期货多空比和大盘相关
+    index_future_long_short_rate_image()
+    common_plot_send_mail(database, collection, sort_key, mail_theme, market_config,is_index_future_send=True)
 
 
 def daily_stock_plot_notice():
@@ -232,16 +285,23 @@ def daily_future_plot_notice():
 
     for name, combine_dict in ticker_config.items():
         code = combine_dict['code']
-        cid = combine_dict['cid']
-        header = combine_dict['header']
+        cid = combine_dict['code']
+        if 'header' not in combine_dict.keys():
+            header = f'{name}成交量以及走势图'
+        else:
+            header = combine_dict['header']
         data = get_market_data_by_code_name(database=database, collection=collection, sort_key=sort_key, codes=[code],
                                             code_name=code_name)
-
+        common_indictator_cal(data,ma_timeperiod=20)
         data['pre_volume'] = data['volume'].shift(1)
         data['ret_1'] = data['close'].pct_change(1)
         data['pre_hold'] = data['hold'].shift(1)
         data['market_env'] = data.apply(jude_current_market, axis=1)
         data = data.tail(50)
+        indicator_text = ''
+        for indicator in show_indicators:
+            val = round(data[indicator].values[-1], 2)
+            indicator_text += f"{indicator}={val}&ensp;;"
         x = data[sort_key].values
         y = data['volume'].values
         close = data['close'].values
@@ -256,12 +316,12 @@ def daily_future_plot_notice():
                                            linear_result['low'][low_keys[-1]], filename=f'{cid}.png', title=header,
                                            futures_hold=hold, adj_odv_values=adj_obv_val)
         market_env = data.tail(1).iloc[0]['market_env']
-        high_price = round(linear_result['high'][high_keys[-1]][-1],2)
-        lower_price = round(linear_result['low'][low_keys[-1]][-1],2)
+        high_price = round(linear_result['high'][high_keys[-1]][-1], 2)
+        lower_price = round(linear_result['low'][low_keys[-1]][-1], 2)
         last_price = close[-1]
 
         price_str = f"当前价格{last_price},反转价格:{lower_price},目标价格{high_price}"
-        mail_msg += f"<p>{header};市场判断:{market_env};价格判断:{price_str}</p>"
+        mail_msg += f"<p>{header};市场判断:{market_env};价格判断:{price_str}</p></p><p>指标:{indicator_text}</p>"
         mail_msg += f"<img src=\"cid:{cid}\" width=\"99%\">"
         with open(f"plot/{cid}.png", 'rb') as f:
             stram = f.read()
@@ -271,12 +331,14 @@ def daily_future_plot_notice():
     mail.send_html_with_img_data(['905198301@qq.com'], ['2394023336@qq.com'], mail_theme, mail_msg,
                                  name_stram_dict)
 
+
 def del_file(path_data):
     for i in os.listdir(path_data):
-        file_data = path_data+"/"+i
+        file_data = path_data + "/" + i
         if os.path.isfile(file_data) == True:
             os.remove(file_data)
             print(f"删除文件{file_data}")
+
 
 if __name__ == '__main__':
     del_file('plot')
