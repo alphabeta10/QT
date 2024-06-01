@@ -13,6 +13,7 @@ from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 from tqdm import tqdm
+from analysis.fin_analysis import get_fin_common_metric
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -595,22 +596,88 @@ def enter_big_model_analysis_stock_indicator(code_dict: dict = None):
 class StockBasicAnalysis(object):
     def __init__(self, *args, **kwargs):
         self.code = kwargs['code']
-        if 'date' not in kwargs.keys():
-            self.date = str(datetime.now().year-1)+"年度"
+        self.date = kwargs.get("date", str(datetime.now().year - 1) + "年度")
+        self.fin_start_date = kwargs.get('fin_start_date', None)
 
+        if int(self.code[0]) < 6:
+            self.pre_market_code = f"sz{self.code}"
+        elif int(self.code[0]) == 6:
+            self.pre_market_code = f'sh{self.code}'
+        elif int(self.code[0]) == 8:
+            self.pre_market_code = f"bj{self.code}"
+        else:
+            print("没有找到有前缀的数据")
+            self.pre_market_code = self.code
 
     def get_stock_industry(self):
         database = 'stock'
         collection = 'business'
-        condition = {"date":self.date, "code": self.code,"class_dire":"按产品分"}
+        condition = {"date": self.date, "code": self.code, "class_dire": "按产品分"}
         projection = {"_id": False}
         data = get_data_from_mongo(database=database, collection=collection,
                                    condition=condition,
                                    projection=projection)
-        data['营业收入-占主营收入比'] = data['营业收入-占主营收入比'].apply(lambda ele:round(float(ele.replace("%",""))/100.0,4))
+        data['营业收入-占主营收入比'] = data['营业收入-占主营收入比'].apply(
+            lambda ele: round(float(ele.replace("%", "")) / 100.0, 4))
         data.sort_values(by='营业收入-占主营收入比', inplace=True, ascending=False)
-        data = data[data['class']!='合计']
+        data = data[data['class'] != '合计']
         return data
+
+    def get_stock_fin_data(self, is_local=False):
+        self.fin_data = get_fin_common_metric([self.pre_market_code], isZcfcDataFromLocal=is_local,
+                                              isProfitDataFromLocal=is_local, isCashDataFromLocal=is_local,
+                                              start_date=self.fin_start_date)
+        # print(self.fin_data)
+
+    def analysis_fin_profit_data(self):
+        """
+        1.2.1 利润来源
+                营业收入-营业总成本+其他经营收益 = 营业利润
+                利润总额 = 营业利润+营业外收入-营业外支出
+                扣除非经常性损益后的净利润
+            1.2.2 毛利率
+                 毛利率=（营业收入-营业成本)/营业收入
+            1.2.3 从费用率看企业的管理水平
+                费用占比 =（销售费用+管理费用+财务费用）/ 营业收入
+                研发费用 占比过高，存在不确定，研发产品成功，好事，如果研发产品失败，赔了夫人又折兵
+        :return:
+        """
+        get_col_dict = {"FE_INTEREST_EXPENSE": "其中:利息费用",
+                        "FE_INTEREST_INCOME": "利息收入",
+                        "OPERATE_INCOME": "营业收入",
+                        "OPERATE_COST": "营业成本",
+                        'NETPROFIT': '净利润',
+                        'TOTAL_PROFIT': '利润总额',
+                        'OPERATE_TAX_ADD': '税金及附加',
+                        'OPERATE_PROFIT': '营业利润',
+                        'RESEARCH_EXPENSE': '研发费用',
+                        'TOTAL_OPERATE_COST': "营业总成本",
+                        'DEDUCT_PARENT_NETPROFIT': "扣除非经常性损益后的净利润",
+                        'PARENT_NETPROFIT': "归属于母公司股东的净利润",
+                        'SALE_EXPENSE': "销售费用",
+                        'MANAGE_EXPENSE': "管理费用",
+                        'FINANCE_EXPENSE': "财务费用",
+                        'TOTAL_OPERATE_INCOME': '营业总收入'
+                        }
+        self.fin_data['other_operate_income'] = -self.fin_data['TOTAL_OPERATE_INCOME'] + self.fin_data[
+            'TOTAL_OPERATE_COST'] + self.fin_data['OPERATE_PROFIT']
+        self.fin_data['other_no_op_income'] = self.fin_data['TOTAL_PROFIT'] - self.fin_data['OPERATE_PROFIT']
+        self.fin_data['其他营业收入占比净利润'] = round(self.fin_data['other_operate_income'] / self.fin_data['NETPROFIT'], 4)
+        self.fin_data['除营业外收入占比净利润'] = round(self.fin_data['other_no_op_income'] / self.fin_data['NETPROFIT'], 4)
+        self.fin_data['扣除非经常性损益后的净利润占比净利润'] = round(
+            self.fin_data['DEDUCT_PARENT_NETPROFIT'] / self.fin_data['NETPROFIT'], 4)
+        self.fin_data['毛利率'] = round(
+            (self.fin_data['OPERATE_INCOME'] - self.fin_data['OPERATE_COST']) / self.fin_data['OPERATE_INCOME'], 4)
+        self.fin_data['费用占比'] = round(
+            (self.fin_data['SALE_EXPENSE'] + self.fin_data['MANAGE_EXPENSE']+self.fin_data['FINANCE_EXPENSE']) / self.fin_data['OPERATE_INCOME'], 4)
+        self.fin_data['研发费用占比'] = round(self.fin_data['RESEARCH_EXPENSE']/self.fin_data['OPERATE_INCOME'],4)
+        show_col_names = ['其他营业收入占比净利润','除营业外收入占比净利润','扣除非经常性损益后的净利润占比净利润','毛利率','费用占比','研发费用占比']
+        last_data_dict = dict(self.fin_data.tail(1).iloc[0])
+        new_dict = {k:last_data_dict.get(k,'') for k in show_col_names}
+        print(new_dict)
+
+        return self.fin_data
+
 
 if __name__ == '__main__':
     enter_big_model_analysis_stock_indicator()

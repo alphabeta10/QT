@@ -228,7 +228,14 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
                     'TOTAL_PROFIT': '利润总额',
                     'OPERATE_TAX_ADD': '税金及附加',
                     'OPERATE_PROFIT': '营业利润',
-                    'RESEARCH_EXPENSE': '研发费用'
+                    'RESEARCH_EXPENSE': '研发费用',
+                    'TOTAL_OPERATE_COST': "营业总成本",
+                    'DEDUCT_PARENT_NETPROFIT': "扣除非经常性损益后的净利润",
+                    'PARENT_NETPROFIT': "归属于母公司股东的净利润",
+                    'SALE_EXPENSE': "销售费用",
+                    'MANAGE_EXPENSE': "管理费用",
+                    'FINANCE_EXPENSE': "财务费用",
+                    'TOTAL_OPERATE_INCOME': '营业总收入',
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
@@ -649,8 +656,8 @@ def analysis_detail_fin_by_metric(code_dict=None, isLocal=False, quarter=4, is_s
             return
     show_col_map = {}
     for metric in custom_metrics:
-        ele_dict = metric_rel_col_dict.get(metric,{})
-        for k,v in ele_dict.items():
+        ele_dict = metric_rel_col_dict.get(metric, {})
+        for k, v in ele_dict.items():
             show_col_map[k] = v
     print(show_col_map)
     score_df_list = []
@@ -673,13 +680,13 @@ def analysis_detail_fin_by_metric(code_dict=None, isLocal=False, quarter=4, is_s
     for ele in score_df_list[1:]:
         score_df = pd.merge(score_df, ele, left_on=['code', 'date'], right_on=['code', 'date'])
     score_df['total_score'] = score_df.apply(handle_score, axis=1, args=(metric_core_col,))
-    get_row_data = pd_data[list(show_col_map.keys())+['date','code']].rename(columns=show_col_map)
+    get_row_data = pd_data[list(show_col_map.keys()) + ['date', 'code']].rename(columns=show_col_map)
     for k in show_col_map.values():
         get_row_data[k] = np.round(get_row_data[k] / 1e8, 4)
     detail_data = pd.merge(score_df, get_row_data, left_on=['code', 'date'], right_on=['code', 'date'])
-    detail_data.sort_values(by=['date','total_score'],inplace=True)
+    detail_data.sort_values(by=['date', 'total_score'], inplace=True)
     detail_data['name'] = detail_data.apply(
-        lambda row:rename_code.get(row['code'],'no_code_name'),
+        lambda row: rename_code.get(row['code'], 'no_code_name'),
         axis=1)
     show_data(detail_data)
     data = pd.pivot_table(score_df, values='total_score', index=['date'], columns=['code'])
@@ -786,8 +793,16 @@ def big_model_stock_fin_data(local_codes, model):
                     'TOTAL_PROFIT': '利润总额',
                     'OPERATE_TAX_ADD': '税金及附加',
                     'OPERATE_PROFIT': '营业利润',
+                    'RESEARCH_EXPENSE': '研发费用',
+                    'TOTAL_OPERATE_COST': "营业总成本",
+                    'DEDUCT_PARENT_NETPROFIT': "扣除非经常性损益后的净利润",
+                    'PARENT_NETPROFIT': "归属于母公司股东的净利润",
+                    'SALE_EXPENSE': "销售费用",
+                    'MANAGE_EXPENSE': "管理费用",
+                    'FINANCE_EXPENSE': "财务费用",
+                    'TOTAL_OPERATE_INCOME': '营业总收入',
                     'date': '日期',
-                    'code': '股票代码'
+                    'code': '股票代码',
                     }
     format_cols = [k for k in get_col_dict.keys() if k not in ['date', 'code']]
     projection = {"code": True, "date": True, "_id": False}
@@ -975,8 +990,9 @@ def money_multiply_analysis():
     show_data(merge_data)
     plt.show()
 
+
 def afre_analysis():
-    #第一步分析总体增量，环比，同比
+    # 第一步分析总体增量，环比，同比
     # 1,3,6,9,11 旺季
     # 4，5，7，10，12 淡季
     """
@@ -1001,7 +1017,7 @@ def afre_analysis():
     projection = {'_id': False}
 
     time = "2020"
-    condition = {"data_type": "credit_funds", "time": {"$gte": time},"metric_code":"agg_fin_flow"}
+    condition = {"data_type": "credit_funds", "time": {"$gte": time}, "metric_code": "agg_fin_flow"}
     sort_key = 'time'
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
@@ -1016,7 +1032,6 @@ def afre_analysis():
     #     convert_afre_month_df = convert_pd_data_to_month_data(data,'time',k,'metric_code',{"agg_fin_flow":name})
     #     convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
     #     plt.show()
-
 
     database = 'stock'
     collection = 'common_seq_data'
@@ -1043,12 +1058,12 @@ def afre_analysis():
     flow_credit_data.reset_index(inplace=True)
     flow_credit_data['metric_code'] = 'credit_funds_fin_inst_rmb_foreign'
     show_data(flow_credit_data)
-    for name,k in income_config.items():
+    for name, k in income_config.items():
         data[k] = data[k].astype(float)
-        convert_afre_month_df = convert_pd_data_to_month_data(flow_credit_data,'time',k,'metric_code',{"credit_funds_fin_inst_rmb_foreign":name})
+        convert_afre_month_df = convert_pd_data_to_month_data(flow_credit_data, 'time', k, 'metric_code',
+                                                              {"credit_funds_fin_inst_rmb_foreign": name})
         convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
         plt.show()
-
 
 
 if __name__ == '__main__':
