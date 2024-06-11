@@ -163,10 +163,13 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
                                     index=show_index)
         convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
         plt.show()
+        return convert_data
     if plot_type == 'line':
         convert_data = pd.DataFrame(data=year_dict_data,
                                     index=value_index)
         plot_marker_line(convert_data, value_index, show_index, title)
+        return convert_data
+    return None
 
 
 def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=None, data_type=None):
@@ -222,6 +225,64 @@ def board_st_month_market_analysis(name=None, unit=None, title=None, val_key=Non
     convert_data = pd.DataFrame(data=year_dict_data,
                                 index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
                                        '12月'])
+    convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+    plt.show()
+
+
+
+def board_st_month_market_all_analysis(name=None, title=None, val_key=None, data_type=None):
+    database = 'govstats'
+    collection = 'customs_goods'
+    if name is None:
+        name = '总值'
+    if data_type is None:
+        data_type = "country_export_import"
+    projection = {'_id': False}
+    condition = {"name": name, "data_type": data_type}
+    sort_key = "date"
+    if title is None:
+        title = '出口数据分析'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    dict_fs = {
+        "export_import_amount": '当期进出口金额',
+        "acc_export_import_amount": '累计进出口金额',
+        "export_amount": '当期出口金额',
+        "acc_export_amount": '累计出口金额',
+        "import_amount": '当期进口金额',
+        "acc_import_amount": '进口累计金额',
+        "acc_export_import_amount_cyc": '进出口累计比去年同期',
+        "acc_export_amount_cyc": '出口累计比去年同期',
+        "acc_import_amount_cyc": '进口累计比去年同期',
+
+    }
+    if val_key is None:
+        val_key = 'export_amount'
+    if val_key not in dict_fs.keys():
+        key_list = list(dict_fs.keys())
+        keystr = ",".join(key_list)
+        print(f"not val in {keystr}")
+        return
+    data[val_key] = data[val_key].astype(float)
+
+    year_dict_data = {}
+    for index in data.index:
+        ele = data.loc[index]
+        print(dict(ele))
+        time = ele['date']
+        code = ele['name']
+        val = ele[val_key]
+        year = time[0:4]
+        metric = dict_fs.get(val_key)
+        combine_key = f"{year}年{code}{metric}"
+        index_of = int(time.split("-")[1]) - 1
+        if combine_key not in year_dict_data.keys():
+            year_dict_data[combine_key] = [0.0] * 12
+        year_dict_data[combine_key][index_of] = val
+    convert_data = pd.DataFrame(data=year_dict_data,
+                                index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
+                                       '12月'])
+    show_data(convert_data)
     convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
     plt.show()
 
@@ -698,5 +759,8 @@ def cn_board_structure_analysis(names: list = None, unit=None, data_type=None, t
     plt.show()
 
 
+
+
+
 if __name__ == '__main__':
-    cn_board_structure_analysis()
+    board_st_month_market_all_analysis()

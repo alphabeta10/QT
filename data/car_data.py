@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 def handle_total():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=1'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=1'
     data = requests.get(url)
     total_market = {
         "narrow": 0,
@@ -58,7 +58,7 @@ def handle_total():
 
 
 def handle_man_market():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=2'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=2'
     data = requests.get(url)
     total_market = {
         "narrow_acc": 0,
@@ -109,7 +109,7 @@ def handle_year_and_month(key_date):
 
 
 def handle_car_type():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=3'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=3'
     data = requests.get(url)
     total_type = {
         "wholesale": 1,
@@ -183,7 +183,7 @@ def handle_car_type():
 
 
 def handle_new_ene_car():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=6'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=6'
     data = requests.get(url)
     category_dict = {
         "total": 0,
@@ -241,7 +241,7 @@ def handle_new_ene_car():
 
 
 def handle_level_car():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=5'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=5'
     data = requests.get(url)
     data_json = json.loads(data.text)
     update_datas = []
@@ -268,7 +268,7 @@ def handle_level_car():
 
 
 def handle_country_car():
-    url = 'http://data.cpcaauto.com/api/chartlist?charttype=4'
+    url = 'http://data.cpcadata.com/api/chartlist?charttype=4'
     data = requests.get(url)
     data_json = json.loads(data.text)
     update_datas = []

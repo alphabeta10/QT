@@ -63,7 +63,7 @@ def post_or_get_data(url, params=None, method="post"):
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=oGYenO+AMTQuMTU1LjEzOS4xNTOBMDJhYWFhgmZjNWVlMQ==; u=2; JSESSIONID=DIfu5jBC7Rk_wHgprZXDGNikJl7W0d6pkaMD7LMCQZX8rb7Z4oge!460167158; wzws_cid=0fd9f5b2faab8659d5dd69df23c2814722c6acaff4f558615968963c3a9392071577c0015b12aaeedf5ab7b5701849eca6564a3d1be89a7794c7e7d5c3f6fd637fe956cb95f77ec62ef646d8643596e3"}
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMaBmZ8jygTgzODFjMIAxMTMuOTAuODUuMjA2; u=1; JSESSIONID=Sy8GSEp1cU_vgf4ffQTJv-Cz9GWzlwF1G2SyQqjSENlE10yEOU6o!-300289036"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):
@@ -168,11 +168,11 @@ def rec_get_data(mete_data: dict, meta_params: dict, data_params: dict, data_typ
                 update_result = data_info.bulk_write(upsert_datas, ordered=False)
                 print('数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
                       flush=True)
-            upsert_datas = to_meta_data(data, data_type, parent_class_list)
-            if len(upsert_datas) > 0:
-                update_result = meta_info.bulk_write(upsert_datas, ordered=False)
-                print('元数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
-                      flush=True)
+            # upsert_datas = to_meta_data(data, data_type, parent_class_list)
+            # if len(upsert_datas) > 0:
+            #     update_result = meta_info.bulk_write(upsert_datas, ordered=False)
+            #     print('元数据录入插入：%4d条, 更新：%4d条' % (update_result.upserted_count, update_result.modified_count),
+            #           flush=True)
         time.sleep(10)
 
 

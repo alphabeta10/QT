@@ -355,7 +355,7 @@ def cn_wci_index_data(url):
 def handle_cn_wci_data():
     stock_common = get_mongo_table(database='stock', collection='common_seq_data')
     common_url = 'https://www.mot.gov.cn/yunjiazhishu/chukoujizhuangxiangyjzs/'
-    for i in range(1):
+    for i in range(3):
         if i==0:
             url = 'https://www.mot.gov.cn/yunjiazhishu/chukoujizhuangxiangyjzs/'
         else:
@@ -372,7 +372,49 @@ def handle_cn_wci_data():
             if '中国出口集装箱运价指数' in a['title']:
                 combine_url = common_url + a['href'][2:]
                 datas = cn_wci_index_data(combine_url)
+                if len(datas)==0:
+                    print(f"no craw data url={combine_url}")
                 mongo_bulk_write_data(stock_common,datas)
+
+def handle_week_ccfi_data():
+    url = 'https://www.sse.net.cn/index/singleIndex?indexType=ccfi'
+    response = requests.get(url)
+    html = response.content
+    html_doc = str(html, 'utf-8')
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    tables = soup.find_all("table", 'lb1')
+    update_request = []
+    if len(tables)>0:
+        table = tables[0]
+        trs = table.find_all("tr")
+        if trs is not None and len(trs)>0:
+            tr = trs[0]
+            tds = tr.find_all("td")
+            if tds is not None and len(tds)>0:
+                before_time = tds[1].text.replace("上期","")
+                cur_time = tds[2].text.replace("本期","")
+                for tr in trs[1:]:
+                    tds = tr.find_all("td")
+                    if tds is not None:
+                        ps = tds[0].find_all("p")
+                        if ps is not None and len(ps)>0:
+                            name = tds[0].find_all("p")[0].text.replace("\n","").replace(" ","")
+                        else:
+                            name = tds[0].text.replace("\n", "").replace(" ", "")
+                        before_data = tds[1].text.replace("\n","").replace(" ","")
+                        cur_data = tds[2].text.replace("\n","").replace(" ","")
+                        same_data = tds[3].text.replace("\n","").replace(" ","")
+                        new_dict_data = {"time":cur_time,"before_time":before_time,"metric_code":name,"data_type":"cn_ccfi","data":cur_data,"before_data":before_data,"same_data":same_data}
+                        update_request.append(
+                            UpdateOne(
+                                {"data_type": new_dict_data['data_type'], "time": new_dict_data['time'],
+                                 "metric_code": new_dict_data['metric_code']},
+                                {"$set": new_dict_data},
+                                upsert=True)
+                        )
+    if len(update_request)>0:
+        stock_common = get_mongo_table(database='stock', collection='common_seq_data')
+        mongo_bulk_write_data(stock_common,update_request)
 
 def find_data():
     news = get_mongo_table(database='stock', collection='common_seq_data')
@@ -396,6 +438,7 @@ def find_data():
 
 
 if __name__ == '__main__':
+    handle_week_ccfi_data()
     handle_cn_wci_data()
     traffic()
     find_data()

@@ -623,12 +623,42 @@ class StockBasicAnalysis(object):
         data = data[data['class'] != '合计']
         return data
 
+
     def get_stock_fin_data(self, is_local=False):
         self.fin_data = get_fin_common_metric([self.pre_market_code], isZcfcDataFromLocal=is_local,
                                               isProfitDataFromLocal=is_local, isCashDataFromLocal=is_local,
                                               start_date=self.fin_start_date)
+        self.analysis_flow_cash_data()
+        # show_data(self.fin_data.tail(1))
         # print(self.fin_data)
+    def futures_indicator_data(self):
+        cols = ['CIP','RESEARCH_EXPENSE']
+        self.fin_data['CIP'] #在建工程 研发费用
 
+        pass
+
+    def analysis_flow_cash_data(self):
+        cash_flow_jude_stock_type_mapping = {
+            "111": "财源滚滚，但需仔细分析，投资以及筹资都为正",
+            "110": "企业赚的钱不够还债，投资活动获得流入，看看啥情况",
+            "101": "企业营业收入和筹资用于投资，看着不错，看看投资效果如何",
+            "100": "企业营业的钱用于投资和还债，看着不错，看看能不能持续下去",
+            "011": "营业不赚钱，靠投资和借钱过日子，得细致观察投资业务",
+            "001": "借钱经营和投资，应该是个初创企业，看看未来是否可期",
+            "010": "营业不赚钱，投资赚钱，并且还还债，得细致看看是不是变卖资产还债",
+            "000": "都是亏钱的，可能不要碰了",
+        }
+
+        def judge_fn(row, mapping: dict):
+            key = "1" if row['NETCASH_OPERATE'] > 0 else "0"
+            key += "1" if row['NETCASH_INVEST'] > 0 else "0"
+            key += "1" if row['NETCASH_FINANCE'] > 0 else "0"
+            return mapping.get(key,'default')
+
+        self.fin_data['cash_flow_main_result'] = self.fin_data.apply(judge_fn,args=(cash_flow_jude_stock_type_mapping,),axis=1)
+
+    def analysis_fin_data_zcfz_data(self):
+        pass
     def analysis_fin_profit_data(self):
         """
         1.2.1 利润来源
@@ -662,18 +692,22 @@ class StockBasicAnalysis(object):
         self.fin_data['other_operate_income'] = -self.fin_data['TOTAL_OPERATE_INCOME'] + self.fin_data[
             'TOTAL_OPERATE_COST'] + self.fin_data['OPERATE_PROFIT']
         self.fin_data['other_no_op_income'] = self.fin_data['TOTAL_PROFIT'] - self.fin_data['OPERATE_PROFIT']
-        self.fin_data['其他营业收入占比净利润'] = round(self.fin_data['other_operate_income'] / self.fin_data['NETPROFIT'], 4)
-        self.fin_data['除营业外收入占比净利润'] = round(self.fin_data['other_no_op_income'] / self.fin_data['NETPROFIT'], 4)
+        self.fin_data['其他营业收入占比净利润'] = round(
+            self.fin_data['other_operate_income'] / self.fin_data['NETPROFIT'], 4)
+        self.fin_data['除营业外收入占比净利润'] = round(
+            self.fin_data['other_no_op_income'] / self.fin_data['NETPROFIT'], 4)
         self.fin_data['扣除非经常性损益后的净利润占比净利润'] = round(
             self.fin_data['DEDUCT_PARENT_NETPROFIT'] / self.fin_data['NETPROFIT'], 4)
         self.fin_data['毛利率'] = round(
             (self.fin_data['OPERATE_INCOME'] - self.fin_data['OPERATE_COST']) / self.fin_data['OPERATE_INCOME'], 4)
         self.fin_data['费用占比'] = round(
-            (self.fin_data['SALE_EXPENSE'] + self.fin_data['MANAGE_EXPENSE']+self.fin_data['FINANCE_EXPENSE']) / self.fin_data['OPERATE_INCOME'], 4)
-        self.fin_data['研发费用占比'] = round(self.fin_data['RESEARCH_EXPENSE']/self.fin_data['OPERATE_INCOME'],4)
-        show_col_names = ['其他营业收入占比净利润','除营业外收入占比净利润','扣除非经常性损益后的净利润占比净利润','毛利率','费用占比','研发费用占比']
+            (self.fin_data['SALE_EXPENSE'] + self.fin_data['MANAGE_EXPENSE'] + self.fin_data['FINANCE_EXPENSE']) /
+            self.fin_data['OPERATE_INCOME'], 4)
+        self.fin_data['研发费用占比'] = round(self.fin_data['RESEARCH_EXPENSE'] / self.fin_data['OPERATE_INCOME'], 4)
+        show_col_names = ['其他营业收入占比净利润', '除营业外收入占比净利润', '扣除非经常性损益后的净利润占比净利润',
+                          '毛利率', '费用占比', '研发费用占比']
         last_data_dict = dict(self.fin_data.tail(1).iloc[0])
-        new_dict = {k:last_data_dict.get(k,'') for k in show_col_names}
+        new_dict = {k: last_data_dict.get(k, '') for k in show_col_names}
         print(new_dict)
 
         return self.fin_data

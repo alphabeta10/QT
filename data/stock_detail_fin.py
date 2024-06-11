@@ -54,8 +54,8 @@ def common_stock_fin_report_em(request_update: list, symbol, data_type='zcfz_rep
     return df_data
 
 
-def get_stock_financial_analysis_indicator(request_update: list, symbol="603288"):
-    df_data = try_get_action(ak.stock_financial_analysis_indicator, try_count=3, symbol=symbol)
+def get_stock_financial_analysis_indicator(request_update: list, symbol="603288",start_year='2010'):
+    df_data = try_get_action(ak.stock_financial_analysis_indicator, try_count=3, symbol=symbol,start_year=start_year)
     if df_data is not None:
         for index in df_data.index:
             dict_data = dict(df_data.loc[index])
@@ -146,4 +146,5 @@ def get_data():
     fin_col.create_index([("date", 1), ("code", 1), ("data_type", 1)], unique=True, background=True)
 
 if __name__ == '__main__':
+    handle_fin_analysis_indicator()
     pass
