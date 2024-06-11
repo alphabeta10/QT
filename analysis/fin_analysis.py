@@ -279,9 +279,30 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True, start_date=None):
                     "TOTAL_OPERATE_OUTFLOW": "经营活动现金流出小计",
                     "TOTAL_OPERATE_INFLOW": "经营活动现金流入小计",
                     "SALES_SERVICES": "销售商品、提供劳务收到的现金",
+                    'RECEIVE_TAX_REFUND': '收到的税收返还',
+                    'RECEIVE_OTHER_OPERATE': '收到其他与经营活动有关的现金',
+
                     "BUY_SERVICES": "购买商品、接受劳务支付的现金",
                     "PAY_STAFF_CASH": "支付给职工以及为职工支付的现金",
+                    "PAY_OTHER_OPERATE": "支付其他与经营活动有关的现金",
+
+                    "WITHDRAW_INVEST": "收回投资收到的现金",
+                    "RECEIVE_INVEST_INCOME": "取得投资收益收到的现金",
+                    "DISPOSAL_LONG_ASSET": "处置固定资产、无形资产和其他长期资产收回的现金净额",
+                    "RECEIVE_OTHER_INVEST": "收到的其他与投资活动有关的现金",
+                    "CONSTRUCT_LONG_ASSET": "购建固定资产、无形资产和其他长期资产支付的现金",
+                    "INVEST_PAY_CASH": "投资支付的现金",
+                    "PAY_OTHER_INVEST": "支付其他与投资活动有关的现金",
                     'NETCASH_INVEST': '投资活动产生的现金流量净额',
+
+
+                    'ACCEPT_INVEST_CASH': '吸收投资收到的现金',
+                    'RECEIVE_LOAN_CASH': '取得借款收到的现金',
+                    'RECEIVE_OTHER_FINANCE': '收到的其他与筹资活动有关的现金',
+                    'PAY_DEBT_CASH': '偿还债务所支付的现金',
+                    'ASSIGN_DIVIDEND_PORFIT': '分配股利、利润或偿付利息支付的现金',
+                    'PAY_OTHER_FINANCE': '支付的其他与筹资活动有关的现金',
+                    'NETCASH_FINANCE': '筹资活动产生的现金流量净额',
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
@@ -1021,17 +1042,17 @@ def afre_analysis():
     sort_key = 'time'
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
-    # all_metric_dict = {
-    #     "afre": "社融规模增量",
-    #     "net_fin_cor_bonds":"企业债券",
-    #     "gov_bonds":"政府债券",
-    # }
-    #
-    # for k,name in all_metric_dict.items():
-    #     data[k] = data[k].astype(float)
-    #     convert_afre_month_df = convert_pd_data_to_month_data(data,'time',k,'metric_code',{"agg_fin_flow":name})
-    #     convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
-    #     plt.show()
+    all_metric_dict = {
+        "afre": "社融规模增量",
+        "net_fin_cor_bonds":"企业债券",
+        "gov_bonds":"政府债券",
+    }
+
+    for k,name in all_metric_dict.items():
+        data[k] = data[k].astype(float)
+        convert_afre_month_df = convert_pd_data_to_month_data(data,'time',k,'metric_code',{"agg_fin_flow":name})
+        convert_afre_month_df.plot(kind='line', title=name, rot=45, figsize=(15, 8), fontsize=10)
+        plt.show()
 
     database = 'stock'
     collection = 'common_seq_data'
