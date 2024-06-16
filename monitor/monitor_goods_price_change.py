@@ -125,7 +125,7 @@ def daily_monitor_goods():
                      {"goods_type": "避险商品监控", "goods_list": ['黄金', '白银']},
                      {"goods_type": "建材商品监控", "goods_list": ['螺纹钢', '玻璃']},
                      {"goods_type": "包装材料商品监控",
-                      "goods_list": ['针叶木浆', '白卡纸', '白板纸', '阔叶木浆', '瓦楞原纸', '废纸']},
+                      "goods_list": ['针叶木浆', '阔叶木浆', '瓦楞原纸']},
                      {"goods_type": "有色金属监控", "goods_list": ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物']},
                      ]
     all_html_str = ''

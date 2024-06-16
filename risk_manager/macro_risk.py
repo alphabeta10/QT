@@ -540,7 +540,7 @@ def cn_fin_risk(is_show=False):
     """
     database = 'stock'
     collection = 'common_seq_data'
-    cols = ['afre','rmb_loans','gov_bonds']
+    cols = ['afre','rmb_loans','gov_bonds','net_fin_cor_bonds']
     projection = {'_id': False}
     time = (datetime.now() - timedelta(days=365*2)).strftime("%Y0101")
     condition = {"data_type":"credit_funds", "time": {"$gte": time},"metric_code":"agg_fin_flow"}

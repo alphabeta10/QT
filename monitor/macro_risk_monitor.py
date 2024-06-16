@@ -47,12 +47,12 @@ def cn_month_fin_risk_mail_str(day=None):
             day = f"{year}0{month}01"
         else:
             day = f"{year}{month}01"
-    cols = ['afre', 'rmb_loans', 'gov_bonds', 'total_risk']
+    cols = ['afre', 'rmb_loans', 'gov_bonds','net_fin_cor_bonds', 'total_risk']
 
     if len(df) > 0:
         html_str = f"<p>中国社融风险如下</p>"
         html_str += f"<table border=\"1\">"
-        html_str += "<tr> <th>社融增量同比</th> <th>人民币贷款同比</th> <th>政府债券同比</th> <th>总风险</th> <th>时间</th></tr>"
+        html_str += "<tr> <th>社融增量同比</th> <th>人民币贷款同比</th> <th>政府债券同比</th><th>企业债券同比</th> <th>总风险</th> <th>时间</th></tr>"
         for index in df.tail(6).index:
             html_str += "<tr>"
             for col in cols:

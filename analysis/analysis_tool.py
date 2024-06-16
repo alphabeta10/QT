@@ -16,7 +16,8 @@ from sklearn.linear_model import LinearRegression
 from scipy.optimize import minimize
 
 
-def convert_pd_data_to_month_data(data:pd.DataFrame,time_name,value_name,code_name,code_name_mapping=None,handle_year_month_fn=None):
+def convert_pd_data_to_month_data(data: pd.DataFrame, time_name, value_name, code_name, code_name_mapping=None,
+                                  handle_year_month_fn=None):
     year_dict_data = {}
     for index in data.index:
         ele = data.loc[index]
@@ -28,15 +29,16 @@ def convert_pd_data_to_month_data(data:pd.DataFrame,time_name,value_name,code_na
         year = time[0:4]
         month = int(time[4:6])
         if handle_year_month_fn is not None:
-            year,month = handle_year_month_fn(time)
+            year, month = handle_year_month_fn(time)
         combine_key = f"{year}年{code}"
         if combine_key not in year_dict_data.keys():
             year_dict_data[combine_key] = [None] * 12
-        year_dict_data[combine_key][month-1] = val
+        year_dict_data[combine_key][month - 1] = val
     convert_data = pd.DataFrame(data=year_dict_data,
                                 index=['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
                                        '12月'])
     return convert_data
+
 
 def plot_marker_line(data: pd.DataFrame, value_index, show_index, title, x_label=''):
     data.plot(kind='line', rot=45, figsize=(15, 8), fontsize=10, marker='o')
@@ -415,6 +417,14 @@ def stock_potfolio():
     DF_Alloc_R['maxSR'] = w_SR
     print('Optimal allocation (in %) for specified target return:')
     print(np.round(DF_Alloc_R * 100, 1))  # allocation in % and round (to the 1st decimal)
+
+
+def format_data_to_100million(df_data: pd.DataFrame, cols):
+    data_cols = df_data.columns
+    for col in cols:
+        if col in data_cols:
+            df_data[col] = df_data[col].astype(float)
+            df_data[col] = np.round(df_data[col] / 1e8, 4)
 
 
 if __name__ == '__main__':

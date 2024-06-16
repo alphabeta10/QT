@@ -117,8 +117,8 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True, start_date=None):
     def convert_ele(ele):
         if ele == '--' or str(ele) == 'nan':
             ele = 0
-        if float(ele) < 0:
-            return 0
+        # if float(ele) < 0:
+        #     return 0
         return float(ele)
 
     local_codes = [code[2:] for code in code_list]
@@ -147,9 +147,31 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True, start_date=None):
                     'SHARE_CAPITAL': '实收资本（或股本',
                     'CAPITAL_RESERVE': '资本公积',
                     'TOTAL_CURRENT_LIAB': '流动负债合计',
-                    'TRADE_FINASSET_NOTFVTPL': '交易性金融资产'
+                    'TRADE_FINASSET_NOTFVTPL': '交易性金融资产',
+                    'TOTAL_NONCURRENT_ASSETS': '非流动资产合计',
+                    'LONG_EQUITY_INVEST': '长期股权投资',
+                    'OTHER_NONCURRENT_ASSET': '其他非流动资产',
+                    'GOODWILL': '商誉',
+                    'OTHER_NONCURRENT_FINASSET': '其他非流动金融资产',
+                    'DEFER_TAX_ASSET': '递延所得税资产',
+                    'LONG_PREPAID_EXPENSE': '长期待摊费用',
+                    'LONG_RECE': '长期应收款',
+                    'DEVELOP_EXPENSE': '开发支出',
+                    'ADVANCE_RECEIVABLES': '预收款项',
+                    'CONTRACT_LIAB': '合同负债',
+                    'STAFF_SALARY_PAYABLE': '应付职工薪酬',
+                    'TOTAL_OTHER_PAYABLE': '其他应付款合计',
+                    'NONCURRENT_LIAB_1YEAR': '一年内到期的非流动负债',
+                    'OTHER_CURRENT_LIAB': '其他流动负债',
+                    'TAX_PAYABLE': '应交税费',
+                    'CURRENT_LIAB_OTHER': '流动负债其他项目',
+                    'SHORT_BOND_PAYABLE': '应付短期债券',
+                    'DEFER_INCOME': '递延收益',
+                    'LONG_STAFFSALARY_PAYABLE': '长期应付职工薪酬',
+                    'LONG_PAYABLE': '长期应付款',
+                    'TOTAL_NONCURRENT_LIAB': '非流动负债合计',
                     }
-    projection = {"code": True, "date": True}
+    projection = {"code": True, "date": True,'_id':False}
     for k, _ in get_col_dict.items():
         projection[k] = True
     zcfz_pd_data = get_data(dtype='zcfz_report_detail', cods=local_codes, projection=projection, date=start_date)
@@ -211,15 +233,15 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
     def convert_ele(ele):
         if ele == '--' or str(ele) == 'nan':
             ele = 0
-        if float(ele) < 0:
-            return 0
+        # if float(ele) < 0:
+        #     return 0
         return float(ele)
 
     local_codes = [code[2:] for code in code_list]
     if isDataFromLocal is False:
         handle_comm_stock_fin_em(codes=code_list, data_type="profit_report_em_detail")
 
-    projection = {"date": True, "code": True}
+    projection = {"date": True, "code": True,"_id":False}
     get_col_dict = {"FE_INTEREST_EXPENSE": "其中:利息费用",
                     "FE_INTEREST_INCOME": "利息收入",
                     "OPERATE_INCOME": "营业收入",
@@ -236,6 +258,10 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
                     'MANAGE_EXPENSE': "管理费用",
                     'FINANCE_EXPENSE': "财务费用",
                     'TOTAL_OPERATE_INCOME': '营业总收入',
+                    'INVEST_INCOME': '投资收益',
+                    'FAIRVALUE_CHANGE_INCOME': '加:公允价值变动收益',
+                    'ASSET_DISPOSAL_INCOME': '资产处置收益',
+                    'OTHER_INCOME': '其他收益',
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
@@ -252,6 +278,7 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
     profit_pd_data['主营业务利润率'] = (profit_pd_data['OPERATE_INCOME'] - profit_pd_data['OPERATE_COST'] -
                                         profit_pd_data['OPERATE_TAX_ADD']) / profit_pd_data['OPERATE_INCOME']
     profit_pd_data['营业利润率'] = profit_pd_data['OPERATE_PROFIT'] / profit_pd_data['OPERATE_INCOME']
+    profit_pd_data['利息保障倍数'] = (profit_pd_data['TOTAL_PROFIT']+profit_pd_data['FE_INTEREST_EXPENSE']) / profit_pd_data['FE_INTEREST_EXPENSE']
     return profit_pd_data
 
 
@@ -266,15 +293,15 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True, start_date=None):
     def convert_ele(ele):
         if ele == '--' or str(ele) == 'nan':
             ele = 0
-        if float(ele) < 0:
-            return 0
+        # if float(ele) < 0:
+        #     return 0
         return float(ele)
 
     local_codes = [code[2:] for code in code_list]
     if isDataFromLocal is False:
         handle_comm_stock_fin_em(codes=code_list, data_type="cash_flow_report_em_detail")
 
-    projection = {"date": True, "code": True}
+    projection = {"date": True, "code": True,"_id":False}
     get_col_dict = {"NETCASH_OPERATE": "经营活动产生的现金流量净额",
                     "TOTAL_OPERATE_OUTFLOW": "经营活动现金流出小计",
                     "TOTAL_OPERATE_INFLOW": "经营活动现金流入小计",
@@ -285,23 +312,29 @@ def get_fin_cash_flow_metric(code_list, isDataFromLocal=True, start_date=None):
                     "BUY_SERVICES": "购买商品、接受劳务支付的现金",
                     "PAY_STAFF_CASH": "支付给职工以及为职工支付的现金",
                     "PAY_OTHER_OPERATE": "支付其他与经营活动有关的现金",
+                    "PAY_ALL_TAX": "支付的各项税费",
 
                     "WITHDRAW_INVEST": "收回投资收到的现金",
                     "RECEIVE_INVEST_INCOME": "取得投资收益收到的现金",
                     "DISPOSAL_LONG_ASSET": "处置固定资产、无形资产和其他长期资产收回的现金净额",
                     "RECEIVE_OTHER_INVEST": "收到的其他与投资活动有关的现金",
+                    "TOTAL_INVEST_INFLOW": "投资活动现金流入小计",
+
                     "CONSTRUCT_LONG_ASSET": "购建固定资产、无形资产和其他长期资产支付的现金",
                     "INVEST_PAY_CASH": "投资支付的现金",
                     "PAY_OTHER_INVEST": "支付其他与投资活动有关的现金",
+                    'TOTAL_INVEST_OUTFLOW': '投资活动现金流出小计',
                     'NETCASH_INVEST': '投资活动产生的现金流量净额',
-
 
                     'ACCEPT_INVEST_CASH': '吸收投资收到的现金',
                     'RECEIVE_LOAN_CASH': '取得借款收到的现金',
                     'RECEIVE_OTHER_FINANCE': '收到的其他与筹资活动有关的现金',
+                    'TOTAL_FINANCE_INFLOW': '筹资活动现金流入小计',
+
                     'PAY_DEBT_CASH': '偿还债务所支付的现金',
                     'ASSIGN_DIVIDEND_PORFIT': '分配股利、利润或偿付利息支付的现金',
                     'PAY_OTHER_FINANCE': '支付的其他与筹资活动有关的现金',
+                    'TOTAL_FINANCE_OUTFLOW': '筹资活动现金流出小计',
                     'NETCASH_FINANCE': '筹资活动产生的现金流量净额',
                     }
     for k, _ in get_col_dict.items():

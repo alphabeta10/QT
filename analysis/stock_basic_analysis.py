@@ -598,6 +598,7 @@ class StockBasicAnalysis(object):
         self.code = kwargs['code']
         self.date = kwargs.get("date", str(datetime.now().year - 1) + "年度")
         self.fin_start_date = kwargs.get('fin_start_date', None)
+        self.cal_cur_cols = kwargs.get("cal_cur_cols", None)
 
         if int(self.code[0]) < 6:
             self.pre_market_code = f"sz{self.code}"
@@ -623,17 +624,38 @@ class StockBasicAnalysis(object):
         data = data[data['class'] != '合计']
         return data
 
-
     def get_stock_fin_data(self, is_local=False):
         self.fin_data = get_fin_common_metric([self.pre_market_code], isZcfcDataFromLocal=is_local,
                                               isProfitDataFromLocal=is_local, isCashDataFromLocal=is_local,
                                               start_date=self.fin_start_date)
+        self.common_cal_cur_data()
         self.analysis_flow_cash_data()
-        # show_data(self.fin_data.tail(1))
-        # print(self.fin_data)
+
+
+    def common_cal_cur_data(self):
+        """
+        计算当期数据,周期分析有用
+        :return:
+        """
+
+        def cur_period_data(row, key):
+            pre_val = row[key + "_PRE"]
+            val = row[key]
+            date = row['date']
+            if "03-31" in date:
+                return val
+            else:
+                return val - pre_val
+
+        if self.cal_cur_cols is not None:
+            for col in self.cal_cur_cols:
+                self.fin_data[col+"_PRE"] = self.fin_data[col].shift(1)
+                self.fin_data['CUR_'+col] = self.fin_data.apply(cur_period_data, args=(col,),
+                                                                           axis=1)
+
     def futures_indicator_data(self):
-        cols = ['CIP','RESEARCH_EXPENSE']
-        self.fin_data['CIP'] #在建工程 研发费用
+        cols = ['CIP', 'RESEARCH_EXPENSE']
+        self.fin_data['CIP']  # 在建工程 研发费用
 
         pass
 
@@ -653,12 +675,16 @@ class StockBasicAnalysis(object):
             key = "1" if row['NETCASH_OPERATE'] > 0 else "0"
             key += "1" if row['NETCASH_INVEST'] > 0 else "0"
             key += "1" if row['NETCASH_FINANCE'] > 0 else "0"
-            return mapping.get(key,'default')
+            return mapping.get(key, 'default')
 
-        self.fin_data['cash_flow_main_result'] = self.fin_data.apply(judge_fn,args=(cash_flow_jude_stock_type_mapping,),axis=1)
+
+        # 现金流量判断数据
+        self.fin_data['cash_flow_main_result'] = self.fin_data.apply(judge_fn,
+                                                                     args=(cash_flow_jude_stock_type_mapping,), axis=1)
 
     def analysis_fin_data_zcfz_data(self):
         pass
+
     def analysis_fin_profit_data(self):
         """
         1.2.1 利润来源
