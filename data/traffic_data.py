@@ -1,3 +1,7 @@
+import sys
+import os
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -249,7 +253,7 @@ def get_main_traffic_data(url):
                 except Exception as e:
                     print(f"error {e}")
                     print(f"{result_url}")
-                    return
+                    dict_data = None
                 if dict_data is not None:
                     dict_data['data_type'] = "traffic"
                     dict_data['metric_code'] = "traffic"

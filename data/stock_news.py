@@ -2,6 +2,10 @@ import re
 import akshare as ak
 import requests
 import pandas as pd
+import sys
+import os
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from datetime import datetime, timedelta
 from utils.actions import try_get_action
 from bs4 import BeautifulSoup

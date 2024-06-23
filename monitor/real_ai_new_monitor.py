@@ -1,4 +1,7 @@
 import os
+import sys
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from datetime import datetime, timedelta
 import google.generativeai as genai
 

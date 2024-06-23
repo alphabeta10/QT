@@ -14,6 +14,7 @@ from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 from tqdm import tqdm
 from analysis.fin_analysis import get_fin_common_metric
+from utils.tool import sort_dict_data_by
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -628,9 +629,47 @@ class StockBasicAnalysis(object):
         self.fin_data = get_fin_common_metric([self.pre_market_code], isZcfcDataFromLocal=is_local,
                                               isProfitDataFromLocal=is_local, isCashDataFromLocal=is_local,
                                               start_date=self.fin_start_date)
+        self.fin_data = pd.DataFrame(self.common_cal_result(self.fin_data,{},def_fn=self.cal_metric_fn))
         self.common_cal_cur_data()
         self.analysis_flow_cash_data()
 
+    def cal_metric_fn(self, cur_dict_data: dict, before_dict_data: dict):
+
+        # 资本积累率：所有者权益同比增长 TOTAL_EQUITY
+        # 营业利润增长率
+        same_config = {"资本积累率": "TOTAL_EQUITY", "营业利润增长率": "OPERATE_PROFIT","净利润增长率":"NETPROFIT",
+                       "扣除非经常性损益后的净利润同比增长率":"DEDUCT_PARENT_NETPROFIT",
+                       "营业收入增长率":"OPERATE_INCOME",
+                       "总资产增长率":"TOTAL_ASSETS",
+                       "固定资产增长率":"AVG_FIXED_ASSET",}
+
+        for new_col,c_col in same_config.items():
+            cur_dict_data[new_col] = round((cur_dict_data.get(c_col, 0) - before_dict_data.get(c_col)) / before_dict_data.get(c_col, 1), 4)
+    def convert_quarter_data(self, data: pd.DataFrame, time_name, code_name, value_name, code_name_mapping=None,
+                             handle_year_month_fn=None):
+        year_dict_data = {}
+        for index in data.index:
+            ele = dict(data.loc[index])
+            time = ele[time_name]
+            if code_name not in ele.keys():
+                code = code_name
+            else:
+                code = ele[code_name]
+            if code_name_mapping is not None:
+                code = code_name_mapping.get(code)
+            val = ele[value_name]
+            year = time[0:4]
+            quarter = time[5:]
+            quarter_mapping = {"03-31": 0, "06-30": 1, "09-30": 2, "12-31": 3}
+            if handle_year_month_fn is not None:
+                year, quarter = handle_year_month_fn(time)
+            combine_key = f"{year}年{code}"
+            if combine_key not in year_dict_data.keys():
+                year_dict_data[combine_key] = [None] * 4
+            year_dict_data[combine_key][quarter_mapping.get(quarter)] = val
+        convert_data = pd.DataFrame(data=year_dict_data,
+                                    index=['1季度', '2季度', '3季度', '4季度'])
+        return convert_data
 
     def common_cal_cur_data(self):
         """
@@ -649,15 +688,12 @@ class StockBasicAnalysis(object):
 
         if self.cal_cur_cols is not None:
             for col in self.cal_cur_cols:
-                self.fin_data[col+"_PRE"] = self.fin_data[col].shift(1)
-                self.fin_data['CUR_'+col] = self.fin_data.apply(cur_period_data, args=(col,),
-                                                                           axis=1)
+                self.fin_data[col + "_PRE"] = self.fin_data[col].shift(1)
+                self.fin_data['CUR_' + col] = self.fin_data.apply(cur_period_data, args=(col,),
+                                                                  axis=1)
 
     def futures_indicator_data(self):
         cols = ['CIP', 'RESEARCH_EXPENSE']
-        self.fin_data['CIP']  # 在建工程 研发费用
-
-        pass
 
     def analysis_flow_cash_data(self):
         cash_flow_jude_stock_type_mapping = {
@@ -677,13 +713,9 @@ class StockBasicAnalysis(object):
             key += "1" if row['NETCASH_FINANCE'] > 0 else "0"
             return mapping.get(key, 'default')
 
-
         # 现金流量判断数据
         self.fin_data['cash_flow_main_result'] = self.fin_data.apply(judge_fn,
                                                                      args=(cash_flow_jude_stock_type_mapping,), axis=1)
-
-    def analysis_fin_data_zcfz_data(self):
-        pass
 
     def analysis_fin_profit_data(self):
         """
@@ -737,6 +769,297 @@ class StockBasicAnalysis(object):
         print(new_dict)
 
         return self.fin_data
+
+    def common_cal_result(self, data: pd.DataFrame, change_config: dict, is_year_end=False, analysis_type='zcfz',
+                          def_fn=None):
+        record_year_data = {}
+        res_data = []
+        for index in data.index:
+            dict_data = dict(data.loc[index])
+            if is_year_end:
+                if '12-31' in dict_data.get('date'):
+                    record_year_data[dict_data['date']] = dict_data
+                before_year = str(int(dict_data['date'][0:4]) - 1) + "-12-31"
+            else:
+                record_year_data[dict_data['date']] = dict_data
+                before_year = str(int(dict_data['date'][0:4]) - 1) + dict_data['date'][4:]
+            before_data = record_year_data.get(before_year, None)
+            if before_data is not None:
+                show_list = []
+                for key, sub_dict in change_config.items():
+                    key_diff = round((float(dict_data.get(key, 0)) - float(before_data.get(key, 0))) / 1e8, 3)
+                    temp_sub_diff = {}
+                    name = sub_dict['name']
+                    for sub_key, sub_name in sub_dict['sub_key'].items():
+                        temp_sub_diff[sub_name] = round(
+                            (float(dict_data.get(sub_key, 0)) - float(before_data.get(sub_key, 0))) / 1e8, 3)
+                    analysis_result = None
+                    show_text = f"{name}"
+                    if key_diff > 0:
+                        show_text += f"增长{key_diff}亿;"
+                        analysis_result = sort_dict_data_by(temp_sub_diff, by='value', reverse=True)
+                    elif key_diff < 0:
+                        show_text += f"减少{key_diff}亿;"
+                        analysis_result = sort_dict_data_by(temp_sub_diff, by='value')
+                    else:
+                        print("么有分析结果")
+                    if analysis_result is not None:
+                        show_text += "主要原因是:"
+                        for key, val in analysis_result.items():
+                            if key_diff > 0:
+                                if val > 0:
+                                    show_text += f"{key}增长{val}亿;"
+                            if key_diff < 0:
+                                if val < 0:
+                                    show_text += f"{key}减少{val}亿;"
+                        show_list.append(show_text)
+                if len(show_list) > 0:
+                    dict_data[analysis_type] = "|".join(show_list)
+                res_data.append(dict_data)
+                if def_fn is not None:
+                    def_fn(dict_data, before_data)
+        return res_data
+
+    def construct_summary(self, data: list, cols: list, d_type: str):
+        if data is not None and len(data) > 0:
+            date_str = data[-1].get("date")
+            comm_summary = f"时间:{date_str};" + data[-1][d_type]
+            detail_summary = ''
+            for col in cols:
+                val = data[-1].get(col, '')
+                detail_summary += f"{col}:{val};"
+            comm_summary += ";" + detail_summary
+            return comm_summary
+        return f"{d_type} has not summary"
+
+    def analysis_cash_flow_data(self):
+
+        profit_pd_data = self.fin_data
+        change_config_dict = {
+
+            "TOTAL_OPERATE_OUTFLOW": {"sub_key": {
+                "BUY_SERVICES": "购买商品、接受劳务支付的现金",
+                "PAY_STAFF_CASH": "支付给职工以及为职工支付的现金",
+                "PAY_OTHER_OPERATE": "支付其他与经营活动有关的现金",
+                "PAY_ALL_TAX": "支付的各项税费",
+            }, "name": "经营活动现金流出小计"},
+
+            "TOTAL_OPERATE_INFLOW": {"sub_key": {
+                "SALES_SERVICES": "销售商品、提供劳务收到的现金",
+                'RECEIVE_TAX_REFUND': '收到的税收返还',
+                'RECEIVE_OTHER_OPERATE': '收到其他与经营活动有关的现金',
+            }, "name": "经营活动现金流入小计"},
+
+            "TOTAL_INVEST_INFLOW": {"sub_key": {
+                "WITHDRAW_INVEST": "收回投资收到的现金",
+                "RECEIVE_INVEST_INCOME": "取得投资收益收到的现金",
+                "DISPOSAL_LONG_ASSET": "处置固定资产、无形资产和其他长期资产收回的现金净额",
+                "RECEIVE_OTHER_INVEST": "收到的其他与投资活动有关的现金",
+            }, "name": "投资活动现金流入小计"},
+
+            "TOTAL_INVEST_OUTFLOW": {"sub_key": {
+                "CONSTRUCT_LONG_ASSET": "购建固定资产、无形资产和其他长期资产支付的现金",
+                "INVEST_PAY_CASH": "投资支付的现金",
+                "PAY_OTHER_INVEST": "支付其他与投资活动有关的现金",
+            }, "name": "投资活动现金流出小计"},
+
+            "TOTAL_FINANCE_INFLOW": {"sub_key": {
+                'ACCEPT_INVEST_CASH': '吸收投资收到的现金',
+                'RECEIVE_LOAN_CASH': '取得借款收到的现金',
+                'RECEIVE_OTHER_FINANCE': '收到的其他与筹资活动有关的现金',
+            }, "name": "筹资活动现金流入小计"},
+
+            "TOTAL_FINANCE_OUTFLOW": {"sub_key": {
+                'PAY_DEBT_CASH': '偿还债务所支付的现金',
+                'ASSIGN_DIVIDEND_PORFIT': '分配股利、利润或偿付利息支付的现金',
+                'PAY_OTHER_FINANCE': '支付的其他与筹资活动有关的现金',
+            }, "name": "筹资活动现金流出小计"},
+
+        }
+
+        def mid_fn(cur_dict_data: dict, before_dict_data: dict):
+            cur_dict_data['经营活动产生的现金流量净额'] = str(
+                round(cur_dict_data.get('NETCASH_OPERATE', 0) / 1e8, 4)) + "亿"
+            cur_dict_data['投资活动产生的现金流量净额'] = str(
+                round(cur_dict_data.get('NETCASH_INVEST', 0) / 1e8, 4)) + "亿"
+            cur_dict_data['筹资活动产生的现金流量净额'] = str(
+                round(cur_dict_data.get('NETCASH_FINANCE', 0) / 1e8, 4)) + "亿"
+
+        data = self.common_cal_result(profit_pd_data, change_config_dict, analysis_type='cash_flow', def_fn=mid_fn)
+        cols = ['经营活动产生的现金流量净额', '投资活动产生的现金流量净额', '筹资活动产生的现金流量净额']
+
+        self.last_cash_flow_summary = self.construct_summary(data, cols, 'cash_flow')
+        return self.last_cash_flow_summary
+
+    def analysis_profit_data(self):
+        profit_pd_data = self.fin_data
+        profit_pd_data['OTHER_OPERATE_INCOME'] = profit_pd_data['TOTAL_OPERATE_COST'] + profit_pd_data[
+            'OPERATE_PROFIT'] - \
+                                                 profit_pd_data['TOTAL_OPERATE_INCOME']
+        profit_pd_data['OTHER_NO_OPERATE_PROFIT'] = profit_pd_data['NETPROFIT'] - profit_pd_data[
+            'DEDUCT_PARENT_NETPROFIT']
+        change_config_dict = {
+            "OPERATE_PROFIT": {"sub_key": {
+                "TOTAL_OPERATE_INCOME": "营业总收入",
+                'OTHER_OPERATE_INCOME': '其他经营收益',
+                'INVEST_INCOME': '投资收益',
+                'FAIRVALUE_CHANGE_INCOME': '加:公允价值变动收益',
+                'ASSET_DISPOSAL_INCOME': '资产处置收益',
+                'OTHER_INCOME': '其他收益',
+            }, "name": "营业利润分析"},
+
+            "NETPROFIT": {"sub_key": {
+                "OTHER_NO_OPERATE_PROFIT": "非经常性利润",
+                'DEDUCT_PARENT_NETPROFIT': '经常性利润',
+            }, "name": "净利润分析"},
+
+            "TOTAL_OPERATE_COST": {"sub_key": {
+                'RESEARCH_EXPENSE': '研发费用',
+                "OPERATE_COST": "营业成本",
+                'SALE_EXPENSE': "销售费用",
+                'OPERATE_TAX_ADD': '税金及附加',
+                'MANAGE_EXPENSE': "管理费用",
+                'FINANCE_EXPENSE': "财务费用",
+                "FE_INTEREST_EXPENSE": "其中:利息费用",
+                "FE_INTEREST_INCOME": "利息收入",
+            }, "name": "营业总成本分析"},
+        }
+
+        def mid_fn(cur_dict_data: dict, before_dict_data: dict):
+            cur_dict_data['营业收入同比增长率'] = round(
+                (cur_dict_data['TOTAL_OPERATE_INCOME'] - before_dict_data['TOTAL_OPERATE_INCOME']) / before_dict_data[
+                    'TOTAL_OPERATE_INCOME'], 4)
+            cur_dict_data['净利润同比增长率'] = round(
+                (cur_dict_data['NETPROFIT'] - before_dict_data['NETPROFIT']) / before_dict_data['NETPROFIT'], 4)
+            cur_dict_data['扣除非经常性损益后的净利润同比增长率'] = round(
+                (cur_dict_data['DEDUCT_PARENT_NETPROFIT'] - before_dict_data['DEDUCT_PARENT_NETPROFIT']) /
+                before_dict_data[
+                    'DEDUCT_PARENT_NETPROFIT'], 4)
+            cur_dict_data['营业总成本同比增长率'] = round(
+                (cur_dict_data['TOTAL_OPERATE_COST'] - before_dict_data['TOTAL_OPERATE_COST']) / before_dict_data[
+                    'TOTAL_OPERATE_COST'], 4)
+            cur_dict_data['销售费用同比增长率'] = round(
+                (cur_dict_data['SALE_EXPENSE'] - before_dict_data['SALE_EXPENSE']) / before_dict_data['SALE_EXPENSE'],
+                4)
+            cur_dict_data['管理费用同比增长率'] = round(
+                (cur_dict_data['MANAGE_EXPENSE'] - before_dict_data['MANAGE_EXPENSE']) / before_dict_data[
+                    'MANAGE_EXPENSE'],
+                4)
+            cur_dict_data['财务费用同比增长率'] = round(
+                (cur_dict_data['FINANCE_EXPENSE'] - before_dict_data['FINANCE_EXPENSE']) / before_dict_data[
+                    'FINANCE_EXPENSE'], 4)
+            cur_dict_data['研发费用同比增长率'] = round(
+                (cur_dict_data['RESEARCH_EXPENSE'] - before_dict_data['RESEARCH_EXPENSE']) / before_dict_data[
+                    'RESEARCH_EXPENSE'], 4)
+
+        data = self.common_cal_result(profit_pd_data, change_config_dict, analysis_type='profit', def_fn=mid_fn)
+        cols = ['营业收入同比增长率', '净利润同比增长率', '扣除非经常性损益后的净利润同比增长率',
+                '营业总成本同比增长率', '销售费用同比增长率', '管理费用同比增长率', '财务费用同比增长率',
+                '研发费用同比增长率']
+        self.last_profit_summary = self.construct_summary(data, cols, 'profit')
+        return self.last_profit_summary
+
+    def analysis_fin_data_zcfz_data(self):
+        change_config = {
+            "TOTAL_ASSETS": {"sub_key": {
+                "TOTAL_CURRENT_ASSETS": "流动资产合计",
+                'TOTAL_NONCURRENT_ASSETS': '非流动资产合计',
+            }, "name": "资产总计"},
+            "TOTAL_CURRENT_ASSETS": {"sub_key": {
+                "MONETARYFUNDS": "货币资金",
+                "INVENTORY": "存货",
+                'TRADE_FINASSET_NOTFVTPL': '交易性金融资产',
+                "NOTE_ACCOUNTS_RECE": "应收票据及应收账款",
+                "ACCOUNTS_RECE": "应收账款",
+                "PREPAYMENT": "预付款项",
+                'OTHER_CURRENT_ASSET': '其他流动资产',
+            }, "name": "流动资产合计"},
+            "TOTAL_NONCURRENT_ASSETS": {"sub_key": {
+                'LONG_RECE': '长期应收款',
+                'LONG_EQUITY_INVEST': '长期股权投资',
+                'OTHER_NONCURRENT_FINASSET': '其他非流动金融资产',
+                "FIXED_ASSET": "固定资产",
+                "CIP": "在建工程",
+                "INTANGIBLE_ASSET": "无形资产",
+                'GOODWILL': '商誉',
+                'LONG_PREPAID_EXPENSE': '长期待摊费用',
+                'DEFER_TAX_ASSET': '递延所得税资产',
+                'OTHER_NONCURRENT_ASSET': '其他非流动资产',
+                'DEVELOP_EXPENSE': '开发支出',
+            }, "name": "非流动资产合计"},
+
+            "TOTAL_LIABILITIES": {"sub_key": {
+                "TOTAL_CURRENT_LIAB": "流动负债合计",
+                'TOTAL_NONCURRENT_LIAB': '非流动负债合计',
+            }, "name": "负债合计"},
+
+            "TOTAL_CURRENT_LIAB": {
+                "sub_key": {
+                    "SHORT_LOAN": "短期借款",
+                    'NOTE_PAYABLE': "其中:应付票据",
+                    "NOTE_ACCOUNTS_PAYABLE": "应付票据及应付账款",
+                    "ACCOUNTS_PAYABLE": "其中:应付账款",
+                    'CONTRACT_LIAB': '合同负债',
+                    'ADVANCE_RECEIVABLES': '预收款项',
+                    'STAFF_SALARY_PAYABLE': '应付职工薪酬',
+                    'TOTAL_OTHER_PAYABLE': '其他应付款合计',
+                    'NONCURRENT_LIAB_1YEAR': '一年内到期的非流动负债',
+                    'OTHER_CURRENT_LIAB': '其他流动负债',
+                    'TAX_PAYABLE': '应交税费',
+                    'CURRENT_LIAB_OTHER': '流动负债其他项目',
+                    'SHORT_BOND_PAYABLE': '应付短期债券',
+                },
+                "name": "流动负债合计"
+            },
+            "TOTAL_NONCURRENT_LIAB": {
+                "sub_key": {
+                    "LONG_LOAN": "长期借款",
+                    'LONG_PAYABLE': '长期应付款',
+                    'DEFER_INCOME': '递延收益',
+                    'LONG_STAFFSALARY_PAYABLE': '长期应付职工薪酬',
+                },
+                "name": "非流动负债合计"
+            },
+
+        }
+        zcfz_data = self.fin_data
+
+        def mid_fn(cur_dict_data: dict, before_dict_data: dict):
+            current_rate = round(
+                float(cur_dict_data.get('TOTAL_CURRENT_ASSETS', 0)) / float(cur_dict_data.get('TOTAL_ASSETS', 0)), 4)
+            non_current_rate = round(
+                float(cur_dict_data.get('TOTAL_NONCURRENT_ASSETS', 0)) / float(cur_dict_data.get('TOTAL_ASSETS', 0)), 4)
+            liabilities_rate = round(
+                float(cur_dict_data.get('TOTAL_LIABILITIES')) / float(cur_dict_data.get('TOTAL_ASSETS')),
+                4)
+            eq_rate = round(float(cur_dict_data.get('TOTAL_EQUITY', 0)) / float(cur_dict_data.get('TOTAL_ASSETS', 1)),
+                            4)
+            if float(cur_dict_data.get('TOTAL_CURRENT_LIAB', 1)) > 0:
+
+                flow_rate = round(
+                    float(cur_dict_data.get('TOTAL_CURRENT_ASSETS', 0)) / float(
+                        cur_dict_data.get('TOTAL_CURRENT_LIAB', 1)),
+                    4)
+                dflow_rate = round(
+                    (float(cur_dict_data.get('TOTAL_CURRENT_ASSETS', 0)) - float(
+                        cur_dict_data.get('INVENTORY', 0))) / float(
+                        cur_dict_data.get('TOTAL_CURRENT_LIAB', 0)), 4)
+            else:
+                flow_rate = 0
+                dflow_rate = 0
+
+            cur_dict_data['流动资产占比'] = current_rate
+            cur_dict_data['非流动资产占比'] = non_current_rate
+            cur_dict_data['负债率'] = liabilities_rate
+            cur_dict_data['所有者权益率'] = eq_rate
+            cur_dict_data['流动比率'] = flow_rate
+            cur_dict_data['速动比率'] = dflow_rate
+
+        datas = self.common_cal_result(zcfz_data, change_config, is_year_end=True, analysis_type='zcfz', def_fn=mid_fn)
+        cols = ['流动资产占比', '非流动资产占比', '负债率',
+                '所有者权益率', '流动比率', '速动比率']
+        self.last_zcfz_summary = self.construct_summary(datas, cols, 'zcfz')
+        return self.last_zcfz_summary
 
 
 if __name__ == '__main__':

@@ -212,6 +212,7 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True, start_date=None):
     zcfz_pd_data = pd.merge(zcfz_pd_data, avg_total_current_assets_data, on=['date', 'code'], how='left')
     zcfz_pd_data = pd.merge(zcfz_pd_data, avg_fixed_asset_data, on=['date', 'code'], how='left')
     zcfz_pd_data['平均资本总额'] = zcfz_pd_data['AVG_SHARE_CAPITAL'] + zcfz_pd_data['AVG_CAPITAL_RESERVE']
+    zcfz_pd_data['有形净值债务率'] = zcfz_pd_data['TOTAL_LIABILITIES']/(zcfz_pd_data['TOTAL_EQUITY']-zcfz_pd_data['INTANGIBLE_ASSET'])
 
     return zcfz_pd_data
 
@@ -369,7 +370,7 @@ def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromL
         应收周转天数 = 365 / 应收账款周转率
         存货周转率 = 营业成本 / 平均存货
         存货周转天数 = 365 / 存货周转率
-        流动资产周转率 = 营业成本 /平均流动资产
+        流动资产周转率 = 营业收入 /平均流动资产
         流动资产周转天数 = 365 / 流动资产周转率
         固定资产周转率 =  营业收入/平均固定资产
         固定资产周转天数 = 365 / 固定资产周转率
@@ -398,12 +399,12 @@ def get_fin_common_metric(code_list, isZcfcDataFromLocal=True, isProfitDataFromL
     pd_merge_data['全部资产现金回收率'] = (pd_merge_data['NETCASH_OPERATE'] + pd_merge_data['NETCASH_INVEST']) / \
                                           pd_merge_data['TOTAL_ASSETS']
     pd_merge_data['销售现金比率'] = pd_merge_data['NETCASH_OPERATE'] / pd_merge_data['OPERATE_INCOME']
-    pd_merge_data['现金流动负债率'] = pd_merge_data['NETCASH_OPERATE'] / pd_merge_data['TOTAL_CURRENT_LIAB']
+    pd_merge_data['现金流动负债比率'] = pd_merge_data['NETCASH_OPERATE'] / pd_merge_data['TOTAL_CURRENT_LIAB']
     pd_merge_data['应收账款周转率'] = pd_merge_data['OPERATE_INCOME'] / pd_merge_data['AVG_ACCOUNTS_RECE']
     pd_merge_data['应收周转天数'] = 365 / pd_merge_data['应收账款周转率']
     pd_merge_data['存货周转率'] = pd_merge_data['OPERATE_COST'] / pd_merge_data['AVG_INVENTORY']
     pd_merge_data['存货周转天数'] = 365 / pd_merge_data['存货周转率']
-    pd_merge_data['流动资产周转率'] = pd_merge_data['OPERATE_COST'] / pd_merge_data['AVG_TOTAL_CURRENT_ASSETS']
+    pd_merge_data['流动资产周转率'] = pd_merge_data['OPERATE_INCOME'] / pd_merge_data['AVG_TOTAL_CURRENT_ASSETS']
     pd_merge_data['流动资产周转天数'] = 365 / pd_merge_data['流动资产周转率']
     pd_merge_data['固定资产周转率'] = pd_merge_data['OPERATE_INCOME'] / pd_merge_data['AVG_FIXED_ASSET']
     pd_merge_data['固定资产周转天数'] = 365 / pd_merge_data['固定资产周转率']
