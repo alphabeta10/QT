@@ -595,6 +595,49 @@ def cn_board_risk(is_show=False):
     return risks[-1], datas[-1], new_data
 
 
+def cn_global_week_wci_risk(is_show=False):
+    database = 'stock'
+    collection = 'common_seq_data'
+    projection = {'_id': False}
+    time = (datetime.now() - timedelta(days=365)).strftime("%Y-01-01")
+    wci_index_mapping_dict = {"综合指数": "综合指数",
+                              "欧洲航线": "欧洲航线",
+                              "美西航线": "美西航线",
+                              "地中海航线": "地中海航线",
+                              "美东航线": "美东航线",
+                              "波红航线": "波红航线",
+                              "澳新航线": "澳新航线",
+                              "西非航线": "西非航线",
+                              "南非航线": "南非航线",
+                              "南美航线": "南美航线",
+                              "东南亚航线": "东南亚航线",
+                              "日本航线": "日本航线",
+                              "韩国航线": "韩国航线"
+                              }
+    wic_up_or_down_dict = {
+    }
+    condition = {"data_type": "cn_ccfi", "metric_code": {"$in": list(wci_index_mapping_dict.keys())},
+                 "time": {"$gt": time}}
+    sort_key = 'time'
+    data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
+                               sort_key=sort_key)
+    convert_type_col = ['cur_month_data']
+    for col in convert_type_col:
+        data[col] = data[col].astype(float)
+
+    new_data = pd.pivot_table(data, index='time', values='cur_month_data', columns='metric_code')
+
+    risks, datas = comm_down_or_up_risk(new_data, list(wci_index_mapping_dict.keys()), [1, 2, 3, 4, 5, 6],
+                                        wic_up_or_down_dict, 'index')
+    new_data = pd.DataFrame(datas)
+    new_data.set_index(keys='time', inplace=True)
+    new_data.dropna(inplace=True)
+    if is_show:
+        new_data['total_risk'].plot(kind='line', title='运输风险', rot=45, figsize=(15, 8),
+                                    fontsize=10)
+        show_data(new_data)
+        plt.show()
+    return risks[-1], datas[-1], new_data
 
 
 def traffic_analysis():

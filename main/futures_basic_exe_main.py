@@ -1,3 +1,7 @@
+import sys
+import os
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from data.futures_daily_data import handle_futures_daily_data, handle_futures_inventory_data, \
     handle_futures_receipt_data, handle_futures_czce_warehouse_receipt, \
     handle_futures_dce_warehouse_receipt, handle_futures_shfe_warehouse_receipt, handle_futures_delivery_dce, \

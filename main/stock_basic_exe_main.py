@@ -1,3 +1,7 @@
+import sys
+import os
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from data.stock_daily_data import save_stock_info_data,handle_stock_daily_data,stock_dzjy_main,handle_stock_cyq_main
 from data.stock_index_data import index_data
 from data.stock_concept_data import ths_concept_daily_data

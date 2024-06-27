@@ -177,7 +177,7 @@ def handle_stock_cyq_main():
         col_mapping = {'日期': 'time', '获利比例': 'profit_ratio', '平均成本': 'avg_cost', '90成本-低': 'cost_90_low',
                        '90成本-高': 'cost_90_high', '90集中度': 'concentration_90', '70成本-低': 'cost_70_low',
                        '70成本-高': 'cost_70_high',
-                       '70集中度': 'concentration_90'}
+                       '70集中度': 'concentration_70'}
         update_request = []
         stock_common = get_mongo_table(database='stock', collection='common_seq_data')
         for code in tqdm(codes):

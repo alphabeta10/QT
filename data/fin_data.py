@@ -657,7 +657,7 @@ def gov_revenue_expenditure(url):
 
 
 def craw_gov_revenue_expenditure_data():
-    for i in range(3):
+    for i in range(1):
         if i == 0:
             url = 'https://gks.mof.gov.cn/tongjishuju/index.htm'
         else:
@@ -679,9 +679,9 @@ def craw_gov_revenue_expenditure_data():
 
 
 if __name__ == '__main__':
-    enter_credit_fin()
-    enter_credit_fin_agg_flow()
-    handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
+    # enter_credit_fin()
+    # enter_credit_fin_agg_flow()
+    # handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
     craw_gov_revenue_expenditure_data()
     get_gov_data()
     find_data()
