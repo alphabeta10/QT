@@ -19,9 +19,9 @@ def handle_model_table_data(pd_data: pd.DataFrame):
         for col in cols:
             ele = str(row_dict[col])
             if ele == 'nan':
-                ele = ''
-            if ele.replace(" ","")!="":
-                ele_list.append(ele)
+                ele = '暂无数据'
+            # if ele.replace(" ","")!="":
+            ele_list.append(ele)
         row_ele = "| " + " | ".join(ele_list) + " |"
         input_table_str += row_ele + "\n"
     return input_table_str

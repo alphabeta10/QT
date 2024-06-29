@@ -95,8 +95,7 @@ def predict_pmi_data(goods_dict_data: dict, is_show=False):
     goods_data = data.resample("M").mean()
 
     cycle_data = goods_data.pct_change(1)
-    same_data = goods_data.pct_change(12)
-    cycle_dict_data = dict(cycle_data.tail(3).iloc[0])
+    cycle_dict_data = dict(cycle_data.tail(1).iloc[0])
     cycle_pmi = 0
     for k, p_chg in cycle_dict_data.items():
         if str(p_chg) != 'nan' and str(goods_dict_data.get(k)) != 'nan':
@@ -120,6 +119,7 @@ def predict_pmi_data(goods_dict_data: dict, is_show=False):
         show_data(cyc_pmi_predict)
         print(f"cycle data {cycle_dict_data}")
         print(f"cycle_pmi = {cycle_pmi}")
+        print(f"cor_data={goods_dict_data}")
     return cyc_pmi_predict
 
 def cor_predict_pmi(is_show=False):
