@@ -1,6 +1,7 @@
 """
 股票基本分析，波动率，风险，等
 """
+import os.path
 from datetime import datetime, timedelta
 from big_models.google_api import *
 from analysis.analysis_tool import *
@@ -20,6 +21,7 @@ from pyecharts.charts import Bar
 from pyecharts.components import Table
 from pyecharts import options as opts
 from pyecharts.charts import Page
+import akshare as ak
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -617,6 +619,7 @@ class StockBasicAnalysis(object):
             print("没有找到有前缀的数据")
             self.pre_market_code = self.code
         self.google_model = None
+        self.current_price_market_info = None
 
     def load_google_model(self):
         if self.google_model is None:
@@ -630,14 +633,14 @@ class StockBasicAnalysis(object):
     def get_stock_industry(self):
         database = 'stock'
         collection = 'business'
-        condition = {"date": self.date, "code": self.code, "class_dire": "按产品分"}
+        condition = {"date": self.date, "code": self.code, "class_dire": {"$in":["按产品分","按地区分"]}}
         projection = {"_id": False}
         data = get_data_from_mongo(database=database, collection=collection,
                                    condition=condition,
                                    projection=projection)
         data['营业收入-占主营收入比'] = data['营业收入-占主营收入比'].apply(
             lambda ele: round(float(ele.replace("%", "")) / 100.0, 4))
-        data.sort_values(by='营业收入-占主营收入比', inplace=True, ascending=False)
+        data.sort_values(by=['class_dire','营业收入-占主营收入比'], inplace=True, ascending=(False,False))
         data = data[data['class'] != '合计']
         return data
 
@@ -707,9 +710,6 @@ class StockBasicAnalysis(object):
                 self.fin_data[col + "_PRE"] = self.fin_data[col].shift(1)
                 self.fin_data['CUR_' + col] = self.fin_data.apply(cur_period_data, args=(col,),
                                                                   axis=1)
-
-    def futures_indicator_data(self):
-        cols = ['CIP', 'RESEARCH_EXPENSE']
 
     def analysis_flow_cash_data(self):
         cash_flow_jude_stock_type_mapping = {
@@ -1193,7 +1193,36 @@ class StockBasicAnalysis(object):
         request_txt = "给定表格数，分析趋势,表格:"+handle_model_table_data(df)
         return try_get_action(simple_big_gen_model_fn,try_count=3,model=self.load_google_model(),request_txt=request_txt,is_ret_json=False)
 
-    def generator_analysis(self,is_data_from_local=True):
+    def get_current_price_market_info(self):
+        if self.current_price_market_info is None:
+            now_str = datetime.now().strftime("%Y-%m-%d")
+            file_name = f"stock_current_price{now_str}.csv"
+            if os.path.exists(file_name) is False:
+                print("么有数据文件下载最新数据")
+                df = ak.stock_zh_a_spot_em()
+                df.to_csv(file_name,index=False)
+            else:
+                df = pd.read_csv(file_name,dtype={"代码":str})
+            self.current_price_market_info = dict(df[df['代码'].isin([self.code])].head(1).iloc[0])
+            if not self.current_price_market_info:
+                print("么有数据重新下载数据")
+                df = ak.stock_zh_a_spot_em()
+                df.to_csv(file_name, index=False)
+                self.current_price_market_info = dict(df[df['代码'].isin([self.code])].head(1).iloc[0])
+        if self.current_price_market_info:
+            self.current_price_market_info['number_of_shares'] = self.current_price_market_info['总市值']/self.current_price_market_info['最新价']
+        return self.current_price_market_info
+
+    def cal_opt_price(self):
+        self.get_current_price_market_info()
+        if self.current_price_market_info:
+            last_dict_data = dict(self.fin_data.tail(1).iloc[0])
+            recent_price = self.fin_data.tail(1)['有形账面净值'].values[0]/self.current_price_market_info['number_of_shares']
+            print(recent_price)
+            print(self.current_price_market_info)
+
+
+    def generator_analysis(self,is_data_from_local=True,is_model_gen_res=False):
         charts = []
 
         industry_data = self.get_stock_industry()
@@ -1212,32 +1241,35 @@ class StockBasicAnalysis(object):
         format_data_to_100million(df, ['CUR_NETCASH_OPERATE'])
         cdf = self.convert_quarter_data(df, 'date', '经营活动产生的现金流量净额(亿)', 'CUR_NETCASH_OPERATE')
         self.df_to_chart(cdf, charts)
-        cdf['季度'] = cdf.index
-        charts.append(self.table_chart(['经营活动产生的现金流量净额趋势分析'],[[self.google_model_analysis_trend(cdf)]],''))
+        if is_model_gen_res:
+            cdf['季度'] = cdf.index
+            charts.append(self.table_chart(['经营活动产生的现金流量净额趋势分析'],[[self.google_model_analysis_trend(cdf)]],''))
 
 
 
         format_data_to_100million(df, ['CUR_DEDUCT_PARENT_NETPROFIT'])
         cdf = self.convert_quarter_data(df, 'date', '当期报告净利润(亿)', 'CUR_DEDUCT_PARENT_NETPROFIT')
         self.df_to_chart(cdf, charts)
-        cdf['季度'] = cdf.index
-        cdf['季度'] = cdf.index
-        charts.append(
-            self.table_chart(['当期报告净利润趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
+        if is_model_gen_res:
+            cdf['季度'] = cdf.index
+            charts.append(
+                self.table_chart(['当期报告净利润趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
 
         format_data_to_100million(df, ['DEDUCT_PARENT_NETPROFIT'])
         cdf = self.convert_quarter_data(df, 'date', '报告期净利润', 'DEDUCT_PARENT_NETPROFIT')
         self.df_to_chart(cdf, charts)
-        cdf['季度'] = cdf.index
-        charts.append(
-            self.table_chart(['报告期净利润额趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
+        if is_model_gen_res:
+            cdf['季度'] = cdf.index
+            charts.append(
+                self.table_chart(['报告期净利润额趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
 
         format_data_to_100million(df, ['CIP'])
         cdf = self.convert_quarter_data(df, 'date', '报告期在建工程', 'CIP')
         self.df_to_chart(cdf, charts)
-        cdf['季度'] = cdf.index
-        charts.append(
-            self.table_chart(['报告期在建工程趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
+        if is_model_gen_res:
+            cdf['季度'] = cdf.index
+            charts.append(
+                self.table_chart(['报告期在建工程趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
 
         format_data_to_100million(df, ['RESEARCH_EXPENSE'])
         cdf = self.convert_quarter_data(df, 'date', '报告期研发费用', 'RESEARCH_EXPENSE')
@@ -1248,7 +1280,7 @@ class StockBasicAnalysis(object):
                 '权益乘数']
         cols_st_type = {k: "gt" for k in cols}
         cols_st_type['资产负债率'] = 'lt'
-        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=True)
+        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=is_model_gen_res)
         print("偿债能力分数", all_score)
 
         rows = []
@@ -1261,7 +1293,7 @@ class StockBasicAnalysis(object):
         # 运营能力指标的计算
         cols = ['应收账款周转率', '存货周转率', '流动资产周转率', '固定资产周转率', '总资产周转率']
         cols_st_type = {k: "lt" for k in cols}
-        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=True)
+        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=is_model_gen_res)
         print("运营能力分数", all_score)
         row = ['运营能力分数']
         for e in score_cols:
@@ -1271,7 +1303,7 @@ class StockBasicAnalysis(object):
         # 盈利能力分析
         cols = ['毛利率', '营业利润率', '销售净利率', '净资产收益率', '资本报酬率']
         cols_weight = {'毛利率': 0.2, '营业利润率': 0.2, '销售净利率': 0.2, '净资产收益率': 0.2, '资本报酬率': 0.2}
-        all_score = self.cal_score(cols, df, cols_weight=cols_weight, chars=charts,is_google_model_analysis=True)
+        all_score = self.cal_score(cols, df, cols_weight=cols_weight, chars=charts,is_google_model_analysis=is_model_gen_res)
         print("盈利能力分数", all_score)
         row = ['盈利能力分数']
         for e in score_cols:
@@ -1285,7 +1317,7 @@ class StockBasicAnalysis(object):
                      "总资产增长率": "TOTAL_ASSETS",
                      "固定资产增长率": "AVG_FIXED_ASSET"}
         cols = list(cols_dict.keys())
-        all_score = self.cal_score(cols, df, chars=charts,is_google_model_analysis=True)
+        all_score = self.cal_score(cols, df, chars=charts,is_google_model_analysis=is_model_gen_res)
         print("发展能力分数", all_score)
         row = ['发展能力分数']
         for e in score_cols:

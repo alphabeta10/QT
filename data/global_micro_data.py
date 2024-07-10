@@ -14,6 +14,7 @@ import pandas as pd
 import json
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
+from data.cn_grand_data import post_or_get_data
 #设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -154,6 +155,22 @@ def get_us_treasury_debt(start_time=None):
             upsert=True))
     mongo_bulk_write_data(micro,data_list)
 
+def craw_lian_rmb():
+    micro = get_mongo_table(database='stock', collection='micro')
+    wl_url = 'https://api-ddc-wscn.awtmt.com/market/kline?prod_code=USDCNH.OTC&tick_count=1&period_type=2592000&adjust_price_type=forward&fields=tick_at%2Copen_px%2Cclose_px%2Chigh_px%2Clow_px%2Cturnover_volume%2Cturnover_value%2Caverage_px%2Cpx_change%2Cpx_change_rate%2Cavg_px%2Cma2'
+    x = post_or_get_data(wl_url, method='get')
+    data = x['data']
+    lines = data['candle']['USDCNH.OTC']['lines']
+    fields = data['fields']
+    dict_data = dict(zip(fields,lines[0]))
+    dict_data['data_name'] = 'cn_lian_rmb_fx'
+    dict_data['data_time'] = datetime.now().strftime("%Y%m%d")
+    mongo_bulk_write_data(micro,[UpdateOne(
+            {"data_name": dict_data['data_name'], "data_time": dict_data['data_time']},
+            {"$set": dict_data},
+            upsert=True)])
+
+
 
 def find_data():
     series_id_list = [{"name": "M0", "category": "finance", "series_id": "BOGMBASE", "unit": "Millions of Dollars"},
@@ -176,6 +193,7 @@ def find_data():
 
 
 if __name__ == '__main__':
+    craw_lian_rmb()
     global_micro_data()
     us_monetary_data_to_mongo()
     jp_cross_boarder_data_to_db()

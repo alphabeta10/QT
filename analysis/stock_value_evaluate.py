@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils.actions import try_get_action
 from datetime import datetime, timedelta
-
+from analysis.fin_analysis import handle_comm_stock_fin_em
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -70,7 +70,7 @@ def predict_profit_data(code_dict=None, year=None):
         print("最新的财报 ", recent_net_profit)
 
 
-def stock_dividend_model(symbol='600919', k=0.06, g=0, year='2023'):
+def stock_dividend_model(symbol='600919', k=0.06, g=0.0, year='2023'):
     """
     股息股价
     :param symbol:
@@ -91,6 +91,9 @@ def stock_dividend_model(symbol='600919', k=0.06, g=0, year='2023'):
     # sum_year_of_rate['g'] = sum_year_of_rate['派息'].pct_change()
     sum_year_of_rate['predict_price'] = sum_year_of_rate['派息'] / ((k - g) * 10)
     return round(sum_year_of_rate.iloc[0].predict_price, 4)
+
+
+
 
 
 def stock_bank_div_model_ev():
@@ -117,14 +120,14 @@ def stock_bank_div_model_ev():
 
     collection = 'ticker_daily'
     projection = {"_id": False, "time": True, "code": True, "close": True}
-    condition = {"code": {"$in": codes}, "time": "2023-09-01"}
+    condition = {"code": {"$in": codes}, "time": "2024-07-05"}
     close_data = get_data_from_mongo(database=database, collection=collection, projection=projection,
                                      condition=condition,
                                      sort_key=sort_key)
 
     rs_dict = {}
     for code, name in code_dict_data.items():
-        price = stock_dividend_model(code)
+        price = stock_dividend_model(symbol=code,g=0.05)
         rs_dict[name] = price
         print(name, price)
     print(rs_dict)
@@ -164,7 +167,7 @@ def stock_dcf_model(code_dict=None, dis_rate=None, last_year_growth=None, custom
     if last_year_growth is None:
         last_year_growth = {"600519": 0.02, "603919": 0.02, "603019": 0.02, "002594": 0.02}
     data_type = 'cash_flow_report_em_detail'
-    # handle_comm_stock_fin_em(codes=list(code_dict.keys()), data_type=data_type)
+    handle_comm_stock_fin_em(codes=list(code_dict.keys()), data_type=data_type)
     codes = [code[2:] for code in code_dict.keys()]
     database = 'stock'
     collection = 'fin'
@@ -210,4 +213,4 @@ def stock_dcf_model(code_dict=None, dis_rate=None, last_year_growth=None, custom
 
 
 if __name__ == '__main__':
-    stock_dcf_model()
+    stock_dcf_model(year=2)

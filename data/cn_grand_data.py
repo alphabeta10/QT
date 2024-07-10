@@ -63,7 +63,7 @@ def post_or_get_data(url, params=None, method="post"):
         headers = {"Cookie": "u=5; JSESSIONID=WoeodpZtJvJsNQEVHd3hiYOwplTyVAic2On59X93uxTnmzN6quMw!1294272777"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gmZjNWVlMaBmZ8jygTgzODFjMIAxMTMuOTAuODUuMjA2; u=1; JSESSIONID=Sy8GSEp1cU_vgf4ffQTJv-Cz9GWzlwF1G2SyQqjSENlE10yEOU6o!-300289036"}
+            "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=gTEwZjkyOIAxNC4xNTMuNC44MIJmYzVlZTGgZoy0Pg==; JSESSIONID=lKSVn1_eaeQ_Ite_BMn0n75otCWxnJefgJj_y5Dl5HAssUYEl5pX!-340470345; u=5"}
         result = requests.get(url, params=params, headers=headers, verify=False)
         text = result.text
         if is_json(text):
@@ -200,7 +200,7 @@ def handle_gov_yd_data():
            'A0E': '城镇调查失业率', 'A06': '房地产', 'A07': '国内贸易', 'A08': '对外经济', 'A09': '交通运输',
            'A0A': '邮电通信',
            'A0B': '采购经理指数', 'A0C': '财政', 'A0D': '金融'}
-    #ids = {'A01': '价格指数'}
+    ids = {'A0B': '采购经理指数'}
     # ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     # ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]

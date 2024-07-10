@@ -158,12 +158,12 @@ def handle_stock_dzjy_mrtj(start_date=datetime.now().strftime("%Y%m01"), end_dat
 def stock_dzjy_main():
     tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
     trade_dates = []
-    start_date = datetime.now().strftime("%Y%m01")
+    start_date = (datetime.now()-timedelta(days=10)).strftime("%Y%m%d")
     now_int = int(datetime.now().strftime("%Y%m%d"))
     for index in tool_trade_date_hist_sina_df.index:
         trade_date = tool_trade_date_hist_sina_df.loc[index]['trade_date']
         date_str = str(trade_date).replace("-", "")
-        if int(date_str) > int(start_date) and int(date_str) <= now_int:
+        if int(date_str) >= int(start_date) and int(date_str) <= now_int:
             trade_dates.append(date_str)
 
     for trade_date in trade_dates:

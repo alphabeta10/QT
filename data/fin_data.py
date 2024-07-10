@@ -447,7 +447,7 @@ def handle_credit_agg_stock_data(file_dir='fin_agg2023', type_name='社会融资
     pd_data = pd.read_excel(file_name)
 
     agg_mapping_dict = {'Unnamed: 1': 'afre', 'Unnamed: 2': 'rmb_loans', 'Unnamed: 3': 'foreign_currency_loans',
-                        'Unnamed: 4': 'entrusted_loans ', 'Unnamed: 5': 'trust_loans',
+                        'Unnamed: 4': 'entrusted_loans', 'Unnamed: 5': 'trust_loans',
                         'Unnamed: 6': "undiscounted_banker_acceptances", 'Unnamed: 7': 'net_fin_cor_bonds',
                         'Unnamed: 8': 'gov_bonds',
                         'Unnamed: 9': 'equity_stock_non_fin_enter',
@@ -679,9 +679,9 @@ def craw_gov_revenue_expenditure_data():
 
 
 if __name__ == '__main__':
-    # enter_credit_fin()
-    # enter_credit_fin_agg_flow()
+    #enter_credit_fin()
+    enter_credit_fin_agg_flow()
     # handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
-    craw_gov_revenue_expenditure_data()
+    # craw_gov_revenue_expenditure_data()
     get_gov_data()
-    find_data()
+    # find_data()

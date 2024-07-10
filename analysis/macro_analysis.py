@@ -11,7 +11,9 @@ from data.mongodb import get_mongo_table
 from utils.tool import mongo_bulk_write_data
 from utils.actions import show_data
 import matplotlib.pyplot as plt
-
+from analysis.common_analysis import BasicAnalysis
+from pyecharts.charts import Page,Tab
+from analysis.analysis_tool import convert_pd_data_to_month_data
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -522,7 +524,171 @@ def cn_pmi_analysis():
     return new_data
 
 
+class CNMacroAnalysis(BasicAnalysis):
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs.get('name', 'default')
+        pass
+
+    def generator_analysis_html(self):
+        """
+        1.pmi数据 pmi 预测
+        2.cpi数据
+        3.社融数据
+        4.海关数据
+        5.财政数据
+        6.消费数据，
+        7.房地产数据
+        :return:
+        """
+        chart_list = []
+        #PMI数据可视化
+        pmi_code_dict = {'A0B0101_yd': '制造业采购经理指数(%)',
+                         'A0B0102_yd': '生产指数(%)',
+                         'A0B0103_yd': '新订单指数(%)',
+                         'A0B0104_yd': '新出口订单指数(%)',
+                         'A0B0301_yd': '综合PMI产出指数(%)',
+                         'A0B010C_yd': '从业人员指数',
+                         'A0B010D_yd': '供应商配送时间指数',
+                         'A0B010B_yd': '原材料库存指数',
+                         }
+        data = self.get_data_from_cn_st(pmi_code_dict, time='201001')
+        data.rename(columns=pmi_code_dict, inplace=True)
+        self.df_to_chart(data, chart_list, cols=list(pmi_code_dict.values()), index_col_key='time', chart_type='line')
+        #CPI数据可视化
+        cpi_code_dict = {
+            "A01010101_yd":"居民消费价格指数(上年同月=100)",
+            "A01020101_yd":"居民消费价格指数(上年同期=100)",
+            "A01030101_yd":"居民消费价格指数(上月=100)",
+        }
+        data = self.get_data_from_cn_st(cpi_code_dict, time='201001')
+        data.rename(columns=cpi_code_dict, inplace=True)
+        self.df_to_chart(data, chart_list, cols=list(cpi_code_dict.values()), index_col_key='time', chart_type='line')
+
+        #社融数据
+        agg_stock_dict = {
+            "社融规模增量数据":"afre",
+            "人民币贷款": "rmb_loans",
+            "委托贷款": "entrusted_loans",
+            "信托贷款": "trust_loans",
+            "未贴现银行承兑汇票": "undiscounted_banker_acceptances",
+            "企业债券": "net_fin_cor_bonds",
+            "政府债券": "gov_bonds",
+        }
+        agg_stock_dict = {v: k for k, v in agg_stock_dict.items()}
+        #1.增量分析
+        data = self.get_data_from_seq_data(data_type='credit_funds',metric_code_list=['agg_fin_flow'],time='2010',val_keys=list(agg_stock_dict.keys()))
+        """
+        2.分类别看 
+            2.1 表内信贷:人民币贷款,外币贷款
+            2.2 表外融资：未贴现银行承兑汇票,信托贷款,委托贷款
+            2.3 直接融资：非金融企业境内股票融资,企业债券
+            2.4 其他 公司赔偿、投资性房地产、小额货款合同、贷款公司贷款、存款性金融机构资产支持证券(2018年7月纳人)、贷款核销(2018年7月纳人)、政府债券(含地方专项债券、地方一般债券、国债)。
+        """
+        for k,v in agg_stock_dict.items():
+            ele_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"agg_fin_flow": v})
+            self.df_to_chart(ele_data, chart_list, chart_type='line')
+        #企业和住户短期和长期贷款分析
+        income_config = {
+            "住户贷款": "loans_to_households",
+            "住户短期贷款": "short_term_loans",
+            "住户中长期贷款": "mid_long_term_loans",
+
+            "(事)业单位贷款": "loans_to_non_financial_enterprises_and_government_departments_organizations",
+            "企业短期贷款": "short_term_loans_1",
+            "企业中长期贷款": "mid_long_term_loans_1",
+            "债券投资": "portfolio_investments",
+            "票据融资":"paper_financing"
+        }
+        income_config = {v: k for k, v in income_config.items()}
+        data = self.get_data_from_seq_data(data_type='credit_funds',metric_code_list=['credit_funds_fin_inst_rmb'],time='2010',val_keys=list(income_config.keys()))
+        for k,v in income_config.items():
+            ele_data = data[[k,'time','metric_code']]
+            ele_data[k] = ele_data[k].diff()
+            ele_data = convert_pd_data_to_month_data(ele_data,'time',k,'metric_code',{"credit_funds_fin_inst_rmb":v})
+            self.df_to_chart(ele_data, chart_list, chart_type='line')
+
+        #m1和m2剪刀差
+        money_code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)", "A0D0104_yd": "货币(M1)供应量同比增长(%)",
+                     "A0D0106_yd": "流通中现金(M0)供应量同比增长(%)"}
+        data = self.get_data_from_cn_st(money_code_dict, time='201001')
+        data['m1_m2_diff'] = round(data['A0D0104_yd'] - data['A0D0102_yd'], 4)
+        data['code'] = 'm1与m2增速之差'
+        m1_m2_diff = convert_pd_data_to_month_data(data, 'time', 'm1_m2_diff', 'code')
+        self.df_to_chart(m1_m2_diff, chart_list, chart_type='line')
+
+
+        #海关进出口数据
+        condition = {"data_type": "country_export_import", "name": "总值", "date": {"$gte": '2018'}}
+        dict_key_mapping = {
+        "acc_export_amount_cyc":"出口金额累计同比",
+        "acc_import_amount_cyc":"进口金额累计同比",
+        "acc_export_import_amount_cyc":"进出口金额累计同比",
+        "acc_export_amount":"出口金额累计(亿元)",
+        }
+        data = self.get_data_from_board(condition=condition,is_cal=False,val_keys=list(dict_key_mapping.keys()))
+        data['acc_export_amount'] = round(data['acc_export_amount']/1e4,4)
+        data['date'] = data['date'].apply(lambda ele: ele.replace("-",""))
+        tab = Tab()
+        for k,v in dict_key_mapping.items():
+            temp_chart_list = []
+            new_data = convert_pd_data_to_month_data(data,'date',k,'name',{"总值":v})
+            self.df_to_chart(new_data,temp_chart_list,chart_type='line')
+            tab.add(temp_chart_list[0],v)
+        #tab.render("test.html")
+        #chart_list.append(tab)
+        #财政数据
+        all_income_config = {
+            "全国一般公共预算收入": "all_public_budget_revenue",
+            "中央一般公共预算收入": "center_public_budget_revenue",
+            "地方一般公共预算本级收入": "region_public_budget_revenue",
+            "税收收入": "all_tax_revenue",
+            "非税收入": "non_tax_revenue",
+             #企业相关
+            "国内增值税": "tax_on_added_val",
+            "企业所得税": "business_income_tax",
+            #个人相关
+            "个人所得税":"personal_income_tax",
+            #出口
+            "出口退税":"export_board_tax",
+            #房地产相关
+            "契税": "deed_tax",
+            "房产税": "building_tax",
+            "土地增值税": "land_val_incr_tax",
+            "耕地占用税": "occ_farm_land_tax",
+            "城镇土地使用税": "town_land_use_tax",
+        }
+        data = self.get_data_from_seq_data(data_type='gov_fin',metric_code_list=['gov_fin_data'],time='2010',val_keys=list(all_income_config.values()))
+        tab = Tab()
+        show_data(data)
+        for v,k in all_income_config.items():
+            temp_chart_list = []
+            data[k] = round(data[k]/1e4,4)
+            new_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"gov_fin_data": v})
+            # b_cols = list(new_data.columns)
+            # for col in b_cols:
+            #     new_data[col+"1"] = new_data[col].shift(1)
+            #     new_data.fillna(0,inplace=True)
+            #     new_data[col] = new_data[col]-new_data[col+"1"]
+            # new_data = new_data[b_cols]
+            new_data = new_data.diff()
+            self.df_to_chart(new_data, temp_chart_list, chart_type='line')
+            tab.add(temp_chart_list[0], v)
+        tab.render("test.html")
+
+
+
+        # page = Page()
+        # for char in chart_list:
+        #     page.add(char)
+        # tab.add(page,'page_test')
+        # tab.render(f"{self.name}.html")
+        #page.render(f"{self.name}.html")
+
+
 if __name__ == '__main__':
     # enter_big_model_analysis_macro()
-    df = cn_pmi_analysis()
-    print(df)
+    # df = cn_pmi_analysis()
+    # print(df)
+    cn_macro = CNMacroAnalysis()
+    cn_macro.generator_analysis_html()
+    pass

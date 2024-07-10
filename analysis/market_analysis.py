@@ -128,7 +128,7 @@ def industry_cycle_analysis():
         print(k, v)
 
 
-def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key="time", plot_type=None):
+def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key="time", plot_type=None,is_show=False):
     database = 'govstats'
     collection = 'data_info'
     projection = {'_id': False}
@@ -158,16 +158,18 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
         count_dict[combine_key] = count_dict[combine_key] + 1
     value_index = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     show_index = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+
     if plot_type is None:
         convert_data = pd.DataFrame(data=year_dict_data,
                                     index=show_index)
-        convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
-        plt.show()
-        return convert_data
+        if is_show:
+            convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
+            plt.show()
     if plot_type == 'line':
         convert_data = pd.DataFrame(data=year_dict_data,
                                     index=value_index)
-        plot_marker_line(convert_data, value_index, show_index, title)
+        if is_show:
+            plot_marker_line(convert_data, value_index, show_index, title)
         return convert_data
     return None
 

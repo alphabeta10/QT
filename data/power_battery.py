@@ -317,7 +317,7 @@ def find_data():
 
 
 if __name__ == '__main__':
-    handle_battery_data()
-    for filename in ['battery/2024company.txt','battery/2024company_acc.txt']:
-        handle_company_battery_data(filename)
+    # handle_battery_data()
+    # for filename in ['battery/2024company.txt','battery/2024company_acc.txt']:
+    #     handle_company_battery_data(filename)
     find_data()

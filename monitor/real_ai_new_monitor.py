@@ -1,6 +1,7 @@
 import os
 import sys
-#可以在该目录之前执行该程序，否则会报引用工程包不存在
+
+# 可以在该目录之前执行该程序，否则会报引用工程包不存在
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from datetime import datetime, timedelta
 import google.generativeai as genai
@@ -13,6 +14,35 @@ from analysis.ai_industry_analysis import common_ai_new_analysis, common_kimi_ai
 from utils.send_msg import MailSender
 from utils.tool import load_json_data
 from openai import OpenAI
+from data.cn_grand_data import post_or_get_data
+
+
+def lian_rmb_fx():
+    html_str = ''
+    try:
+        wl_url = 'https://api-ddc-wscn.awtmt.com/market/kline?prod_code=USDCNH.OTC&tick_count=1&period_type=2592000&adjust_price_type=forward&fields=tick_at%2Copen_px%2Cclose_px%2Chigh_px%2Clow_px%2Cturnover_volume%2Cturnover_value%2Caverage_px%2Cpx_change%2Cpx_change_rate%2Cavg_px%2Cma2'
+        x = post_or_get_data(wl_url, method='get')
+        data = x['data']
+        lines = data['candle']['USDCNH.OTC']['lines']
+        fields = data['fields']
+        kv_data = dict(zip(fields, lines[0]))
+        kv_data['date'] = datetime.now().strftime("%Y-%m-%d")
+        title = '人民币离岸汇率'
+        html_str = f"<p>{title}</p>"
+        html_str += f"<table border=\"1\">"
+        html_str += "<tr>"
+        for k in kv_data.keys():
+            html_str += f"<th>{k}</th>"
+        html_str += "</tr>"
+
+        html_str += "<tr>"
+        for v in kv_data.values():
+            html_str += f"<td>{v}</td>"
+        html_str += "</tr>"
+        html_str += "</table>"
+    except Exception as e:
+        print(e)
+    return html_str
 
 
 def unique_key_to_file(file_name: str, data_list: set):
@@ -127,13 +157,13 @@ def get_real_future_news_data():
             list_new.sort(key=lambda ele: ele['time'], reverse=True)
             pd_data = pd.DataFrame(list_new)
             ret_list = common_ai_new_analysis(pd_data, is_in_db=True, pub_content_key='content', pub_time_key='time',
-                                              ret_key=['title'], model=model, themes=names,name=name)
+                                              ret_key=['title'], model=model, themes=names, name=name)
             if ret_list is not None and len(ret_list) != 0:
                 for new in ret_list:
                     kys = new.keys()
                     if '情感分类' in kys:
                         sentiment = new['情感分类']
-                        if isinstance(sentiment,list):
+                        if isinstance(sentiment, list):
                             sentiment = ",".join(sentiment)
                     else:
                         print(new, '解析出错')
@@ -252,6 +282,7 @@ def get_real_future_news_data_kimi_model():
 def main_sender():
     mail_msg = get_real_future_news_data()
     sender = MailSender()
+    mail_msg += lian_rmb_fx()
     if mail_msg != '':
         sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
                               mail_msg)

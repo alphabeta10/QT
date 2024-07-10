@@ -213,6 +213,7 @@ def get_fin_assets_metric(code_list, isDataFromLocal=True, start_date=None):
     zcfz_pd_data = pd.merge(zcfz_pd_data, avg_fixed_asset_data, on=['date', 'code'], how='left')
     zcfz_pd_data['平均资本总额'] = zcfz_pd_data['AVG_SHARE_CAPITAL'] + zcfz_pd_data['AVG_CAPITAL_RESERVE']
     zcfz_pd_data['有形净值债务率'] = zcfz_pd_data['TOTAL_LIABILITIES']/(zcfz_pd_data['TOTAL_EQUITY']-zcfz_pd_data['INTANGIBLE_ASSET'])
+    zcfz_pd_data['有形账面净值'] = zcfz_pd_data['TOTAL_EQUITY']-zcfz_pd_data['INTANGIBLE_ASSET']-zcfz_pd_data['GOODWILL']
 
     return zcfz_pd_data
 
@@ -263,6 +264,8 @@ def get_fin_earning_metric(code_list, isDataFromLocal=True, start_date=None):
                     'FAIRVALUE_CHANGE_INCOME': '加:公允价值变动收益',
                     'ASSET_DISPOSAL_INCOME': '资产处置收益',
                     'OTHER_INCOME': '其他收益',
+                    'BASIC_EPS':'基本每股收益',
+                    'DILUTED_EPS':'稀释每股收益',
                     }
     for k, _ in get_col_dict.items():
         projection[k] = True
