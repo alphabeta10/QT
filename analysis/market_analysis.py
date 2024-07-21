@@ -165,6 +165,7 @@ def cn_st_month_market_analysis(code_dict=None, time=None, title=None, sort_key=
         if is_show:
             convert_data.plot(kind='bar', title=title, rot=45, width=0.5, figsize=(15, 8), fontsize=10)
             plt.show()
+        return convert_data
     if plot_type == 'line':
         convert_data = pd.DataFrame(data=year_dict_data,
                                     index=value_index)

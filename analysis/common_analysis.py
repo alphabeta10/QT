@@ -1,4 +1,4 @@
-from utils.tool import get_data_from_mongo
+from utils.tool import get_data_from_mongo,get_mongo_table
 import pandas as pd
 from datetime import datetime, timedelta
 from pyecharts.charts import Bar,Line
@@ -16,6 +16,12 @@ class BasicAnalysis(object):
         :return:
         """
         pass
+
+    def get_data_from_mongondb(self,database,collection,projection,condition,sort_key):
+        pd_data = get_data_from_mongo(database=database, collection=collection, projection=projection,
+                                      condition=condition,
+                                      sort_key=sort_key)
+        return pd_data
 
     def get_data_from_board(self, name=None, unit=None, data_type=None, condition=None, is_cal=True,val_keys:list=None):
         """
@@ -82,6 +88,33 @@ class BasicAnalysis(object):
         data = pd.pivot_table(data, index='time', columns='name', values='value')
         data.reset_index(inplace=True)
         return data
+
+    def get_goods_data_aline_and_raw(self,goods_name_list,c_time):
+        """
+        获取原始商品数据以及对齐天的数据
+        :param goods_name_list:
+        :param c_time:
+        :return:
+        """
+        goods = get_mongo_table(database='stock', collection='goods')
+
+        datas = []
+        other_datas = []
+        # 轻质纯碱 铁矿石(澳) 螺纹钢 玻璃 乙二醇 重质纯碱
+        goods_condition = {"$in": goods_name_list}
+        for ele in goods.find({"name": goods_condition, "data_type": "goods_price","time":{"$gte":c_time}}, projection={'_id': False}).sort(
+                "time"):
+            time = ele['time']
+            value = ele['value']
+            name = ele['name']
+            year = time[0:4]
+            new_name = f"{year}{name}"
+            new_time = time[4:9]
+            other_datas.append({"name": new_name, "value": value, "time": new_time, "raw_name": name})
+            datas.append(ele)
+        raw_data = pd.DataFrame(data=datas)
+        other_pd_data = pd.DataFrame(data=other_datas)
+        return raw_data,other_pd_data
 
     def get_data_from_cn_st(self, code_dict: dict = None, time: str = None):
         """
@@ -151,6 +184,29 @@ class BasicAnalysis(object):
             bar.add_yaxis(col_name, list_data)
         return bar
 
+    def bar_line_overlap(self,x_labels,bar_y_dict_data:dict,line_y_dict_data:dict):
+        bar = Bar(init_opts=opts.InitOpts(
+            width='1700px', height='1000px'
+        ))
+        bar.add_xaxis(x_labels)
+        for col_name,list_data in bar_y_dict_data.items():
+            bar.add_yaxis(col_name,list_data,z=0)
+        bar.extend_axis(
+            yaxis=opts.AxisOpts(
+                axislabel_opts=opts.LabelOpts(formatter="{value}")
+            )
+        )
+        bar.set_series_opts(label_opts=opts.LabelOpts(is_show=False))
+        bar.set_global_opts(
+        #title_opts=opts.TitleOpts(title="Overlap-bar+line"),
+        yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(formatter="{value}")),
+    )
+        line = Line().add_xaxis(x_labels)
+        for col_name,list_data in line_y_dict_data.items():
+            line.add_yaxis(col_name,list_data,yaxis_index=1)
+        bar.overlap(line)
+        return bar
+
     def line_chart(self,x_labels,y_dict_data:dict):
         line = Line(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
@@ -189,8 +245,6 @@ class BasicAnalysis(object):
         elif chart_type=='line':
             line_c = self.line_chart(chart_index,data_dict)
             chart.append(line_c)
-
-
 if __name__ == '__main__':
     basic = BasicAnalysis()
     data = basic.get_data_from_board()

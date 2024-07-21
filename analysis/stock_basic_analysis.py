@@ -17,7 +17,7 @@ from tqdm import tqdm
 from analysis.fin_analysis import get_fin_common_metric
 from utils.tool import sort_dict_data_by
 from pyecharts.faker import Faker
-from pyecharts.charts import Bar
+from pyecharts.charts import Bar, Tab
 from pyecharts.components import Table
 from pyecharts import options as opts
 from pyecharts.charts import Page
@@ -607,7 +607,10 @@ class StockBasicAnalysis(object):
         self.date = kwargs.get("date", str(datetime.now().year - 1) + "年度")
         self.fin_start_date = kwargs.get('fin_start_date', None)
         self.cal_cur_cols = kwargs.get("cal_cur_cols", None)
-        self.name = kwargs.get('name',self.code)
+        self.name = kwargs.get('name', self.code)
+        self.dir = kwargs.get("dir", "default")
+        if not os.path.exists(self.dir):
+            os.mkdir(self.dir)
 
         if int(self.code[0]) < 6:
             self.pre_market_code = f"sz{self.code}"
@@ -633,14 +636,14 @@ class StockBasicAnalysis(object):
     def get_stock_industry(self):
         database = 'stock'
         collection = 'business'
-        condition = {"date": self.date, "code": self.code, "class_dire": {"$in":["按产品分","按地区分"]}}
+        condition = {"date": self.date, "code": self.code, "class_dire": {"$in": ["按产品分", "按地区分"]}}
         projection = {"_id": False}
         data = get_data_from_mongo(database=database, collection=collection,
                                    condition=condition,
                                    projection=projection)
         data['营业收入-占主营收入比'] = data['营业收入-占主营收入比'].apply(
             lambda ele: round(float(ele.replace("%", "")) / 100.0, 4))
-        data.sort_values(by=['class_dire','营业收入-占主营收入比'], inplace=True, ascending=(False,False))
+        data.sort_values(by=['class_dire', '营业收入-占主营收入比'], inplace=True, ascending=(False, False))
         data = data[data['class'] != '合计']
         return data
 
@@ -648,7 +651,7 @@ class StockBasicAnalysis(object):
         self.fin_data = get_fin_common_metric([self.pre_market_code], isZcfcDataFromLocal=is_local,
                                               isProfitDataFromLocal=is_local, isCashDataFromLocal=is_local,
                                               start_date=self.fin_start_date)
-        self.fin_data = pd.DataFrame(self.common_cal_result(self.fin_data,{},def_fn=self.cal_metric_fn))
+        self.fin_data = pd.DataFrame(self.common_cal_result(self.fin_data, {}, def_fn=self.cal_metric_fn))
         self.common_cal_cur_data()
         self.analysis_flow_cash_data()
 
@@ -656,14 +659,16 @@ class StockBasicAnalysis(object):
 
         # 资本积累率：所有者权益同比增长 TOTAL_EQUITY
         # 营业利润增长率
-        same_config = {"资本积累率": "TOTAL_EQUITY", "营业利润增长率": "OPERATE_PROFIT","净利润增长率":"NETPROFIT",
-                       "扣除非经常性损益后的净利润同比增长率":"DEDUCT_PARENT_NETPROFIT",
-                       "营业收入增长率":"OPERATE_INCOME",
-                       "总资产增长率":"TOTAL_ASSETS",
-                       "固定资产增长率":"AVG_FIXED_ASSET",}
+        same_config = {"资本积累率": "TOTAL_EQUITY", "营业利润增长率": "OPERATE_PROFIT", "净利润增长率": "NETPROFIT",
+                       "扣除非经常性损益后的净利润同比增长率": "DEDUCT_PARENT_NETPROFIT",
+                       "营业收入增长率": "OPERATE_INCOME",
+                       "总资产增长率": "TOTAL_ASSETS",
+                       "固定资产增长率": "AVG_FIXED_ASSET", }
 
-        for new_col,c_col in same_config.items():
-            cur_dict_data[new_col] = round((cur_dict_data.get(c_col, 0) - before_dict_data.get(c_col)) / before_dict_data.get(c_col, 1), 4)
+        for new_col, c_col in same_config.items():
+            cur_dict_data[new_col] = round(
+                (cur_dict_data.get(c_col, 0) - before_dict_data.get(c_col)) / before_dict_data.get(c_col, 1), 4)
+
     def convert_quarter_data(self, data: pd.DataFrame, time_name, code_name, value_name, code_name_mapping=None,
                              handle_year_month_fn=None):
         year_dict_data = {}
@@ -1077,7 +1082,7 @@ class StockBasicAnalysis(object):
         self.last_zcfz_summary = self.construct_summary(datas, cols, 'zcfz')
         return self.last_zcfz_summary
 
-    def bar_chart(self,x_labels, y_dict_data: dict):
+    def bar_chart(self, x_labels, y_dict_data: dict):
 
         bar = Bar(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
@@ -1100,12 +1105,12 @@ class StockBasicAnalysis(object):
             bar.add_yaxis(col_name, list_data)
         return bar
 
-    def table_chart(self,header, rows, page_title):
+    def table_chart(self, header, rows, page_title):
         table = Table()
         table.add(header, rows, {"max_width": "100px"})
         return table
 
-    def df_to_table_chart(self,chart: list,df:pd.DataFrame,page_title):
+    def df_to_table_chart(self, chart: list, df: pd.DataFrame, page_title):
         cols = list(df.columns)
         rows = []
         for index in df.index:
@@ -1113,15 +1118,14 @@ class StockBasicAnalysis(object):
             ele = df.loc[index]
             for col in cols:
                 value = ele[col]
-                if isinstance(value,float):
-                    value = round(value,2)
+                if isinstance(value, float):
+                    value = round(value, 2)
                 row.append(value)
             rows.append(row)
-        tb = self.table_chart(cols,rows,page_title)
+        tb = self.table_chart(cols, rows, page_title)
         chart.append(tb)
 
-
-    def df_to_chart(self,cdf, chart: list, chart_type=None):
+    def df_to_chart(self, cdf, chart: list, chart_type=None):
         cdf_cols = cdf.columns
         data_dict = {}
         for cdf_col in cdf_cols:
@@ -1130,30 +1134,36 @@ class StockBasicAnalysis(object):
             bar_c = self.bar_chart(list(cdf.index), data_dict)
             chart.append(bar_c)
 
-    def cal_last_score(self,quarter_df,c_type="gt"):
+    def cal_last_score(self, quarter_df, c_type="gt"):
         before_num = 5
         last_result_dict_data = {}
         for index in quarter_df.index:
-            dict_data = sort_dict_data_by(dict(quarter_df.loc[index]),reverse=True)
+            dict_data = sort_dict_data_by(dict(quarter_df.loc[index]), reverse=True)
             for i in range(2):
                 col = list(dict_data.keys())[i]
-                if str(dict_data.get(col))!='nan':
+                if str(dict_data.get(col)) != 'nan':
                     val = dict_data.get(col)
-                    start = i+1
-                    end = start+before_num
+                    start = i + 1
+                    end = start + before_num
                     type_count = 0
                     for ccol in list(dict_data.keys())[start:end]:
-                        cval = dict_data.get(ccol,0)
-                        if c_type=='gt':
-                            if val>cval:
+                        cval = dict_data.get(ccol, 0)
+                        if c_type == 'gt':
+                            if val > cval:
                                 type_count += 1
                         else:
-                            if val<cval:
+                            if val < cval:
                                 type_count += 1
-                    last_result_dict_data[col[0:4]+"_"+index] = {"value":round(dict_data.get(col),4),"cnt":type_count,"score":round(type_count/before_num,4),"total_count":before_num}
+                    last_result_dict_data[col[0:4] + "_" + index] = {"value": round(dict_data.get(col), 4),
+                                                                     "cnt": type_count,
+                                                                     "score": round(type_count / before_num, 4),
+                                                                     "total_count": before_num}
                     break
         return last_result_dict_data
-    def cal_score(self,cols,df:pd.DataFrame,cols_weight=None,is_show=False,cols_st_type=None,self_value_score:dict=None,chars:list=None,is_google_model_analysis=False):
+
+    def cal_score(self, cols, df: pd.DataFrame, cols_weight=None, is_show=False, cols_st_type=None,
+                  self_value_score: dict = None, chars: list = None, is_google_model_analysis=False,
+                  tab_dict: dict = None):
         num = len(cols)
         if cols_weight is None:
             cols_weight = {k: 1 / num for k in cols}
@@ -1170,28 +1180,35 @@ class StockBasicAnalysis(object):
                     self_value_score.get(col)
                 before_v += vs['score'] * cols_weight.get(col)
                 all_last_score_dict[q] = before_v
-            if chars is not None:
+            if chars is not None or tab_dict is not None:
                 cdf_cols = cdf.columns
                 data_dict = {}
                 for cdf_col in cdf_cols:
-                    data_dict[cdf_col] = [round(ele,2) for ele in list(cdf[cdf_col].values)]
-                bar_c = self.bar_chart(list(cdf.index),data_dict)
-                chars.append(bar_c)
+                    data_dict[cdf_col] = [round(ele, 2) for ele in list(cdf[cdf_col].values)]
+                bar_c = self.bar_chart(list(cdf.index), data_dict)
+                if chars is not None:
+                    chars.append(bar_c)
+                if tab_dict is not None:
+                    tab_dict[f'报告期{col}'] = bar_c
             if is_show:
                 cdf.plot(kind='bar', title=col, rot=45, figsize=(15, 8), fontsize=10)
                 plt.show()
-            if is_google_model_analysis and chars is not None:
+            if is_google_model_analysis and (chars is not None or tab_dict is not None):
                 cdf['季度'] = cdf.index
                 self.google_model_analysis_trend(cdf)
-                chars.append(
-                    self.table_chart([f'报告期{col}趋势分析'], [[self.google_model_analysis_trend(cdf)]],
-                                     ''))
+                tb = self.table_chart([f'报告期{col}趋势分析'], [[self.google_model_analysis_trend(cdf)]],
+                                      '')
+                if chars is not None:
+                    chars.append(tb)
+                if tab_dict is not None:
+                    tab_dict[f'报告期{col}趋势分析'] = tb
 
         return all_last_score_dict
 
-    def google_model_analysis_trend(self,df:pd.DataFrame):
-        request_txt = "给定表格数，分析趋势,表格:"+handle_model_table_data(df)
-        return try_get_action(simple_big_gen_model_fn,try_count=3,model=self.load_google_model(),request_txt=request_txt,is_ret_json=False)
+    def google_model_analysis_trend(self, df: pd.DataFrame):
+        request_txt = "给定表格数，分析趋势,表格:" + handle_model_table_data(df)
+        return try_get_action(simple_big_gen_model_fn, try_count=3, model=self.load_google_model(),
+                              request_txt=request_txt, is_ret_json=False)
 
     def get_current_price_market_info(self):
         if self.current_price_market_info is None:
@@ -1200,9 +1217,9 @@ class StockBasicAnalysis(object):
             if os.path.exists(file_name) is False:
                 print("么有数据文件下载最新数据")
                 df = ak.stock_zh_a_spot_em()
-                df.to_csv(file_name,index=False)
+                df.to_csv(file_name, index=False)
             else:
-                df = pd.read_csv(file_name,dtype={"代码":str})
+                df = pd.read_csv(file_name, dtype={"代码": str})
             self.current_price_market_info = dict(df[df['代码'].isin([self.code])].head(1).iloc[0])
             if not self.current_price_market_info:
                 print("么有数据重新下载数据")
@@ -1210,23 +1227,27 @@ class StockBasicAnalysis(object):
                 df.to_csv(file_name, index=False)
                 self.current_price_market_info = dict(df[df['代码'].isin([self.code])].head(1).iloc[0])
         if self.current_price_market_info:
-            self.current_price_market_info['number_of_shares'] = self.current_price_market_info['总市值']/self.current_price_market_info['最新价']
+            self.current_price_market_info['number_of_shares'] = self.current_price_market_info['总市值'] / \
+                                                                 self.current_price_market_info['最新价']
         return self.current_price_market_info
 
     def cal_opt_price(self):
         self.get_current_price_market_info()
         if self.current_price_market_info:
             last_dict_data = dict(self.fin_data.tail(1).iloc[0])
-            recent_price = self.fin_data.tail(1)['有形账面净值'].values[0]/self.current_price_market_info['number_of_shares']
+            recent_price = self.fin_data.tail(1)['有形账面净值'].values[0] / self.current_price_market_info[
+                'number_of_shares']
             print(recent_price)
             print(self.current_price_market_info)
 
-
-    def generator_analysis(self,is_data_from_local=True,is_model_gen_res=False):
+    def generator_analysis(self, is_data_from_local=True, is_model_gen_res=False):
         charts = []
+        tab_dict = {}
 
         industry_data = self.get_stock_industry()
-        self.df_to_table_chart(charts,industry_data,'test')
+        self.df_to_table_chart(charts, industry_data, 'test')
+        tab_dict["行业情况"] = charts[-1]
+
         table_header = ['现金流量结论', '利润表结论', '资产负债表结论']
         self.get_stock_fin_data(is_local=is_data_from_local)
         flow_result = self.analysis_cash_flow_data()
@@ -1236,51 +1257,37 @@ class StockBasicAnalysis(object):
 
         table = self.table_chart(table_header, rows, '财报最近概括')
         charts.append(table)
+        tab_dict['财报最近概括'] = table
         df = self.fin_data
 
-        format_data_to_100million(df, ['CUR_NETCASH_OPERATE'])
-        cdf = self.convert_quarter_data(df, 'date', '经营活动产生的现金流量净额(亿)', 'CUR_NETCASH_OPERATE')
-        self.df_to_chart(cdf, charts)
-        if is_model_gen_res:
-            cdf['季度'] = cdf.index
-            charts.append(self.table_chart(['经营活动产生的现金流量净额趋势分析'],[[self.google_model_analysis_trend(cdf)]],''))
+        special_config = [
+            ['CUR_NETCASH_OPERATE', '经营活动产生的现金流量净额(亿)', '经营活动产生的现金流量净额趋势分析'],
+            ['CUR_DEDUCT_PARENT_NETPROFIT', '当期报告净利润(亿)', '当期报告净利润趋势分析'],
+            ['DEDUCT_PARENT_NETPROFIT', '报告期净利润', '报告期净利润额趋势分析'],
+            ['CIP', '报告期在建工程', '报告期在建工程趋势分析'],
+            ['RESEARCH_EXPENSE', '报告期研发费用', '研发费用趋势分析'],
+            ['CUR_OPERATE_INCOME', '当期营业收入', '当期营业收入趋势分析'],
+            ['OPERATE_INCOME', '报告期营业收入', '营业收入趋势分析'],
+        ]
 
-
-
-        format_data_to_100million(df, ['CUR_DEDUCT_PARENT_NETPROFIT'])
-        cdf = self.convert_quarter_data(df, 'date', '当期报告净利润(亿)', 'CUR_DEDUCT_PARENT_NETPROFIT')
-        self.df_to_chart(cdf, charts)
-        if is_model_gen_res:
-            cdf['季度'] = cdf.index
-            charts.append(
-                self.table_chart(['当期报告净利润趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
-
-        format_data_to_100million(df, ['DEDUCT_PARENT_NETPROFIT'])
-        cdf = self.convert_quarter_data(df, 'date', '报告期净利润', 'DEDUCT_PARENT_NETPROFIT')
-        self.df_to_chart(cdf, charts)
-        if is_model_gen_res:
-            cdf['季度'] = cdf.index
-            charts.append(
-                self.table_chart(['报告期净利润额趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
-
-        format_data_to_100million(df, ['CIP'])
-        cdf = self.convert_quarter_data(df, 'date', '报告期在建工程', 'CIP')
-        self.df_to_chart(cdf, charts)
-        if is_model_gen_res:
-            cdf['季度'] = cdf.index
-            charts.append(
-                self.table_chart(['报告期在建工程趋势分析'], [[self.google_model_analysis_trend(cdf)]], ''))
-
-        format_data_to_100million(df, ['RESEARCH_EXPENSE'])
-        cdf = self.convert_quarter_data(df, 'date', '报告期研发费用', 'RESEARCH_EXPENSE')
-        self.df_to_chart(cdf, charts)
+        for config in special_config:
+            col, col_name, trend_nam = config
+            format_data_to_100million(df, [col])
+            cdf = self.convert_quarter_data(df, 'date', col_name, col)
+            self.df_to_chart(cdf, charts)
+            tab_dict[trend_nam] = charts[-1]
+            if is_model_gen_res:
+                cdf['季度'] = cdf.index
+                charts.append(
+                    self.table_chart([trend_nam], [[self.google_model_analysis_trend(cdf)]], ''))
         # 偿债能力指标分析
         score_cols = []
         cols = ['流动比率', '速动比率', '现金比率', '现金流动负债比率', '资产负债率', '产权比率', '有形净值债务率',
                 '权益乘数']
         cols_st_type = {k: "gt" for k in cols}
         cols_st_type['资产负债率'] = 'lt'
-        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=is_model_gen_res)
+        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,
+                                   is_google_model_analysis=is_model_gen_res, tab_dict=tab_dict)
         print("偿债能力分数", all_score)
 
         rows = []
@@ -1293,7 +1300,8 @@ class StockBasicAnalysis(object):
         # 运营能力指标的计算
         cols = ['应收账款周转率', '存货周转率', '流动资产周转率', '固定资产周转率', '总资产周转率']
         cols_st_type = {k: "lt" for k in cols}
-        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,is_google_model_analysis=is_model_gen_res)
+        all_score = self.cal_score(cols, df, cols_st_type=cols_st_type, chars=charts,
+                                   is_google_model_analysis=is_model_gen_res, tab_dict=tab_dict)
         print("运营能力分数", all_score)
         row = ['运营能力分数']
         for e in score_cols:
@@ -1303,7 +1311,8 @@ class StockBasicAnalysis(object):
         # 盈利能力分析
         cols = ['毛利率', '营业利润率', '销售净利率', '净资产收益率', '资本报酬率']
         cols_weight = {'毛利率': 0.2, '营业利润率': 0.2, '销售净利率': 0.2, '净资产收益率': 0.2, '资本报酬率': 0.2}
-        all_score = self.cal_score(cols, df, cols_weight=cols_weight, chars=charts,is_google_model_analysis=is_model_gen_res)
+        all_score = self.cal_score(cols, df, cols_weight=cols_weight, chars=charts,
+                                   is_google_model_analysis=is_model_gen_res, tab_dict=tab_dict)
         print("盈利能力分数", all_score)
         row = ['盈利能力分数']
         for e in score_cols:
@@ -1317,7 +1326,7 @@ class StockBasicAnalysis(object):
                      "总资产增长率": "TOTAL_ASSETS",
                      "固定资产增长率": "AVG_FIXED_ASSET"}
         cols = list(cols_dict.keys())
-        all_score = self.cal_score(cols, df, chars=charts,is_google_model_analysis=is_model_gen_res)
+        all_score = self.cal_score(cols, df, chars=charts, is_google_model_analysis=is_model_gen_res, tab_dict=tab_dict)
         print("发展能力分数", all_score)
         row = ['发展能力分数']
         for e in score_cols:
@@ -1328,12 +1337,17 @@ class StockBasicAnalysis(object):
 
         score_tb = self.table_chart(table_header, rows, '')
 
+        tab = Tab()
+        tab.add(score_tb, '指标分数')
+        for name, c in tab_dict.items():
+            tab.add(c, name)
+        tab.render(f"{self.dir}/{self.name}_tab.html")
+
         page = Page()
         page.add(score_tb)
         for char in charts:
             page.add(char)
-        page.render(f"{self.name}.html")
-
+        page.render(f"{self.dir}/{self.name}.html")
 
 
 if __name__ == '__main__':

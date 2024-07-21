@@ -1,3 +1,5 @@
+import os.path
+
 import akshare as ak
 import google.generativeai as genai
 from datetime import datetime
@@ -12,8 +14,9 @@ from utils.tool import mongo_bulk_write_data
 from utils.actions import show_data
 import matplotlib.pyplot as plt
 from analysis.common_analysis import BasicAnalysis
-from pyecharts.charts import Page,Tab
+from pyecharts.charts import Page, Tab
 from analysis.analysis_tool import convert_pd_data_to_month_data
+
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
@@ -527,10 +530,40 @@ def cn_pmi_analysis():
 class CNMacroAnalysis(BasicAnalysis):
     def __init__(self, *args, **kwargs):
         self.name = kwargs.get('name', 'default')
-        pass
+        self.analysis_dir = kwargs.get("dir", "gdp")
+        if not os.path.exists(self.analysis_dir):
+            os.mkdir(self.analysis_dir)
+
+    def gdp_bar_line_tab_data(self, code_dict: dict, time='201001', file_name='default'):
+        data = self.get_data_from_cn_st(code_dict, time=time)
+        for col in code_dict.keys():
+            data[f'{col}_same'] = round(data[col].pct_change(4) * 100, 2)
+        tab = Tab()
+        for code, name in code_dict.items():
+            bar = self.bar_line_overlap(list(data['time'].values), {f"{name}(亿元)": list(data[code].values)},
+                                        {f"{name}同比(%)": list(data[f'{code}_same'].values)})
+            tab.add(bar, name)
+        tab.render(f"{self.analysis_dir}/{file_name}.html")
+
+    def convert_q_data(self, data: pd.DataFrame, code_dict: dict, col_name):
+        q_m = {"A": 0, "B": 1, "C": 2, "D": 3}
+        q_dict_data = {}
+        for index in data.index:
+            ele = dict(data.loc[index])
+            time = ele['time']
+            i = q_m.get(time[4])
+            year = time[0:4]
+            value = ele[col_name]
+            code_name = code_dict.get(col_name)
+            combine_name = f"{year}{code_name}"
+            q_dict_data.setdefault(combine_name, [0, 0, 0, 0])
+            q_dict_data[combine_name][i] = value
+        df = pd.DataFrame(q_dict_data, index=['一季度', '二季度', '三季度', '四季度'])
+        return df
 
     def generator_analysis_html(self):
         """
+        0.GDP数据
         1.pmi数据 pmi 预测
         2.cpi数据
         3.社融数据
@@ -538,10 +571,69 @@ class CNMacroAnalysis(BasicAnalysis):
         5.财政数据
         6.消费数据，
         7.房地产数据
+        8.工业数据分析
         :return:
         """
         chart_list = []
-        #PMI数据可视化
+
+        change_gdp_code_dict = {'A010101_jd': '国内生产总值_当季值', 'A010102_jd': '国内生产总值_累计值',
+                                'A010103_jd': '第一产业增加值_当季值', 'A010104_jd': '第一产业增加值_累计值',
+                                'A010105_jd': '第二产业增加值_当季值', 'A010106_jd': '第二产业增加值_累计值',
+                                'A010107_jd': '第三产业增加值_当季值', 'A010108_jd': '第三产业增加值_累计值',
+                                'A010109_jd': '农林牧渔业增加值_当季值', 'A01010A_jd': '农林牧渔业增加值_累计值',
+                                'A01010B_jd': '工业增加值_当季值', 'A01010C_jd': '工业增加值_累计值',
+                                'A01010D_jd': '制造业增加值_当季值', 'A01010E_jd': '制造业增加值_累计值',
+                                'A01011D_jd': '建筑业增加值_当季值', 'A01011E_jd': '建筑业增加值_累计值',
+                                'A01011F_jd': '批发和零售业增加值_当季值', 'A01011G_jd': '批发和零售业增加值_累计值',
+                                'A01011H_jd': '交通运输、仓储和邮政业增加值_当季值',
+                                'A01011I_jd': '交通运输、仓储和邮政业增加值_累计值',
+                                'A01011J_jd': '住宿和餐饮业增加值_当季值',
+                                'A01011K_jd': '住宿和餐饮业增加值_累计值', 'A01011L_jd': '金融业增加值_当季值',
+                                'A01011M_jd': '金融业增加值_累计值', 'A01011N_jd': '房地产业增加值_当季值',
+                                'A01011O_jd': '房地产业增加值_累计值',
+                                'A01011P_jd': '信息传输、软件和信息技术服务业增加值_当季值',
+                                'A01011Q_jd': '信息传输、软件和信息技术服务业增加值_累计值',
+                                'A01011R_jd': '租赁和商务服务业增加值_当季值',
+                                'A01011S_jd': '租赁和商务服务业增加值_累计值',
+                                'A01012P_jd': '其他行业增加值_当季值', 'A01012Q_jd': '其他行业增加值_累计值'}
+        self.gdp_bar_line_tab_data(change_gdp_code_dict, file_name="变价gdp分析")
+
+        no_change_gdp_dict = {'A010201_jd': '国内生产总值(不变价)_当季值', 'A010202_jd': '国内生产总值(不变价)_累计值',
+                              'A010203_jd': '第一产业增加值(不变价)_当季值',
+                              'A010204_jd': '第一产业增加值(不变价)_累计值',
+                              'A010205_jd': '第二产业增加值(不变价)_当季值',
+                              'A010206_jd': '第二产业增加值(不变价)_累计值',
+                              'A010207_jd': '第三产业增加值(不变价)_当季值',
+                              'A010208_jd': '第三产业增加值(不变价)_累计值'}
+        self.gdp_bar_line_tab_data(no_change_gdp_dict, file_name="不变价gdp分析")
+
+        supply_gdb_dict = {'A010501_jd': '最终消费支出对国内生产总值增长贡献率_当季值',
+                           'A010502_jd': '最终消费支出对国内生产总值增长贡献率_累计值',
+                           'A010503_jd': '资本形成总额对国内生产总值增长贡献率_当季值',
+                           'A010504_jd': '资本形成总额对国内生产总值增长贡献率_累计值',
+                           'A010505_jd': '货物和服务净出口对国内生产总值增长贡献率_当季值',
+                           'A010506_jd': '货物和服务净出口对国内生产总值增长贡献率_累计值'}
+        data = self.get_data_from_cn_st(supply_gdb_dict, time='201001')
+        tab = Tab()
+        for code, name in supply_gdb_dict.items():
+            df = self.convert_q_data(data, supply_gdb_dict, code)
+            temp_chart = []
+            self.df_to_chart(df, temp_chart)
+            tab.add(temp_chart[0], name)
+
+        three_supply_gdb_dict = {'A010601_jd': '国内生产总值贡献率_当季值', 'A010602_jd': '国内生产总值贡献率_累计值',
+                                 'A010603_jd': '第一产业贡献率_当季值', 'A010604_jd': '第一产业贡献率_累计值',
+                                 'A010605_jd': '第二产业贡献率_当季值', 'A010606_jd': '第二产业贡献率_累计值',
+                                 'A010607_jd': '第三产业贡献率_当季值', 'A010608_jd': '第三产业贡献率_累计值'}
+        data = self.get_data_from_cn_st(three_supply_gdb_dict, time='201001')
+        for code, name in three_supply_gdb_dict.items():
+            df = self.convert_q_data(data, three_supply_gdb_dict, code)
+            temp_chart = []
+            self.df_to_chart(df, temp_chart)
+            tab.add(temp_chart[0], name)
+        tab.render(f"{self.analysis_dir}/supply_ddp.html")
+
+        # PMI数据可视化
         pmi_code_dict = {'A0B0101_yd': '制造业采购经理指数(%)',
                          'A0B0102_yd': '生产指数(%)',
                          'A0B0103_yd': '新订单指数(%)',
@@ -554,19 +646,19 @@ class CNMacroAnalysis(BasicAnalysis):
         data = self.get_data_from_cn_st(pmi_code_dict, time='201001')
         data.rename(columns=pmi_code_dict, inplace=True)
         self.df_to_chart(data, chart_list, cols=list(pmi_code_dict.values()), index_col_key='time', chart_type='line')
-        #CPI数据可视化
+        # CPI数据可视化
         cpi_code_dict = {
-            "A01010101_yd":"居民消费价格指数(上年同月=100)",
-            "A01020101_yd":"居民消费价格指数(上年同期=100)",
-            "A01030101_yd":"居民消费价格指数(上月=100)",
+            "A01010101_yd": "居民消费价格指数(上年同月=100)",
+            "A01020101_yd": "居民消费价格指数(上年同期=100)",
+            "A01030101_yd": "居民消费价格指数(上月=100)",
         }
         data = self.get_data_from_cn_st(cpi_code_dict, time='201001')
         data.rename(columns=cpi_code_dict, inplace=True)
         self.df_to_chart(data, chart_list, cols=list(cpi_code_dict.values()), index_col_key='time', chart_type='line')
 
-        #社融数据
+        # 社融数据
         agg_stock_dict = {
-            "社融规模增量数据":"afre",
+            "社融规模增量数据": "afre",
             "人民币贷款": "rmb_loans",
             "委托贷款": "entrusted_loans",
             "信托贷款": "trust_loans",
@@ -575,8 +667,9 @@ class CNMacroAnalysis(BasicAnalysis):
             "政府债券": "gov_bonds",
         }
         agg_stock_dict = {v: k for k, v in agg_stock_dict.items()}
-        #1.增量分析
-        data = self.get_data_from_seq_data(data_type='credit_funds',metric_code_list=['agg_fin_flow'],time='2010',val_keys=list(agg_stock_dict.keys()))
+        # 1.增量分析
+        data = self.get_data_from_seq_data(data_type='credit_funds', metric_code_list=['agg_fin_flow'], time='2010',
+                                           val_keys=list(agg_stock_dict.keys()))
         """
         2.分类别看 
             2.1 表内信贷:人民币贷款,外币贷款
@@ -584,10 +677,10 @@ class CNMacroAnalysis(BasicAnalysis):
             2.3 直接融资：非金融企业境内股票融资,企业债券
             2.4 其他 公司赔偿、投资性房地产、小额货款合同、贷款公司贷款、存款性金融机构资产支持证券(2018年7月纳人)、贷款核销(2018年7月纳人)、政府债券(含地方专项债券、地方一般债券、国债)。
         """
-        for k,v in agg_stock_dict.items():
+        for k, v in agg_stock_dict.items():
             ele_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"agg_fin_flow": v})
             self.df_to_chart(ele_data, chart_list, chart_type='line')
-        #企业和住户短期和长期贷款分析
+        # 企业和住户短期和长期贷款分析
         income_config = {
             "住户贷款": "loans_to_households",
             "住户短期贷款": "short_term_loans",
@@ -597,72 +690,74 @@ class CNMacroAnalysis(BasicAnalysis):
             "企业短期贷款": "short_term_loans_1",
             "企业中长期贷款": "mid_long_term_loans_1",
             "债券投资": "portfolio_investments",
-            "票据融资":"paper_financing"
+            "票据融资": "paper_financing"
         }
         income_config = {v: k for k, v in income_config.items()}
-        data = self.get_data_from_seq_data(data_type='credit_funds',metric_code_list=['credit_funds_fin_inst_rmb'],time='2010',val_keys=list(income_config.keys()))
-        for k,v in income_config.items():
-            ele_data = data[[k,'time','metric_code']]
+        data = self.get_data_from_seq_data(data_type='credit_funds', metric_code_list=['credit_funds_fin_inst_rmb'],
+                                           time='2010', val_keys=list(income_config.keys()))
+        for k, v in income_config.items():
+            ele_data = data[[k, 'time', 'metric_code']]
             ele_data[k] = ele_data[k].diff()
-            ele_data = convert_pd_data_to_month_data(ele_data,'time',k,'metric_code',{"credit_funds_fin_inst_rmb":v})
+            ele_data = convert_pd_data_to_month_data(ele_data, 'time', k, 'metric_code',
+                                                     {"credit_funds_fin_inst_rmb": v})
             self.df_to_chart(ele_data, chart_list, chart_type='line')
 
-        #m1和m2剪刀差
+        # m1和m2剪刀差
         money_code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)", "A0D0104_yd": "货币(M1)供应量同比增长(%)",
-                     "A0D0106_yd": "流通中现金(M0)供应量同比增长(%)"}
+                           "A0D0106_yd": "流通中现金(M0)供应量同比增长(%)"}
         data = self.get_data_from_cn_st(money_code_dict, time='201001')
         data['m1_m2_diff'] = round(data['A0D0104_yd'] - data['A0D0102_yd'], 4)
         data['code'] = 'm1与m2增速之差'
         m1_m2_diff = convert_pd_data_to_month_data(data, 'time', 'm1_m2_diff', 'code')
         self.df_to_chart(m1_m2_diff, chart_list, chart_type='line')
 
-
-        #海关进出口数据
+        # 海关进出口数据
         condition = {"data_type": "country_export_import", "name": "总值", "date": {"$gte": '2018'}}
         dict_key_mapping = {
-        "acc_export_amount_cyc":"出口金额累计同比",
-        "acc_import_amount_cyc":"进口金额累计同比",
-        "acc_export_import_amount_cyc":"进出口金额累计同比",
-        "acc_export_amount":"出口金额累计(亿元)",
+            "acc_export_amount_cyc": "出口金额累计同比",
+            "acc_import_amount_cyc": "进口金额累计同比",
+            "acc_export_import_amount_cyc": "进出口金额累计同比",
+            "acc_export_amount": "出口金额累计(亿元)",
         }
-        data = self.get_data_from_board(condition=condition,is_cal=False,val_keys=list(dict_key_mapping.keys()))
-        data['acc_export_amount'] = round(data['acc_export_amount']/1e4,4)
-        data['date'] = data['date'].apply(lambda ele: ele.replace("-",""))
+        data = self.get_data_from_board(condition=condition, is_cal=False, val_keys=list(dict_key_mapping.keys()))
+        data['acc_export_amount'] = round(data['acc_export_amount'] / 1e4, 4)
+        data['date'] = data['date'].apply(lambda ele: ele.replace("-", ""))
         tab = Tab()
-        for k,v in dict_key_mapping.items():
+        for k, v in dict_key_mapping.items():
             temp_chart_list = []
-            new_data = convert_pd_data_to_month_data(data,'date',k,'name',{"总值":v})
-            self.df_to_chart(new_data,temp_chart_list,chart_type='line')
-            tab.add(temp_chart_list[0],v)
-        #tab.render("test.html")
-        #chart_list.append(tab)
-        #财政数据
+            new_data = convert_pd_data_to_month_data(data, 'date', k, 'name', {"总值": v})
+            self.df_to_chart(new_data, temp_chart_list, chart_type='line')
+            tab.add(temp_chart_list[0], v)
+        # tab.render("test.html")
+        # chart_list.append(tab)
+        # 财政数据
         all_income_config = {
             "全国一般公共预算收入": "all_public_budget_revenue",
             "中央一般公共预算收入": "center_public_budget_revenue",
             "地方一般公共预算本级收入": "region_public_budget_revenue",
             "税收收入": "all_tax_revenue",
             "非税收入": "non_tax_revenue",
-             #企业相关
+            # 企业相关
             "国内增值税": "tax_on_added_val",
             "企业所得税": "business_income_tax",
-            #个人相关
-            "个人所得税":"personal_income_tax",
-            #出口
-            "出口退税":"export_board_tax",
-            #房地产相关
+            # 个人相关
+            "个人所得税": "personal_income_tax",
+            # 出口
+            "出口退税": "export_board_tax",
+            # 房地产相关
             "契税": "deed_tax",
             "房产税": "building_tax",
             "土地增值税": "land_val_incr_tax",
             "耕地占用税": "occ_farm_land_tax",
             "城镇土地使用税": "town_land_use_tax",
         }
-        data = self.get_data_from_seq_data(data_type='gov_fin',metric_code_list=['gov_fin_data'],time='2010',val_keys=list(all_income_config.values()))
+        data = self.get_data_from_seq_data(data_type='gov_fin', metric_code_list=['gov_fin_data'], time='2010',
+                                           val_keys=list(all_income_config.values()))
         tab = Tab()
-        show_data(data)
-        for v,k in all_income_config.items():
+        # show_data(data)
+        for v, k in all_income_config.items():
             temp_chart_list = []
-            data[k] = round(data[k]/1e4,4)
+            data[k] = round(data[k] / 1e4, 4)
             new_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"gov_fin_data": v})
             # b_cols = list(new_data.columns)
             # for col in b_cols:
@@ -673,16 +768,49 @@ class CNMacroAnalysis(BasicAnalysis):
             new_data = new_data.diff()
             self.df_to_chart(new_data, temp_chart_list, chart_type='line')
             tab.add(temp_chart_list[0], v)
-        tab.render("test.html")
+        # tab.render("test.html")
+        # 工业产成平存货分析
+        inventory_code_dict = {'A020A1S_yd': '营业收入_累计增长', 'A020A1Q_yd': '营业收入_累计值',
+                               'A020A0E_yd': '产成品存货_本月末', 'A020A0G_yd': '产成品存货_增减',
+                               'A020A0D_yd': '存货_增减', 'A020A0B_yd': '存货_本月末',
+                               'A020A1G_yd': '利润总额_累计增长', 'A020A1E_yd': '利润总额_累计值',
+                               'A020A0J_yd': '资产总计_增减', 'A020A0H_yd': '资产总计_本月末',
+                               'A020A0K_yd': '负债合计_本月末', 'A020A0M_yd': '负债合计_增减',
+                               }
+        data = self.get_data_from_cn_st(inventory_code_dict, time='201001')
+        data = self.tool_filter_month_data(data)
+        data['资产负债率'] = round(data['A020A0K_yd']/data['A020A0H_yd'],4)
+        tab = Tab()
+        plot_inventory_list = [
+            {"name": "存货分析", "line": ["A020A0D_yd", "存货同比(%)"], "bar": ["A020A0B_yd", "存货本月末(亿元)"]},
+            {"name": "产成品存货分析", "line": ["A020A0G_yd", "产成品存货同比(%)"],
+             "bar": ["A020A0E_yd", "产成品存货本月末(亿元)"]},
+            {"name": "营业收入分析", "line": ["A020A1S_yd", "营业收入累计增长(%)"],
+             "bar": ["A020A1Q_yd", "营业收入累计值(亿元)"]},
+            {"name": "利润总额分析", "line": ["A020A1G_yd", "利润累计增长(%)"],
+             "bar": ["A020A1E_yd", "利润总额累计值(亿元)"]},
+            {"name": "资产分析", "line": ["A020A0J_yd", "资产增减(%)"],
+             "bar": ["A020A0H_yd", "资产累计值(亿元)"]},
+            {"name": "负债分析", "line": ["A020A0M_yd", "负债增减(%)"],
+             "bar": ["A020A0K_yd", "负债累计值(亿元)"]},
+            {"name": "资产负债率", "line": ["资产负债率", "资产负债率"],
+             "bar": ["A020A0K_yd", "负债累计值(亿元)"]},
+        ]
+        for combine_dict in plot_inventory_list:
+            line_code, line_name = combine_dict['line']
+            bar_code, bar_name = combine_dict['bar']
+            bar = self.bar_line_overlap(list(data['time'].values), {bar_name: list(data[bar_code].values)},
+                                        {line_name: list(data[line_code].values)})
 
-
+            tab.add(bar, combine_dict['name'])
+        tab.render(f"{self.analysis_dir}/工业存货分析.html")
 
         # page = Page()
         # for char in chart_list:
         #     page.add(char)
         # tab.add(page,'page_test')
         # tab.render(f"{self.name}.html")
-        #page.render(f"{self.name}.html")
+        # page.render(f"{self.name}.html")
 
 
 if __name__ == '__main__':

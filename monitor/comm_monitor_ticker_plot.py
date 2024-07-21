@@ -222,6 +222,8 @@ def daily_stock_plot_notice():
         "成都银行": {"code": "601838", "cid": "601838", "header": "成都银行成交量以及走势图"},
         "招商银行": {"code": "600036", "cid": "600036", "header": "招商银行成交量以及走势图"},
         "中国银行": {"code": "601988", "cid": "601988", "header": "中国银行成交量以及走势图"},
+        "宁德时代": {"code": "300750", "cid": "300750", "header": "宁德时代成交量以及走势图"},
+        "中际旭创": {"code": "300308", "cid": "300308", "header": "中际旭创成交量以及走势图"},
     }
     common_plot_send_mail(database, collection, sort_key, mail_theme, ticker_config)
 
