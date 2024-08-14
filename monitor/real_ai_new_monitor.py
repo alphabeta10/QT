@@ -284,9 +284,13 @@ def main_sender():
     sender = MailSender()
     mail_msg += lian_rmb_fx()
     if mail_msg != '':
-        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
-                              mail_msg)
-        sender.close()
+        try:
+            sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "AI行业数据监控",
+                                  mail_msg)
+            sender.close()
+        except Exception as e:
+            print(e)
+            print(mail_msg)
     else:
         print("没有数据可发")
 

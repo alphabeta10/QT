@@ -1,6 +1,6 @@
 from risk_manager.industry_risk import cn_industry_metric_risk
 from risk_manager.macro_risk import cn_fin_risk, cn_electric_risk, cn_pmi_risk, cn_global_wci_risk, cn_traffic_risk, \
-    cn_board_risk
+    cn_board_risk, cn_global_week_wci_risk
 from risk_manager.gpr import global_risk
 from datetime import datetime
 from utils.send_msg import MailSender
@@ -47,7 +47,7 @@ def cn_month_fin_risk_mail_str(day=None):
             day = f"{year}0{month}01"
         else:
             day = f"{year}{month}01"
-    cols = ['afre', 'rmb_loans', 'gov_bonds','net_fin_cor_bonds', 'total_risk']
+    cols = ['afre', 'rmb_loans', 'gov_bonds', 'net_fin_cor_bonds', 'total_risk']
 
     if len(df) > 0:
         html_str = f"<p>中国社融风险如下</p>"
@@ -201,21 +201,48 @@ def cn_week_traffic_risk_mail_str(day=None):
     }
     if day is None:
         day = datetime.now().strftime("%Y%m%d")
-    html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国运输风险', day,num=10)
+    html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国运输风险', day, num=10)
     return html_str
 
+
+def cn_week_wci_risk_mail_str(day=None):
+    _, _, df = cn_global_week_wci_risk()
+    traffic_mapping_dict = {"中国出口集装箱运价综合指数": "中国出口集装箱运价综合指数",
+                            "欧洲航线": "欧洲航线",
+                            "美西航线": "美西航线",
+                            "地中海航线": "地中海航线",
+                            "美东航线": "美东航线",
+                            "波红航线": "波红航线",
+                            "澳新航线": "澳新航线",
+                            "东西非航线": "东西非航线",
+                            "南非航线": "南非航线",
+                            "南美航线": "南美航线",
+                            "东南亚航线": "东南亚航线",
+                            "日本航线": "日本航线",
+                            "韩国航线": "韩国航线",
+                            "total_risk": "总风险",
+                            "index": "时间"
+                            }
+    if day is None:
+        day = datetime.now().strftime("%Y-%m-%d")
+    print()
+    html_str = macro_risk_construct_mail_str(traffic_mapping_dict, df, '中国出口集装箱运价指数风险', day, num=10)
+    return html_str
+
+
 def global_gpr_mail_str(day=None):
-    mapping_dict = {"risk":"风险",
-                    "no_risk":"战争结束可能",
-                    "index":"时间"}
+    mapping_dict = {"risk": "风险",
+                    "no_risk": "战争结束可能",
+                    "index": "时间"}
 
     df = global_risk()
     if day is None:
         day = datetime.now().strftime("%Y%m%d")
     html_str = macro_risk_construct_mail_str(mapping_dict, df, '地缘风险', day)
     return html_str
-def mail_sender(html_str):
 
+
+def mail_sender(html_str):
     sender = MailSender()
     if html_str != '':
         print("发送数据")
@@ -264,18 +291,21 @@ def month_monitor_main(arg_fn_dict_data: dict = None):
 def week_monitor_main(arg_fn_dict: str = None):
     fn_mapping_dict = {
         "cn_traffic_risk": cn_week_traffic_risk_mail_str,
+        "cn_wci_risk": cn_week_wci_risk_mail_str
     }
 
     if arg_fn_dict is None:
         day = datetime.now().strftime("%Y%m%d")
         arg_fn_dict = {
             "cn_traffic_risk": day,
+            "cn_wci_risk": datetime.now().strftime("%Y-%m-%d"),
         }
     html_str = ""
     for k, day in arg_fn_dict.items():
         html_str += fn_mapping_dict.get(k)(day)
     if html_str != '':
         mail_sender(html_str)
+
 
 def day_monitor_main(arg_fn_dict: str = None):
     fn_mapping_dict = {
@@ -292,6 +322,7 @@ def day_monitor_main(arg_fn_dict: str = None):
         html_str += fn_mapping_dict.get(k)(day)
     if html_str != '':
         mail_sender(html_str)
+
 
 if __name__ == '__main__':
     month_monitor_main()

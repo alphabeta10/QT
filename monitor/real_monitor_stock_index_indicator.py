@@ -92,12 +92,12 @@ def real_monitor_stock_index_and_cal_indicator():
 
         trigger_json_data = {}
         if len(construct_buy_msg_list) > 0:
-            comm_indicator_send_msg_by_email(construct_buy_msg_list, sender, msg_title='实时指数指标触发买入的信号')
+            #comm_indicator_send_msg_by_email(construct_buy_msg_list, sender, msg_title='实时指数指标触发买入的信号')
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
 
         if len(construct_sell_msg_list) > 0:
-            comm_indicator_send_msg_by_email(construct_sell_msg_list, sender, msg_title='实时指数指标触发卖出的信号')
+            #comm_indicator_send_msg_by_email(construct_sell_msg_list, sender, msg_title='实时指数指标触发卖出的信号')
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
         if len(trigger_json_data.keys()) > 0:

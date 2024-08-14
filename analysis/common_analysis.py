@@ -1,9 +1,11 @@
-from utils.tool import get_data_from_mongo,get_mongo_table
+from utils.tool import get_data_from_mongo, get_mongo_table
 import pandas as pd
 from datetime import datetime, timedelta
-from pyecharts.charts import Bar,Line
+from pyecharts.charts import Bar, Line, Pie
 from pyecharts.components import Table
+from pyecharts.commons.utils import JsCode
 from pyecharts import options as opts
+
 
 class BasicAnalysis(object):
     """
@@ -17,13 +19,14 @@ class BasicAnalysis(object):
         """
         pass
 
-    def get_data_from_mongondb(self,database,collection,projection,condition,sort_key):
+    def get_data_from_mongondb(self, database, collection, projection, condition, sort_key):
         pd_data = get_data_from_mongo(database=database, collection=collection, projection=projection,
                                       condition=condition,
                                       sort_key=sort_key)
         return pd_data
 
-    def get_data_from_board(self, name=None, unit=None, data_type=None, condition=None, is_cal=True,val_keys:list=None):
+    def get_data_from_board(self, name=None, unit=None, data_type=None, condition=None, is_cal=True,
+                            val_keys: list = None):
         """
         从海关获取商品月均价,按年累计价格,金额，数据，数据
         :return:
@@ -89,7 +92,7 @@ class BasicAnalysis(object):
         data.reset_index(inplace=True)
         return data
 
-    def get_goods_data_aline_and_raw(self,goods_name_list,c_time):
+    def get_goods_data_aline_and_raw(self, goods_name_list, c_time):
         """
         获取原始商品数据以及对齐天的数据
         :param goods_name_list:
@@ -102,7 +105,8 @@ class BasicAnalysis(object):
         other_datas = []
         # 轻质纯碱 铁矿石(澳) 螺纹钢 玻璃 乙二醇 重质纯碱
         goods_condition = {"$in": goods_name_list}
-        for ele in goods.find({"name": goods_condition, "data_type": "goods_price","time":{"$gte":c_time}}, projection={'_id': False}).sort(
+        for ele in goods.find({"name": goods_condition, "data_type": "goods_price", "time": {"$gte": c_time}},
+                              projection={'_id': False}).sort(
                 "time"):
             time = ele['time']
             value = ele['value']
@@ -114,7 +118,7 @@ class BasicAnalysis(object):
             datas.append(ele)
         raw_data = pd.DataFrame(data=datas)
         other_pd_data = pd.DataFrame(data=other_datas)
-        return raw_data,other_pd_data
+        return raw_data, other_pd_data
 
     def get_data_from_cn_st(self, code_dict: dict = None, time: str = None):
         """
@@ -161,7 +165,7 @@ class BasicAnalysis(object):
         data = data[data['month'] >= gt_month]
         return data
 
-    def bar_chart(self,x_labels, y_dict_data: dict):
+    def bar_chart(self, x_labels, y_dict_data: dict):
 
         bar = Bar(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
@@ -184,13 +188,49 @@ class BasicAnalysis(object):
             bar.add_yaxis(col_name, list_data)
         return bar
 
-    def bar_line_overlap(self,x_labels,bar_y_dict_data:dict,line_y_dict_data:dict):
+    def table_chart(self, header, rows, page_title):
+        table = Table()
+        table.add(header, rows, {"max_width": "100px"})
+        return table
+
+    def pie_chart(self, name, attr, val_dict_data: dict):
+
+        fn = """
+            function(params) {
+                if(params.name == '其他')
+                    return '\\n\\n\\n' + params.name + ' : ' + params.value + '%';
+                return params.name + ' : ' + params.value + '%';
+            }
+            """
+
+        def new_label_opts():
+            return opts.LabelOpts(formatter=JsCode(fn), position="center")
+
+        pie = Pie()
+        # pie.set_global_opts(
+        #     title_opts=opts.TitleOpts(title=name),
+        #     legend_opts=opts.LegendOpts(
+        #         type_="scroll", pos_top="20%", pos_left="80%", orient="vertical"
+        #     )
+        # )
+        for ele_name, v_list in val_dict_data.items():
+            pie.add(ele_name, [list(z) for z in zip(attr, v_list)],
+                    radius=["50%", "70%"],
+                    label_opts=opts.LabelOpts(is_show=False, position="center"))
+        pie.set_series_opts(
+            tooltip_opts=opts.TooltipOpts(
+                trigger="item", formatter="{a} <br/>{b}: {c} ({d}%)"
+            ))
+        pie.set_global_opts(legend_opts=opts.LegendOpts(pos_left="legft", orient="vertical"))
+        return pie
+
+    def bar_line_overlap(self, x_labels, bar_y_dict_data: dict, line_y_dict_data: dict):
         bar = Bar(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
         ))
         bar.add_xaxis(x_labels)
-        for col_name,list_data in bar_y_dict_data.items():
-            bar.add_yaxis(col_name,list_data,z=0)
+        for col_name, list_data in bar_y_dict_data.items():
+            bar.add_yaxis(col_name, list_data, z=0)
         bar.extend_axis(
             yaxis=opts.AxisOpts(
                 axislabel_opts=opts.LabelOpts(formatter="{value}")
@@ -198,21 +238,21 @@ class BasicAnalysis(object):
         )
         bar.set_series_opts(label_opts=opts.LabelOpts(is_show=False))
         bar.set_global_opts(
-        #title_opts=opts.TitleOpts(title="Overlap-bar+line"),
-        yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(formatter="{value}")),
-    )
+            # title_opts=opts.TitleOpts(title="Overlap-bar+line"),
+            yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(formatter="{value}")),
+        )
         line = Line().add_xaxis(x_labels)
-        for col_name,list_data in line_y_dict_data.items():
-            line.add_yaxis(col_name,list_data,yaxis_index=1)
+        for col_name, list_data in line_y_dict_data.items():
+            line.add_yaxis(col_name, list_data, yaxis_index=1)
         bar.overlap(line)
         return bar
 
-    def line_chart(self,x_labels,y_dict_data:dict):
+    def line_chart(self, x_labels, y_dict_data: dict):
         line = Line(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
         ))
         line.add_xaxis(x_labels)
-        for col_name,list_data in y_dict_data.items():
+        for col_name, list_data in y_dict_data.items():
             line.add_yaxis(
                 series_name=col_name,
                 y_axis=list_data,
@@ -228,8 +268,7 @@ class BasicAnalysis(object):
             )
         return line
 
-
-    def df_to_chart(self, df:pd.DataFrame, chart: list, chart_type=None,cols:list=None,index_col_key:str=None):
+    def df_to_chart(self, df: pd.DataFrame, chart: list, chart_type=None, cols: list = None, index_col_key: str = None):
         if cols is None:
             cols = df.columns
         if index_col_key is None:
@@ -239,12 +278,62 @@ class BasicAnalysis(object):
         data_dict = {}
         for col in cols:
             data_dict[col] = [round(ele, 2) for ele in list(df[col].values)]
-        if chart_type is None:
+        if chart_type is None or chart_type == 'bar':
             bar_c = self.bar_chart(chart_index, data_dict)
             chart.append(bar_c)
-        elif chart_type=='line':
-            line_c = self.line_chart(chart_index,data_dict)
+        elif chart_type == 'line':
+            line_c = self.line_chart(chart_index, data_dict)
             chart.append(line_c)
+
+    def comm_down_or_up_risk(self, data: pd.DataFrame, cal_cols: list, before_num_list: list, col_up_or_down: dict,
+                             time_col: str):
+        """
+        计算下跌或者上升风险方法
+        :param data:数据
+        :param cal_cols:列名列表
+        :param before_num_list:计算的前一个值对比列表
+        :param col_up_or_down:上涨还是下跌类型
+        :param time_col:
+        :return:
+        """
+        for i in before_num_list:
+            for col in cal_cols:
+                data[f'{col}_pct_{i}'] = round(data[col].diff(i), 4)
+        all_detail_risk = []
+        all_datas = []
+        for index in data.index:
+
+            detail_risk = {}
+            total_risk = 0
+            dict_data = dict(data.loc[index])
+            if time_col == 'index':
+                time = str(index)
+            else:
+                time = dict_data[time_col]
+            for col in cal_cols:
+                up, down = 0, 0
+                for i in before_num_list:
+                    if dict_data[f'{col}_pct_{i}'] > 0:
+                        up += 1
+                    else:
+                        down += 1
+                up_or_down = col_up_or_down.get(col)
+                if up_or_down == 'up':
+                    ele_risk = round(up / len(before_num_list), 4)
+                else:
+                    ele_risk = round(down / len(before_num_list), 4)
+                detail_risk[col] = {"up": up, "down": down, "total_risk": ele_risk}
+                total_risk += (1 / len(cal_cols)) * ele_risk
+
+            detail_risk['time'] = time
+            detail_risk['total_risk'] = total_risk
+            all_detail_risk.append(detail_risk)
+            dict_data['total_risk'] = total_risk
+            dict_data['time'] = time
+            all_datas.append(dict_data)
+        return all_detail_risk, all_datas
+
+
 if __name__ == '__main__':
     basic = BasicAnalysis()
     data = basic.get_data_from_board()

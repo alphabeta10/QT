@@ -21,9 +21,11 @@ def global_risk():
         sentiment = dict_data['sentiment']
         if '悲观' in sentiment or '消极' in sentiment:
             sentiment = '悲观'
+
         st.setdefault(day, {})
-        st[day].setdefault(sentiment, 0)
-        st[day][sentiment] += 1
+        if not isinstance(sentiment, list):
+            st[day].setdefault(sentiment, 0)
+            st[day][sentiment] += 1
     risk_day = {}
     datas = []
     for day,combine_dict in st.items():

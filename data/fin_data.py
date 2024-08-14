@@ -32,6 +32,29 @@ def extract_data(name, raw_line):
         if len(result) > 0:
             data, same_data = result[0]
             same_data = float(same_data) * -1
+
+
+        result = re.findall(name + "(\d+\.?\d?)亿元，比上年同期增长(\d+\.?\d?)%", raw_line)
+        if len(result) > 0:
+            data, same_data = result[0]
+            same_data = float(same_data)
+
+        result = re.findall(name + "(\d+\.?\d?)亿元，比上年同期下降(\d+\.?\d?)%", raw_line)
+        if len(result) > 0:
+            data, same_data = result[0]
+            same_data = float(same_data) * -1
+
+        result = re.findall(name + "(\d+\.?\d?)亿元，比上年增长(\d+\.?\d?)%", raw_line)
+        if len(result) > 0:
+            data, same_data = result[0]
+            same_data = float(same_data)
+
+        result = re.findall(name + "(\d+\.?\d?)亿元，比上年下降(\d+\.?\d?)%", raw_line)
+        if len(result) > 0:
+            data, same_data = result[0]
+            same_data = float(same_data) * -1
+
+
     if data is None:
         result = re.findall(name + "(\d+\.?\d?)亿元", raw_line)
         if len(result) > 0:
@@ -682,6 +705,6 @@ if __name__ == '__main__':
     enter_credit_fin()
     enter_credit_fin_agg_flow()
     handle_balance_sheet_of_monetary_authority(handle_dir='fin_balance_sheet_of_monetary_authority')
-    # craw_gov_revenue_expenditure_data()
+    craw_gov_revenue_expenditure_data()
     get_gov_data()
-    # find_data()
+    find_data()

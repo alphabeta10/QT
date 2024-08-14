@@ -1,3 +1,4 @@
+import copy
 import os.path
 
 import akshare as ak
@@ -21,6 +22,7 @@ from analysis.analysis_tool import convert_pd_data_to_month_data
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 from utils.actions import try_get_action
+from utils.tool import sort_dict_data_by
 
 warnings.filterwarnings('ignore')
 
@@ -561,8 +563,172 @@ class CNMacroAnalysis(BasicAnalysis):
         df = pd.DataFrame(q_dict_data, index=['一季度', '二季度', '三季度', '四季度'])
         return df
 
+    def cn_fixed_asset_invent(self):
+        fixed_asset_dict = {
+            "A040102_yd":"固定资产投资额累计增长(%)",
+            "A040104_yd":"民间固定资产投资累计增长(%)",
+            "A040106_yd":"第一产业固定资产投资额累计增长(%)",
+            "A040108_yd":"第二产业固定资产投资额累计增长(%)",
+            "A04010A_yd":"第三产业固定资产投资额累计增长(%)",
+        }
+        #可视化分析
+        data = self.get_data_from_cn_st(fixed_asset_dict,time='2010')
+        data = self.tool_filter_month_data(data)
+        tab = Tab()
+        for code,name in fixed_asset_dict.items():
+            ele_data = data[[code,'time']]
+            ele_data['code'] = name
+            ele_data = convert_pd_data_to_month_data(ele_data,'time',code,'code')
+            show_data(ele_data)
+            temp_list = []
+            self.df_to_chart(ele_data,temp_list,chart_type='line')
+            tab.add(temp_list[0],name)
+        tab.render(f"{self.analysis_dir}/固定资产投资分析.html")
+
+    def consumer_analysis(self):
+        #总体分析
+        consumer_dict = {
+            "A070103_yd":"社会消费品零售总额同比增长(%)",
+            "A070104_yd":"社会消费品零售总额累计增长(%)",
+        }
+        data = self.get_data_from_cn_st(consumer_dict, time='2010')
+        data = self.tool_filter_month_data(data)
+        tab = Tab()
+        for code, name in consumer_dict.items():
+            ele_data = data[[code, 'time']]
+            ele_data['code'] = name
+            ele_data = convert_pd_data_to_month_data(ele_data, 'time', code, 'code')
+            show_data(ele_data)
+            temp_list = []
+            self.df_to_chart(ele_data, temp_list, chart_type='line')
+            tab.add(temp_list[0], name)
+        tab.render(f"{self.analysis_dir}/社会零售数据分析.html")
+
+
+
+    def cn_finance_data_analysis(self):
+        """
+        中国财政收入分析
+        :return:
+        """
+        all_income_config = {
+            "全国一般公共预算收入": "all_public_budget_revenue",
+            "全国一般公共预算收入同比": "all_public_budget_revenue_same",
+
+            "中央一般公共预算收入": "center_public_budget_revenue",
+            "地方一般公共预算本级收入": "region_public_budget_revenue",
+
+            "税收收入": "all_tax_revenue",
+            "非税收入": "non_tax_revenue",
+            # 企业相关
+            "国内增值税": "tax_on_added_val",
+            "国内增值税同比": "tax_on_added_val_same",
+            "企业所得税": "business_income_tax",
+            "企业所得税同比": "business_income_tax_same",
+            # 个人相关
+            "个人所得税": "personal_income_tax",
+            # 出口
+            "出口退税": "export_board_tax",
+            # 房地产相关
+            "契税": "deed_tax",
+            "房产税": "building_tax",
+            "土地增值税": "land_val_incr_tax",
+            "耕地占用税": "occ_farm_land_tax",
+            "城镇土地使用税": "town_land_use_tax",
+            # 消费
+            "国内消费税": "consum_tax_val",
+            "国内消费税同比": "consum_tax_val_same",
+
+            "车辆购置税": "car_consum_tax",
+            "车辆购置税同比": "car_consum_tax_same",
+        }
+
+        tax_config = {"国内增值税": "tax_on_added_val",
+                      "国内消费税": "consum_tax_val",
+                      "企业所得税": "business_income_tax",
+                      "个人所得税": "personal_income_tax",
+                      "进口货物增值税、消费税": "board_add_tax",
+                      "关税": "board_tax",
+                      "出口退税": "export_board_tax",
+                      "城市维护建设税": "city_maintain_tax",
+                      "车辆购置税": "car_consum_tax",
+                      "印花税": "stamp_tax",
+                      "证券交易印花税": "securities_stamp_tax",
+                      "资源税": "resource_tax",
+                      "土地和房地产相关税收中，契税": "deed_tax",
+                      "房产税": "building_tax",
+                      "土地增值税": "land_val_incr_tax",
+                      "耕地占用税": "occ_farm_land_tax",
+                      "城镇土地使用税": "town_land_use_tax",
+                      "环境保护税": "env_protect_tax",
+                      "车船税、船舶吨税、烟叶税等其他各项税收收入合计": "other_tax"
+                      }
+
+        convert_cols = set()
+        for k in all_income_config.values():
+            convert_cols.add(k)
+        for k in tax_config.values():
+            convert_cols.add(k)
+            convert_cols.add(k+"_same")
+
+        data = self.get_data_from_seq_data(data_type='gov_fin', metric_code_list=['gov_fin_data'], time='2010',
+                                           val_keys=list(convert_cols))
+        tab = Tab()
+        """
+        税收结构分析，占比
+        """
+        recent_dict_data = dict(data.tail(1).iloc[0])
+        #tax_rate = {v:round(recent_dict_data.get(k)/recent_dict_data.get('all_public_budget_revenue'),4) for v,k in tax_config.items()}
+        tax_rate = {v:recent_dict_data.get(k) for v,k in tax_config.items()}
+        tax_rate = sort_dict_data_by(tax_rate,by='value',reverse=True)
+        attr = list(tax_rate.keys())
+        pie_values = list(tax_rate.values())
+        pie_chart = self.pie_chart('税收结构',attr, {"税收占比(单位亿)":pie_values})
+        tab.add(pie_chart,"税收结构分析")
+
+        """
+        收入增加或者减少看是哪些税收减少
+        """
+        all_same_data = recent_dict_data.get('all_public_budget_revenue_same',0)
+        result_conclude = []
+        if all_same_data>0:
+            result_conclude.append(f"一般公共收入增长{all_same_data}%原因有如下：")
+            for t_k in tax_rate.keys():
+                k = tax_config.get(t_k)+"_same"
+                if recent_dict_data.get(k)>0:
+                    v = recent_dict_data.get(k)
+                    result_conclude.append(f"{t_k}增长{v}%")
+        if all_same_data<0:
+            result_conclude.append(f"一般公共收入减少{all_same_data}%原因有如下：")
+            for t_k in tax_rate.keys():
+                k = tax_config.get(t_k)+"_same"
+                if recent_dict_data.get(k)<0:
+                    v = recent_dict_data.get(k)
+                    result_conclude.append(f"{t_k}减少{v}%")
+        recent_time = recent_dict_data.get('time')
+        table = self.table_chart([f'财政数据结论分析{recent_time}'],[[";".join(result_conclude)]],'财政数据结论分析')
+        tab.add(table,'财政数据结论分析')
+        for v, k in all_income_config.items():
+            temp_chart_list = []
+            # if data[k]>1e4:
+            #     data[k] = round(data[k] / 1e4, 4)
+            # else:
+            data[k] = round(data[k], 4)
+            new_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"gov_fin_data": v})
+            # b_cols = list(new_data.columns)
+            # for col in b_cols:
+            #     new_data[col+"1"] = new_data[col].shift(1)
+            #     new_data.fillna(0,inplace=True)
+            #     new_data[col] = new_data[col]-new_data[col+"1"]
+            # new_data = new_data[b_cols]
+            # new_data = new_data.diff()
+            self.df_to_chart(new_data, temp_chart_list, chart_type='line')
+            tab.add(temp_chart_list[0], v)
+        tab.render(f"{self.analysis_dir}/财政数据分析.html")
+
     def generator_analysis_html(self):
         """
+        加入风险分析,得出当期经济环境情况，造成原因
         0.GDP数据
         1.pmi数据 pmi 预测
         2.cpi数据
@@ -572,6 +738,7 @@ class CNMacroAnalysis(BasicAnalysis):
         6.消费数据，
         7.房地产数据
         8.工业数据分析
+        9.投资分析
         :return:
         """
         chart_list = []
@@ -613,6 +780,7 @@ class CNMacroAnalysis(BasicAnalysis):
                            'A010504_jd': '资本形成总额对国内生产总值增长贡献率_累计值',
                            'A010505_jd': '货物和服务净出口对国内生产总值增长贡献率_当季值',
                            'A010506_jd': '货物和服务净出口对国内生产总值增长贡献率_累计值'}
+
         data = self.get_data_from_cn_st(supply_gdb_dict, time='201001')
         tab = Tab()
         for code, name in supply_gdb_dict.items():
@@ -633,8 +801,11 @@ class CNMacroAnalysis(BasicAnalysis):
             tab.add(temp_chart[0], name)
         tab.render(f"{self.analysis_dir}/supply_ddp.html")
 
-        # PMI数据可视化
-        pmi_code_dict = {'A0B0101_yd': '制造业采购经理指数(%)',
+
+
+        # PMI和CPI数据可视化
+        tab = Tab()
+        pmi_cpi_code_dict = {'A0B0101_yd': '制造业采购经理指数(%)',
                          'A0B0102_yd': '生产指数(%)',
                          'A0B0103_yd': '新订单指数(%)',
                          'A0B0104_yd': '新出口订单指数(%)',
@@ -642,21 +813,22 @@ class CNMacroAnalysis(BasicAnalysis):
                          'A0B010C_yd': '从业人员指数',
                          'A0B010D_yd': '供应商配送时间指数',
                          'A0B010B_yd': '原材料库存指数',
+                         "A01010101_yd": "居民消费价格指数(上年同月=100)",
+                         "A01020101_yd": "居民消费价格指数(上年同期=100)",
+                         "A01030101_yd": "居民消费价格指数(上月=100)",
                          }
-        data = self.get_data_from_cn_st(pmi_code_dict, time='201001')
-        data.rename(columns=pmi_code_dict, inplace=True)
-        self.df_to_chart(data, chart_list, cols=list(pmi_code_dict.values()), index_col_key='time', chart_type='line')
-        # CPI数据可视化
-        cpi_code_dict = {
-            "A01010101_yd": "居民消费价格指数(上年同月=100)",
-            "A01020101_yd": "居民消费价格指数(上年同期=100)",
-            "A01030101_yd": "居民消费价格指数(上月=100)",
-        }
-        data = self.get_data_from_cn_st(cpi_code_dict, time='201001')
-        data.rename(columns=cpi_code_dict, inplace=True)
-        self.df_to_chart(data, chart_list, cols=list(cpi_code_dict.values()), index_col_key='time', chart_type='line')
+        data = self.get_data_from_cn_st(pmi_cpi_code_dict, time='2010')
+        data.rename(columns=pmi_cpi_code_dict, inplace=True)
 
+        for k in pmi_cpi_code_dict.values():
+            data['code'] = k
+            temp_chart_list = []
+            new_data = convert_pd_data_to_month_data(data[[k,'time','code']],'time',k,'code',{k:k})
+            self.df_to_chart(new_data, temp_chart_list, chart_type='line')
+            tab.add(temp_chart_list[0], k)
+        tab.render(f"{self.analysis_dir}/pmi_cpi.html")
         # 社融数据
+        tab = Tab()
         agg_stock_dict = {
             "社融规模增量数据": "afre",
             "人民币贷款": "rmb_loans",
@@ -678,8 +850,18 @@ class CNMacroAnalysis(BasicAnalysis):
             2.4 其他 公司赔偿、投资性房地产、小额货款合同、贷款公司贷款、存款性金融机构资产支持证券(2018年7月纳人)、贷款核销(2018年7月纳人)、政府债券(含地方专项债券、地方一般债券、国债)。
         """
         for k, v in agg_stock_dict.items():
+            ele_data = data[[k, 'time', 'metric_code']]
+            incr_data = copy.deepcopy(ele_data)
+            incr_data['k_pct'] = round(incr_data[k].pct_change(12),4)
+            line_dict = {f"{v}增速": list(incr_data['k_pct'].values)}
+            bar_dict = {f"{v}新增": list(incr_data[k].values)}
+            bar = self.bar_line_overlap(list(incr_data['time'].values), bar_dict,
+                                        line_dict)
+
             ele_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"agg_fin_flow": v})
-            self.df_to_chart(ele_data, chart_list, chart_type='line')
+            self.df_to_chart(ele_data, chart_list, chart_type='bar')
+            tab.add(chart_list[-1],v)
+            tab.add(bar,f"{v}趋势分析")
         # 企业和住户短期和长期贷款分析
         income_config = {
             "住户贷款": "loans_to_households",
@@ -698,9 +880,19 @@ class CNMacroAnalysis(BasicAnalysis):
         for k, v in income_config.items():
             ele_data = data[[k, 'time', 'metric_code']]
             ele_data[k] = ele_data[k].diff()
+
+            incr_data = copy.deepcopy(ele_data)
+            incr_data['k_pct'] = round(incr_data[k].pct_change(12),4)
+            show_data(incr_data)
+            line_dict = {f"{v}增速":list(incr_data['k_pct'].values)}
+            bar_dict = {f"{v}新增":list(incr_data[k].values)}
+            bar = self.bar_line_overlap(list(incr_data['time'].values), bar_dict,
+                                        line_dict)
             ele_data = convert_pd_data_to_month_data(ele_data, 'time', k, 'metric_code',
                                                      {"credit_funds_fin_inst_rmb": v})
-            self.df_to_chart(ele_data, chart_list, chart_type='line')
+            self.df_to_chart(ele_data, chart_list, chart_type='bar')
+            tab.add(chart_list[-1],v)
+            tab.add(bar,f'{v}趋势分析')
 
         # m1和m2剪刀差
         money_code_dict = {"A0D0102_yd": "货币和准货币(M2)供应量同比增长(%)", "A0D0104_yd": "货币(M1)供应量同比增长(%)",
@@ -710,6 +902,8 @@ class CNMacroAnalysis(BasicAnalysis):
         data['code'] = 'm1与m2增速之差'
         m1_m2_diff = convert_pd_data_to_month_data(data, 'time', 'm1_m2_diff', 'code')
         self.df_to_chart(m1_m2_diff, chart_list, chart_type='line')
+        tab.add(chart_list[-1],'m1与m2增速之差')
+        tab.render(f"{self.analysis_dir}/社融数据分析.html")
 
         # 海关进出口数据
         condition = {"data_type": "country_export_import", "name": "总值", "date": {"$gte": '2018'}}
@@ -728,47 +922,10 @@ class CNMacroAnalysis(BasicAnalysis):
             new_data = convert_pd_data_to_month_data(data, 'date', k, 'name', {"总值": v})
             self.df_to_chart(new_data, temp_chart_list, chart_type='line')
             tab.add(temp_chart_list[0], v)
-        # tab.render("test.html")
+        tab.render(f'{self.analysis_dir}/进出口数据分析.html')
         # chart_list.append(tab)
         # 财政数据
-        all_income_config = {
-            "全国一般公共预算收入": "all_public_budget_revenue",
-            "中央一般公共预算收入": "center_public_budget_revenue",
-            "地方一般公共预算本级收入": "region_public_budget_revenue",
-            "税收收入": "all_tax_revenue",
-            "非税收入": "non_tax_revenue",
-            # 企业相关
-            "国内增值税": "tax_on_added_val",
-            "企业所得税": "business_income_tax",
-            # 个人相关
-            "个人所得税": "personal_income_tax",
-            # 出口
-            "出口退税": "export_board_tax",
-            # 房地产相关
-            "契税": "deed_tax",
-            "房产税": "building_tax",
-            "土地增值税": "land_val_incr_tax",
-            "耕地占用税": "occ_farm_land_tax",
-            "城镇土地使用税": "town_land_use_tax",
-        }
-        data = self.get_data_from_seq_data(data_type='gov_fin', metric_code_list=['gov_fin_data'], time='2010',
-                                           val_keys=list(all_income_config.values()))
-        tab = Tab()
-        # show_data(data)
-        for v, k in all_income_config.items():
-            temp_chart_list = []
-            data[k] = round(data[k] / 1e4, 4)
-            new_data = convert_pd_data_to_month_data(data, 'time', k, 'metric_code', {"gov_fin_data": v})
-            # b_cols = list(new_data.columns)
-            # for col in b_cols:
-            #     new_data[col+"1"] = new_data[col].shift(1)
-            #     new_data.fillna(0,inplace=True)
-            #     new_data[col] = new_data[col]-new_data[col+"1"]
-            # new_data = new_data[b_cols]
-            new_data = new_data.diff()
-            self.df_to_chart(new_data, temp_chart_list, chart_type='line')
-            tab.add(temp_chart_list[0], v)
-        # tab.render("test.html")
+        self.cn_finance_data_analysis()
         # 工业产成平存货分析
         inventory_code_dict = {'A020A1S_yd': '营业收入_累计增长', 'A020A1Q_yd': '营业收入_累计值',
                                'A020A0E_yd': '产成品存货_本月末', 'A020A0G_yd': '产成品存货_增减',
@@ -776,10 +933,15 @@ class CNMacroAnalysis(BasicAnalysis):
                                'A020A1G_yd': '利润总额_累计增长', 'A020A1E_yd': '利润总额_累计值',
                                'A020A0J_yd': '资产总计_增减', 'A020A0H_yd': '资产总计_本月末',
                                'A020A0K_yd': '负债合计_本月末', 'A020A0M_yd': '负债合计_增减',
+                               'A020102_yd': '工业增加值累计增长(%)',
+                               'A01080401_yd': '工业生产者出厂价格指数(上年同期=100)',
+                               'A040102_yd': '固定资产投资额累计增长(%)',
                                }
-        data = self.get_data_from_cn_st(inventory_code_dict, time='201001')
+        data = self.get_data_from_cn_st(inventory_code_dict, time='202001')
         data = self.tool_filter_month_data(data)
-        data['资产负债率'] = round(data['A020A0K_yd']/data['A020A0H_yd'],4)
+        data['资产负债率'] = round(data['A020A0K_yd'] / data['A020A0H_yd'], 4)
+        data['PPI'] = round(data['A01080401_yd'] - 100, 4)
+        data['工业增加值+PPI'] = round(data['PPI'] + data['A020102_yd'], 4)
         tab = Tab()
         plot_inventory_list = [
             {"name": "存货分析", "line": ["A020A0D_yd", "存货同比(%)"], "bar": ["A020A0B_yd", "存货本月末(亿元)"]},
@@ -795,6 +957,8 @@ class CNMacroAnalysis(BasicAnalysis):
              "bar": ["A020A0K_yd", "负债累计值(亿元)"]},
             {"name": "资产负债率", "line": ["资产负债率", "资产负债率"],
              "bar": ["A020A0K_yd", "负债累计值(亿元)"]},
+            {"name": "工业量价分析", "line": ["工业增加值+PPI", "工业增加值+PPI"],
+             "bar": ["A020A1S_yd", "营业收入_累计增长"]},
         ]
         for combine_dict in plot_inventory_list:
             line_code, line_name = combine_dict['line']
@@ -803,8 +967,33 @@ class CNMacroAnalysis(BasicAnalysis):
                                         {line_name: list(data[line_code].values)})
 
             tab.add(bar, combine_dict['name'])
+
+        other_config = [{"name": "工业量价分析ALL", "line": [["工业增加值+PPI", "工业增加值+PPI"],
+                                                             ['PPI', 'PPI'],
+                                                             ['A020102_yd', '工业增加值累计增长(%)'],
+                                                             ['A020A1S_yd', '营业收入累计增长'],
+                                                             ['A040102_yd', '固定资产投资额累计增长(%)'],
+                                                             ],
+                         "bar": []}]
+        for combine_dict in other_config:
+            lines = combine_dict.get('line', [])
+            line_dict = {}
+            if not lines:
+                for line_code, line_name in lines:
+                    line_dict[line_name] = list(data[line_code].values)
+            bars = combine_dict.get('bar', [])
+            bar_dict = {}
+            if not bars:
+                for bar_code, bar_name in lines:
+                    bar_dict[bar_name] = list(data[bar_code].values)
+            bar = self.bar_line_overlap(list(data['time'].values), line_dict,
+                                        bar_dict)
+
+            tab.add(bar, combine_dict['name'])
         tab.render(f"{self.analysis_dir}/工业存货分析.html")
 
+        self.cn_fixed_asset_invent()
+        self.consumer_analysis()
         # page = Page()
         # for char in chart_list:
         #     page.add(char)

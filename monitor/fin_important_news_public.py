@@ -42,7 +42,6 @@ def sender_important_fin_data_to_user():
         while int(now_str) < end_date_int:
             print(now_str)
             news_economic_baidu_df = try_get_action(ak.news_economic_baidu, try_count=3, date=now_str)
-            now_str = (datetime.strptime(now_str, date_format) + timedelta(days=1)).strftime(date_format)
             send_list = []
             for index in news_economic_baidu_df.index:
                 dict_data = dict(news_economic_baidu_df.loc[index])
@@ -53,6 +52,8 @@ def sender_important_fin_data_to_user():
                         if key in event:
                             send_list.append(dict_data)
             construct_html_msg_send_to_user(send_list, sender, f"{now_str}日重要的经济数据公布，请留意！！！！")
+            now_str = (datetime.strptime(now_str, date_format) + timedelta(days=1)).strftime(date_format)
+
 
 
 if __name__ == '__main__':

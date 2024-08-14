@@ -1240,6 +1240,22 @@ class StockBasicAnalysis(object):
             print(recent_price)
             print(self.current_price_market_info)
 
+    def stock_mda_ym(self):
+        stock_mda_ym_df = ak.stock_mda_ym(symbol=self.code)
+        table_header = list(stock_mda_ym_df.columns)
+        rows = []
+        for index in stock_mda_ym_df.index:
+            ele = stock_mda_ym_df.loc[index]
+            row = []
+            for col in table_header:
+                v = ele[col]
+                row.append(v)
+            rows.append(row)
+        table = self.table_chart(table_header, rows, '管理层讨论与分析')
+        return table
+
+
+
     def generator_analysis(self, is_data_from_local=True, is_model_gen_res=False):
         charts = []
         tab_dict = {}
@@ -1258,6 +1274,8 @@ class StockBasicAnalysis(object):
         table = self.table_chart(table_header, rows, '财报最近概括')
         charts.append(table)
         tab_dict['财报最近概括'] = table
+        tab_dict['管理层讨论与分析'] = self.stock_mda_ym()
+
         df = self.fin_data
 
         special_config = [
@@ -1268,6 +1286,10 @@ class StockBasicAnalysis(object):
             ['RESEARCH_EXPENSE', '报告期研发费用', '研发费用趋势分析'],
             ['CUR_OPERATE_INCOME', '当期营业收入', '当期营业收入趋势分析'],
             ['OPERATE_INCOME', '报告期营业收入', '营业收入趋势分析'],
+            ['CUR_OPERATE_COST', '当期营业成本', '当期营业成本趋势分析'],
+            ['OPERATE_COST', '报告期营业成本', '营业成本趋势分析'],
+            ['INVENTORY', '报告期存货', '存货趋势分析'],
+            ['ACCOUNTS_RECE', '报告期存货', '应收账款分析'],
         ]
 
         for config in special_config:
