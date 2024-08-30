@@ -1,3 +1,7 @@
+import sys
+import os
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -98,7 +102,7 @@ def enter_main_gold_position_data():
 
 if __name__ == '__main__':
     enter_main_bit_position_data()
-    schedule.every().hour.do(enter_main_bit_position_data)
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
+    # schedule.every().hour.do(enter_main_bit_position_data)
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(10)

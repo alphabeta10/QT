@@ -115,7 +115,7 @@ def monitor_goods_price_change(goods_name_list=None):
     sender = MailSender()
     if html_str != '':
         print("发送数据")
-        sender.send_html_data(['905198301@qq.com', '2367243209@qq.com'], ['2394023336@qq.com'], "监控商品最新消息",
+        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "监控商品最新消息",
                               html_str)
         sender.close()
 
@@ -138,7 +138,7 @@ def daily_monitor_goods():
     if all_html_str != '':
         print("发送数据")
         sender = MailSender()
-        sender.send_html_data(['905198301@qq.com', '2367243209@qq.com'], ['2394023336@qq.com'], "监控商品最新消息",
+        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], "监控商品最新消息",
                               all_html_str)
         sender.close()
 
