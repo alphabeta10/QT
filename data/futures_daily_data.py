@@ -70,21 +70,24 @@ def handle_futures_inventory_data(symbols=None):
     for symbol in symbols:
         datas = []
         futures_zh_daily_sina_df = try_get_action(ak.futures_inventory_em, try_count=3, symbol=symbol)
-        for index in futures_zh_daily_sina_df.index:
-            ele_dict = dict(futures_zh_daily_sina_df.loc[index])
-            dict_data = {}
-            for k, v in ele_dict.items():
-                if k == '日期':
-                    dict_data['date'] = str(v)
-                else:
-                    dict_data[k] = float(v)
-            dict_data['symbol'] = symbol
-            datas.append(UpdateOne(
-                {"symbol": dict_data['symbol'], "date": dict_data['date']},
-                {"$set": dict_data},
-                upsert=True))
-        if len(datas) > 0:
-            mongo_bulk_write_data(futures_daily, datas)
+        if futures_zh_daily_sina_df is not None:
+            for index in futures_zh_daily_sina_df.index:
+                ele_dict = dict(futures_zh_daily_sina_df.loc[index])
+                dict_data = {}
+                for k, v in ele_dict.items():
+                    if k == '日期':
+                        dict_data['date'] = str(v)
+                    else:
+                        dict_data[k] = float(v)
+                dict_data['symbol'] = symbol
+                datas.append(UpdateOne(
+                    {"symbol": dict_data['symbol'], "date": dict_data['date']},
+                    {"$set": dict_data},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(futures_daily, datas)
+        else:
+            print(f"error get data for {symbol}")
 
 
 def handle_futures_receipt_data(codes=None, start_day=datetime.now().strftime("%Y%m01"),
