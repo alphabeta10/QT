@@ -251,6 +251,15 @@ class BasicAnalysis(object):
         line = Line(init_opts=opts.InitOpts(
             width='1700px', height='1000px'
         ))
+        line.set_global_opts(
+            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(rotate=-15)),
+        )
+        line.set_global_opts(
+            yaxis_opts=opts.AxisOpts(
+                axistick_opts=opts.AxisTickOpts(is_show=True),
+                splitline_opts=opts.SplitLineOpts(is_show=True),
+            ),
+        )
         line.add_xaxis(x_labels)
         for col_name, list_data in y_dict_data.items():
             line.add_yaxis(

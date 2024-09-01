@@ -387,6 +387,7 @@ def handle_cn_wci_data():
 
 def handle_week_ccfi_data():
     url = 'https://www.sse.net.cn/index/singleIndex?indexType=ccfi'
+    print(f"handle url {url}")
     response = requests.get(url)
     html = response.content
     html_doc = str(html, 'utf-8')
