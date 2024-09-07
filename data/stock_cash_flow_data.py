@@ -9,8 +9,8 @@ from pymongo import UpdateOne
 from utils.actions import try_get_action
 from utils.tool import mongo_bulk_write_data, load_json_data
 from datetime import datetime, timedelta
-
-
+from data.common_get_data import get_ticker_info_data
+from tqdm import tqdm
 def stock_market_cn_fund_flow():
     stock_seq_daily = get_mongo_table(collection='stock_seq_daily')
     ret_data = try_get_action(ak.stock_market_fund_flow, try_count=3)
@@ -44,6 +44,47 @@ def stock_market_cn_fund_flow():
             if len(request_update) > 100:
                 mongo_bulk_write_data(stock_seq_daily, request_update)
                 request_update.clear()
+    if len(request_update) > 0:
+        mongo_bulk_write_data(stock_seq_daily, request_update)
+        request_update.clear()
+
+
+
+def stock_fund_flow():
+    stock_seq_daily = get_mongo_table(collection='stock_seq_daily')
+    col_mapping = {'日期': 'time', '收盘价':'close', '涨跌幅':'pct_change','主力净流入-净额': 'main_force_flow_in',
+                   '主力净流入-净占比': 'main_force_flow_in_rate', '超大单净流入-净额': 'supper_order_flow_in',
+                   '超大单净流入-净占比': 'supper_order_flow_in_rate',
+                   '大单净流入-净额': 'big_order_flow_in', '大单净流入-净占比': 'big_order_flow_in_rate',
+                   '中单净流入-净额': 'mid_order_flow_in',
+                   '中单净流入-净占比': 'mid_order_flow_in_rate', '小单净流入-净额': 'small_order_flow_in',
+                   '小单净流入-净占比': 'small_order_flow_in_rate'}
+    ticker_info_list = get_ticker_info_data()
+    request_update = []
+    for info in tqdm(ticker_info_list):
+        code = info['code']
+        market = info['market'].lower()
+        ret_data = try_get_action(ak.stock_individual_fund_flow,try_count=3,stock=code, market=market)
+        if ret_data is not None and len(ret_data) > 0:
+            for index in ret_data.index:
+                dict_data = dict(ret_data.loc[index])
+                new_dict = {"metric_key": code, "sub_key": "cn_stock_fund_flow"}
+                for raw_key, key in col_mapping.items():
+                    if raw_key in dict_data.keys():
+                        val = str(dict_data.get(raw_key))
+                        if val == 'nan':
+                            val = ''
+                        new_dict[key] = val
+                    else:
+                        print(f"no maaping data key {raw_key}")
+                # metric_key:一级编码,sub_key：二级编码,time：时间
+                request_update.append(UpdateOne(
+                    {"metric_key": new_dict['metric_key'], "sub_key": new_dict['sub_key'], "time": new_dict['time']},
+                    {"$set": new_dict},
+                    upsert=True))
+                if len(request_update) > 500:
+                    mongo_bulk_write_data(stock_seq_daily, request_update)
+                    request_update.clear()
     if len(request_update) > 0:
         mongo_bulk_write_data(stock_seq_daily, request_update)
         request_update.clear()
@@ -86,7 +127,7 @@ def currency_fund_flow(start_date=None,end_date=None):
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
     if start_date is None:
-        start_date = (datetime.now() - timedelta(days=30 * 8)).strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
     ret_data = try_get_action(ak.currency_time_series, try_count=3, base="USD", start_date=start_date,
                               end_date=end_date,
                               symbols="", api_key=api_key)
@@ -116,3 +157,4 @@ if __name__ == '__main__':
     stock_market_cn_fund_flow()
     stock_market_us_fund_flow()
     currency_fund_flow()
+    stock_fund_flow()
