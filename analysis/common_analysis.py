@@ -1,4 +1,4 @@
-from utils.tool import get_data_from_mongo, get_mongo_table
+from utils.tool import get_data_from_mongo, get_mongo_table,sort_dict_data_by
 import pandas as pd
 from datetime import datetime, timedelta
 from pyecharts.charts import Bar, Line, Pie
@@ -341,6 +341,65 @@ class BasicAnalysis(object):
             dict_data['time'] = time
             all_datas.append(dict_data)
         return all_detail_risk, all_datas
+
+    def common_cal_fin_result(self, data: pd.DataFrame, change_config: dict, is_year_end=False, analysis_type='zcfz',
+                          def_fn=None):
+        """
+        计算财报的公共方法
+        :param data:
+        :param change_config:
+        :param is_year_end:
+        :param analysis_type:
+        :param def_fn:
+        :return:
+        """
+        record_year_data = {}
+        res_data = []
+        for index in data.index:
+            dict_data = dict(data.loc[index])
+            if is_year_end:
+                if '12-31' in dict_data.get('date'):
+                    record_year_data[dict_data['date']] = dict_data
+                before_year = str(int(dict_data['date'][0:4]) - 1) + "-12-31"
+            else:
+                record_year_data[dict_data['date']] = dict_data
+                before_year = str(int(dict_data['date'][0:4]) - 1) + dict_data['date'][4:]
+            before_data = record_year_data.get(before_year, None)
+            if before_data is not None:
+                show_list = []
+                for key, sub_dict in change_config.items():
+                    key_diff = round((float(dict_data.get(key, 0)) - float(before_data.get(key, 0))) / 1e8, 3)
+                    temp_sub_diff = {}
+                    name = sub_dict['name']
+                    for sub_key, sub_name in sub_dict['sub_key'].items():
+                        temp_sub_diff[sub_name] = round(
+                            (float(dict_data.get(sub_key, 0)) - float(before_data.get(sub_key, 0))) / 1e8, 3)
+                    analysis_result = None
+                    show_text = f"{name}"
+                    if key_diff > 0:
+                        show_text += f"增长{key_diff}亿;"
+                        analysis_result = sort_dict_data_by(temp_sub_diff, by='value', reverse=True)
+                    elif key_diff < 0:
+                        show_text += f"减少{key_diff}亿;"
+                        analysis_result = sort_dict_data_by(temp_sub_diff, by='value')
+                    else:
+                        print("么有分析结果")
+                    if analysis_result is not None:
+                        show_text += "主要原因是:"
+                        for key, val in analysis_result.items():
+                            if key_diff > 0:
+                                if val > 0:
+                                    show_text += f"{key}增长{val}亿;"
+                            if key_diff < 0:
+                                if val < 0:
+                                    show_text += f"{key}减少{val}亿;"
+                        show_list.append(show_text)
+                if len(show_list) > 0:
+                    dict_data[analysis_type] = "|".join(show_list)
+                res_data.append(dict_data)
+                if def_fn is not None:
+                    def_fn(dict_data, before_data)
+        return res_data
 
 
 if __name__ == '__main__':
