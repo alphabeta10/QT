@@ -27,18 +27,9 @@ get_jd_meta_params = {"id": "A01", "dbcode": "hgjd", "wdcode": "zb", "m": "getTr
 get_jd_data_params = {"m": "QueryData", "dbcode": "hgjd", "rowcode": "zb", "wds": [],
                       "dfwds": [{"wdcode": "zb", "valuecode": "A0203"}], "colcode": "sj", "h": 1, "k1": 1664971768918}
 
-"""
-m: QueryData
-dbcode: hgyd
-rowcode: zb
-colcode: sj
-wds: []
-dfwds: [{"wdcode":"zb","valuecode":"A0203"}]
-k1: 1650213417995
-h: 1
-"""
-
-"https://data.stats.gov.cn/easyquery.htm?m=QueryData&dbcode=hgyd&rowcode=zb&colcode=sj&wds=[]&dfwds=[{%22wdcode%22:%22zb%22,%22valuecode%22:%22A010101%22}]"
+get_nd_meta_params = {"id": "A01", "dbcode": "hgnd", "wdcode": "zb", "m": "getTree"}
+get_nd_data_params = {"m": "QueryData", "dbcode": "hgnd", "rowcode": "zb", "wds": [],
+                      "dfwds": [{"wdcode": "zb", "valuecode": "A0203"}], "colcode": "sj", "h": 1, "k1": 1664971768918}
 
 
 def is_json(str_: str):
@@ -200,7 +191,10 @@ def handle_gov_yd_data():
            'A0E': '城镇调查失业率', 'A06': '房地产', 'A07': '国内贸易', 'A08': '对外经济', 'A09': '交通运输',
            'A0A': '邮电通信',
            'A0B': '采购经理指数', 'A0C': '财政', 'A0D': '金融'}
-    #ids = {'A0B': '采购经理指数'}
+    ids = {'A02': '工业', 'A03': '能源', 'A04': '固定资产投资(不含农户)', 'A05': '服务业生产指数',
+           'A0E': '城镇调查失业率', 'A06': '房地产', 'A07': '国内贸易', 'A08': '对外经济', 'A09': '交通运输',
+           'A0A': '邮电通信',
+           'A0B': '采购经理指数', 'A0C': '财政', 'A0D': '金融'}
     # ids = ['A03', 'A04', 'A05', 'A0E', 'A06', 'A07', 'A08', 'A09', 'A0A', 'A0B', 'A0C', 'A0D']
     # ids = ['A01', 'A02']
     # ids = ['A0B',"A01"]
@@ -253,6 +247,47 @@ def handle_gov_jd_data():
             rec_get_data(meta_data, get_jd_meta_params, get_jd_data_params, data_type, meta_info, data_info,
                          before_class_list)
 
+def handle_gov_nd_data():
+    """
+    ids = ['A0209']
+    ids = ['A0301']
+    ids = ['A0108']
+    ids = ['A0101','A0102','A0103']
+    ids = ['A01']
+    """
+    ids = ['A01', 'A02', 'A0302', 'A04', 'A05', 'A06', 'A07', 'A08']
+    ids = {'A01': '综合', 'A02': '国民经济核算', 'A03': '人口', 'A04': '就业人员和工资',
+           'A05': '固定资产投资和房地产', 'A06': '对外经济贸易',
+           'A07': '能源', 'A08': '财政',
+           'A09': '价格指数', 'A0A': '人民生活',
+           'A0B': '城市概况', 'A0C': '资源和环境',
+           'A0D': '农业', 'A0E': '工业',
+           'A0F': '建筑业', 'A0G': '运输和邮电',
+           'A0H': '社会消费品零售总额', 'A0I': '批发和零售业',
+           'A0J': '住宿和餐饮', 'A0K': '旅游业',
+           'A0L': '金融业', 'A0M': '教育',
+           'A0N': '科技', 'A0O': '卫生',
+           'A0P': '社会服务', 'A0Q': '文化',
+           'A0R': '体育', 'A0S': '公共管理，社会保障及其他',
+           }
+    #ids = {'A03': '工业', 'A04': '建筑业', 'A05': '人民生活', 'A06': '价格指数', 'A07': '国内贸易', 'A08': '文化'}
+    data_info = get_mongo_table(database='govstats', collection='data_info')
+    meta_info = get_mongo_table(database='govstats', collection='meta_info')
+    data_type = "nd"
+    for id, name in ids.items():
+        get_nd_meta_params["id"] = id
+        meta_data_list = try_get_action(post_or_get_data, 4, url=get_comm_url, params=get_nd_meta_params)
+        for meta_data in meta_data_list:
+            print(meta_data)
+            jd_parent_filter = {"jd": ['A0301']}
+            if data_type == 'jd':
+                id = meta_data['id']
+                if id in jd_parent_filter.get('jd'):
+                    print(f"filter jb {id}")
+                    continue
+            before_class_list = [name]
+            rec_get_data(meta_data, get_nd_meta_params, get_nd_data_params, data_type, meta_info, data_info,
+                         before_class_list)
 
 def handle_gov_tmp_data():
     """
@@ -353,7 +388,7 @@ if __name__ == '__main__':
     # find_all_data()
     #handle_gov_jd_data()
     # find_mata_data()
-    handle_gov_yd_data()
+    handle_gov_nd_data()
     #handle_gov_tmp_data()
     # energy_cov_data()
     # find_data()

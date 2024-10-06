@@ -1241,18 +1241,21 @@ class StockBasicAnalysis(object):
             print(self.current_price_market_info)
 
     def stock_mda_ym(self):
-        stock_mda_ym_df = ak.stock_mda_ym(symbol=self.code)
-        table_header = list(stock_mda_ym_df.columns)
-        rows = []
-        for index in stock_mda_ym_df.index:
-            ele = stock_mda_ym_df.loc[index]
-            row = []
-            for col in table_header:
-                v = ele[col]
-                row.append(v)
-            rows.append(row)
-        table = self.table_chart(table_header, rows, '管理层讨论与分析')
-        return table
+        stock_mda_ym_df = try_get_action(ak.stock_mda_ym,try_count=3,symbol=self.code)
+        if stock_mda_ym_df is not None and len(stock_mda_ym_df)>0:
+            table_header = list(stock_mda_ym_df.columns)
+            rows = []
+            for index in stock_mda_ym_df.index:
+                ele = stock_mda_ym_df.loc[index]
+                row = []
+                for col in table_header:
+                    v = ele[col]
+                    row.append(v)
+                rows.append(row)
+            table = self.table_chart(table_header, rows, '管理层讨论与分析')
+            return table
+        return None
+
 
 
 
@@ -1274,7 +1277,8 @@ class StockBasicAnalysis(object):
         table = self.table_chart(table_header, rows, '财报最近概括')
         charts.append(table)
         tab_dict['财报最近概括'] = table
-        tab_dict['管理层讨论与分析'] = self.stock_mda_ym()
+        if self.stock_mda_ym() is not None:
+            tab_dict['管理层讨论与分析'] = self.stock_mda_ym()
 
         df = self.fin_data
 

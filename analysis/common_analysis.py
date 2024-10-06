@@ -1,4 +1,4 @@
-from utils.tool import get_data_from_mongo, get_mongo_table,sort_dict_data_by
+from utils.tool import get_data_from_mongo, get_mongo_table, sort_dict_data_by
 import pandas as pd
 from datetime import datetime, timedelta
 from pyecharts.charts import Bar, Line, Pie
@@ -19,10 +19,12 @@ class BasicAnalysis(object):
         """
         pass
 
-    def get_data_from_mongondb(self, database, collection, projection, condition, sort_key):
+    def get_data_from_mongondb(self, database, collection, projection, condition, sort_key, self_fn=None):
         pd_data = get_data_from_mongo(database=database, collection=collection, projection=projection,
                                       condition=condition,
                                       sort_key=sort_key)
+        if self_fn:
+            self_fn(pd_data)
         return pd_data
 
     def get_data_from_board(self, name=None, unit=None, data_type=None, condition=None, is_cal=True,
@@ -46,29 +48,31 @@ class BasicAnalysis(object):
         sort_key = "date"
         data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                    sort_key=sort_key)
-        dict_fs = {
-            "acc_price": {"dnum": "acc_month_volume", "num": "acc_month_amount"},
-            "cur_price": {"dnum": "month_volume", "num": "month_amount"}
-        }
-        dict_name_mapping = {
-            "acc_price": "累计价格",
-            "cur_price": "当前价格"
-        }
-        if is_cal:
-            for k, combine_key in dict_fs.items():
-                dnum = combine_key['dnum']
-                num = combine_key['num']
-                try:
-                    data[dnum] = data[dnum].astype(float)
-                    data[num] = data[num].astype(float)
-                    data[k] = round(data[num] / data[dnum], 4)
-                except Exception as _:
-                    info_name = dict_name_mapping[k]
-                    print(f"处理{info_name}数据出错,不计算{info_name}")
-                    continue
-        if val_keys is not None:
-            for val_key in val_keys:
-                data[val_key] = data[val_key].astype(float)
+        if len(data) > 0:
+            dict_fs = {
+                "acc_price": {"dnum": "acc_month_volume", "num": "acc_month_amount"},
+                "cur_price": {"dnum": "month_volume", "num": "month_amount"}
+            }
+            dict_name_mapping = {
+                "acc_price": "累计价格",
+                "cur_price": "当前价格"
+            }
+            unit = condition.get('unit','')
+            if is_cal and '-' != unit:
+                for k, combine_key in dict_fs.items():
+                    dnum = combine_key['dnum']
+                    num = combine_key['num']
+                    try:
+                        data[dnum] = data[dnum].astype(float)
+                        data[num] = data[num].astype(float)
+                        data[k] = round(data[num] / data[dnum], 4)
+                    except Exception as _:
+                        info_name = dict_name_mapping[k]
+                        print(f"处理{info_name}数据出错,不计算{info_name}")
+                        continue
+            if val_keys is not None:
+                for val_key in val_keys:
+                    data[val_key] = data[val_key].astype(float)
         return data
 
     def get_data_from_goods(self, goods_list=None, time=None):
@@ -88,9 +92,9 @@ class BasicAnalysis(object):
         data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                    sort_key=sort_key)
         data[['value']] = data[['value']].astype(float)
-        data = pd.pivot_table(data, index='time', columns='name', values='value')
-        data.reset_index(inplace=True)
-        return data
+        convert_data = pd.pivot_table(data, index='time', columns='name', values='value')
+        convert_data.reset_index(inplace=True)
+        return data,convert_data
 
     def get_goods_data_aline_and_raw(self, goods_name_list, c_time):
         """
@@ -107,7 +111,7 @@ class BasicAnalysis(object):
         goods_condition = {"$in": goods_name_list}
         for ele in goods.find({"name": goods_condition, "data_type": "goods_price", "time": {"$gte": c_time}},
                               projection={'_id': False}).sort(
-                "time"):
+            "time"):
             time = ele['time']
             value = ele['value']
             name = ele['name']
@@ -343,7 +347,7 @@ class BasicAnalysis(object):
         return all_detail_risk, all_datas
 
     def common_cal_fin_result(self, data: pd.DataFrame, change_config: dict, is_year_end=False, analysis_type='zcfz',
-                          def_fn=None):
+                              def_fn=None):
         """
         计算财报的公共方法
         :param data:

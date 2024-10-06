@@ -25,8 +25,12 @@ def construct_html_msg_send_to_user(send_list: list, sender, msg_title):
             html_msg += f"<tr><td>{day} {time}</td> <td>{country}</td>  <td>{event}</td> <td>{pre_value}</td> <td>{predict_value}</td> <td>{important}</td></tr>"
         html_msg += "</table>"
         if html_msg != '':
-            sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
-
+            try:
+                sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
+            except Exception as e:
+                print(e)
+                print(msg_title,html_msg)
+                raise Exception(e)
 
 def sender_important_fin_data_to_user():
     # 周六或者周日跑数据

@@ -111,7 +111,7 @@ def get_result_data(url, year, last_year):
 
 
 def show_none_data(val, text, data):
-    if val is None or val == 0:
+    if val is None or val == 0 and text.replace("为空","") in data:
         print(text, data)
         raise Exception("解析失败")
 
@@ -181,7 +181,7 @@ def get_week_result_data(url, year, last_year):
             if "航班" in ele:
                 get_mh_res = re.findall("保障航班(\d+\\.?\d+)班", ele)
                 get_hy_res = re.findall("货运航班(\d+\\.?\d+)班", ele)
-                get_gj_res = re.findall("国际货运航班(\d+\\.?\d+)班", ele)
+                get_gj_res = re.findall("国际货运航班( ?\d+\\.?\d+)班", ele)
                 get_gn_res = re.findall("国内货运航班(\d+\\.?\d+)班", ele)
                 if len(get_mh_res) > 0:
                     mh_hb_result = get_mh_res[0]
@@ -248,12 +248,12 @@ def get_main_traffic_data(url):
                 year = int(href[2:][0:4])
                 last_year = year - 1
                 result_url = "https://www.mot.gov.cn/zhuanti/wuliubtbc/qingkuangtongbao_wuliu/" + href[2:]
-                try:
-                    dict_data = get_week_result_data(result_url, year, last_year)
-                except Exception as e:
-                    print(f"error {e}")
-                    print(f"{result_url}")
-                    dict_data = None
+                # try:
+                dict_data = get_week_result_data(result_url, year, last_year)
+                # except Exception as e:
+                #     print(f"error {e}")
+                #     print(f"{result_url}")
+                #     dict_data = None
                 if dict_data is not None:
                     dict_data['data_type'] = "traffic"
                     dict_data['metric_code'] = "traffic"

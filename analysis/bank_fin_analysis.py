@@ -15,12 +15,12 @@ class BankFinAnalysis(BasicAnalysis):
         self.code = kwargs['code']
         self.date = kwargs.get("date", str(datetime.now().year - 1) + "年度")
         self.fin_start_date = kwargs.get('fin_start_date',
-                                         (datetime.now() - timedelta(days=365 * 10)).strftime("%Y-%m-%d"))
+                                         (datetime.now() - timedelta(days=365 * 20)).strftime("%Y-%m-%d"))
         self.cal_cur_cols = kwargs.get("cal_cur_cols", None)
         self.name = kwargs.get('name', self.code)
-        self.dir = kwargs.get("dir", "default")
+        self.dir = kwargs.get("dir", None)
         is_local = kwargs.get("is_local", True)
-        if not os.path.exists(self.dir):
+        if self.dir and not os.path.exists(self.dir):
             os.mkdir(self.dir)
 
         if int(self.code[0]) < 6:
@@ -232,7 +232,7 @@ def bank_type_config():
                 type_bank_config[type].append(info)
     return type_bank_config
 
-def bank_fin_profit_analysis():
+def bank_fin_common_analysis(analysis_config_dict=None,analysis_file_name=None):
     dir = '银行'
     if not os.path.exists(dir):
         os.mkdir(dir)
@@ -250,17 +250,21 @@ def bank_fin_profit_analysis():
     quarter_month = quarter_mapping[quarter]
 
     all_add_data_dict = {}
-    add_config_dict = {
-        "OPERATE_INCOME": "营业总收入",
-        "NETPROFIT": "净利润",
-        'INTEREST_NI': '利息净收入',
-        'FEE_COMMISSION_NI': '手续费及佣金净收入',
-        'INVEST_INCOME': '加:投资收益',
-    }
+    if analysis_config_dict is None:
+        analysis_config_dict = {
+            "OPERATE_INCOME": "营业总收入",
+            "NETPROFIT": "净利润",
+            'INTEREST_NI': '利息净收入',
+            'FEE_COMMISSION_NI': '手续费及佣金净收入',
+            'INVEST_INCOME': '加:投资收益',
+        }
+        analysis_file_name = "银行利润总体分析"
+    if analysis_file_name is None and analysis_config_dict is None:
+        raise Exception("error for config file and dict please check check!!!")
 
     for type_key, bk_infos in type_bk_info.items():
         add_data_dict = {}
-        for ak in add_config_dict.keys():
+        for ak in analysis_config_dict.keys():
             add_data_dict[ak] = {}
             all_add_data_dict.setdefault(ak, {})
         for bk in bk_infos:
@@ -270,13 +274,13 @@ def bank_fin_profit_analysis():
             for index in ba.indicator_df.index:
                 ele_dict = dict(ba.indicator_df.loc[index])
                 date = ele_dict['date']
-                for ak in add_config_dict.keys():
+                for ak in analysis_config_dict.keys():
                     add_data_dict[ak].setdefault(date, 0)
                     all_add_data_dict[ak].setdefault(date, 0)
                     add_data_dict[ak][date] += ele_dict.get(ak, 0)
                     all_add_data_dict[ak][date] += ele_dict.get(ak, 0)
 
-        for a_key, a_name in add_config_dict.items():
+        for a_key, a_name in analysis_config_dict.items():
             data_dict = add_data_dict.get(a_key)
             datas = []
             for date, value in data_dict.items():
@@ -291,7 +295,7 @@ def bank_fin_profit_analysis():
             line_ylables = {a_name + "同比增长": list(df['value_same'].values)}
             bar = all_bk_analysis.bar_line_overlap(x_labels, bar_ylables, line_ylables)
             tab.add(bar, type_bk_name.get(type_key) + a_name + "分析")
-    for a_key, a_name in add_config_dict.items():
+    for a_key, a_name in analysis_config_dict.items():
         data_dict = all_add_data_dict.get(a_key)
         datas = []
         for date, value in data_dict.items():
@@ -306,7 +310,20 @@ def bank_fin_profit_analysis():
         line_ylables = {a_name + "同比增长": list(df['value_same'].values)}
         bar = all_bk_analysis.bar_line_overlap(x_labels, bar_ylables, line_ylables)
         tab.add(bar, 'all' + a_name + "分析")
-    tab.render(f"{dir}/银行利润总体分析.html")
+    tab.render(f"{dir}/{analysis_file_name}.html")
 
 if __name__ == '__main__':
-    bank_fin_profit_analysis()
+    asset_analysis_config_dict = {
+        'CASH_DEPOSIT_PBC': '现金及存放中央银行款项',
+        'DEPOSIT_INTERBANK': '存放同业款项',
+        'LEND_FUND': '拆出资金',
+        'LOAN_ADVANCE': '发放贷款及垫款',
+        'TRADE_FINASSET_NOTFVTPL': '交易性金融资产',
+        'CREDITOR_INVEST': '债权投资',
+        'OTHER_CREDITOR_INVEST': '其他债权投资',
+        'TOTAL_ASSETS': '资产总计',
+        'ACCEPT_DEPOSIT': '吸收存款',
+    }
+    asset_analysis_file_name = "资产结构分析"
+
+    bank_fin_common_analysis(asset_analysis_config_dict,asset_analysis_file_name)
