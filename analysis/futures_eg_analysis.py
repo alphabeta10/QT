@@ -349,5 +349,5 @@ if __name__ == '__main__':
 
     print(json.dumps(chain_config,ensure_ascii=False))
 
-    # eg_analysis = FuturesEgAnalysis(code='EG0', name='乙二醇', long_short_code='eg2501',
-    #                                 import_condition=import_condition, chain_config=chain_config)
+    eg_analysis = FuturesEgAnalysis(code='EG0', name='乙二醇', long_short_code='eg2501',
+                                    import_condition=import_condition, chain_config=chain_config)

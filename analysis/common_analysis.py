@@ -197,7 +197,7 @@ class BasicAnalysis(object):
         table.add(header, rows, {"max_width": "100px"})
         return table
 
-    def pie_chart(self, name, attr, val_dict_data: dict):
+    def pie_chart(self, name, attr_dict_data:dict, val_dict_data: dict):
 
         fn = """
             function(params) {
@@ -217,15 +217,36 @@ class BasicAnalysis(object):
         #         type_="scroll", pos_top="20%", pos_left="80%", orient="vertical"
         #     )
         # )
+
+        i = 0
+        col_size = 2 #画3个图
+        px_col,px_row = 20,30
         for ele_name, v_list in val_dict_data.items():
-            pie.add(ele_name, [list(z) for z in zip(attr, v_list)],
-                    radius=["50%", "70%"],
-                    label_opts=opts.LabelOpts(is_show=False, position="center"))
-        pie.set_series_opts(
-            tooltip_opts=opts.TooltipOpts(
-                trigger="item", formatter="{a} <br/>{b}: {c} ({d}%)"
-            ))
-        pie.set_global_opts(legend_opts=opts.LegendOpts(pos_left="legft", orient="vertical"))
+            attr = attr_dict_data.get(ele_name)
+            row = i // col_size
+            col = i % col_size
+            ppx_col = px_col if col==0 else px_col*col+25
+            ppx_col = str(ppx_col)+"%"
+            ppx_row = px_row if row == 0 else px_row * row + 40
+            ppx_row = str(ppx_row)+"%"
+
+            print(row,col,ppx_col,ppx_row)
+            pie.add('', [list(z) for z in zip(attr, v_list)],
+                    radius=[30, 40],
+                    center=[ppx_col,ppx_row],
+                    label_opts=new_label_opts())
+            i+=1
+        # pie.set_series_opts(
+        #     tooltip_opts=opts.TooltipOpts(
+        #         trigger="item", formatter="{a} <br/>{b}: {c} ({d}%)"
+        #     ))
+        #pie.set_global_opts(legend_opts=opts.LegendOpts(pos_left="legft", orient="vertical"))
+        pie.set_global_opts(
+        title_opts=opts.TitleOpts(title=name),
+        legend_opts=opts.LegendOpts(
+            type_="scroll", pos_top="20%", pos_left="80%", orient="vertical"
+        ),
+    )
         return pie
 
     def bar_line_overlap(self, x_labels, bar_y_dict_data: dict, line_y_dict_data: dict):
@@ -243,7 +264,7 @@ class BasicAnalysis(object):
         bar.set_series_opts(label_opts=opts.LabelOpts(is_show=False))
         bar.set_global_opts(
             # title_opts=opts.TitleOpts(title="Overlap-bar+line"),
-            yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(formatter="{value}")),
+            yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(formatter="{value}"),is_scale=True),
         )
         line = Line().add_xaxis(x_labels)
         for col_name, list_data in line_y_dict_data.items():

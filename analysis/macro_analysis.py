@@ -683,7 +683,7 @@ class CNMacroAnalysis(BasicAnalysis):
         tax_rate = sort_dict_data_by(tax_rate,by='value',reverse=True)
         attr = list(tax_rate.keys())
         pie_values = list(tax_rate.values())
-        pie_chart = self.pie_chart('税收结构',attr, {"税收占比(单位亿)":pie_values})
+        pie_chart = self.pie_chart('税收结构',{'税收占比(单位亿)':attr}, {"税收占比(单位亿)":pie_values})
         tab.add(pie_chart,"税收结构分析")
 
         """
