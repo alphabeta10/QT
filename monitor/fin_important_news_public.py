@@ -17,11 +17,11 @@ def construct_html_msg_send_to_user(send_list: list, sender, msg_title):
         for dict_data in send_list:
             day = str(dict_data['日期'])
             time = str(dict_data['时间'])
-            country = dict_data['地区']
-            event = dict_data['事件']
-            pre_value = dict_data['前值']
-            important = dict_data['重要性']
-            predict_value = dict_data['预期']
+            country = str(dict_data['地区'])
+            event = str(dict_data['事件'])
+            pre_value = str(dict_data['前值'])
+            important = str(dict_data['重要性'])
+            predict_value = str(dict_data['预期'])
             html_msg += f"<tr><td>{day} {time}</td> <td>{country}</td>  <td>{event}</td> <td>{pre_value}</td> <td>{predict_value}</td> <td>{important}</td></tr>"
         html_msg += "</table>"
         if html_msg != '':

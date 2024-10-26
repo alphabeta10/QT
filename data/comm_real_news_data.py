@@ -6,6 +6,10 @@ from bs4 import BeautifulSoup
 import akshare as ak
 from utils.actions import try_get_action
 
+
+HEADERS={
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+        "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"}
 def get_li_price_data(name,url='https://www.100ppi.com/vane/detail-733.html'):
     respond = requests.get(url, headers={
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
@@ -37,6 +41,22 @@ def get_li_price_data(name,url='https://www.100ppi.com/vane/detail-733.html'):
     return datas
 
 
+def get_100ppi_detail_new_data(url):
+    """
+    获取生意社新闻详细数据
+    :param url:
+    :return:
+    """
+
+    respond = requests.get(url,headers=HEADERS)
+    html = respond.content
+    html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    search_div = soup.find_all("div", 'nd-c width588')
+    if search_div and len(search_div)>0:
+        detail_div = search_div[0]
+        return detail_div.text.replace(' ', '').replace("\n", '')
+    return None
 
 
 def get_all_detail_data(names=None):
