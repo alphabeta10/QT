@@ -7,8 +7,7 @@ class DingtalkSendMsg(object):
         self.__headers = {'Content-Type': 'application/json;charset=utf-8'}
         self.url = 'https://oapi.dingtalk.com/robot/send?access_token=b166ec191ac5b18c1228c5b8165125bbc629e7dbdf655e6629c73052a6c7cb15'
 
-    def handle_ticker_trigger_msg(self, msg_dict_data_list: list, msg_title=None,comm_info_dict = None):
-
+    def handle_ticker_trigger_msg(self, msg_dict_data_list: list, msg_title=None, comm_info_dict=None):
 
         if comm_info_dict is None:
             comm_info_dict = {"name": "名称", "close": "C", "open": "O", "high": "H", "low": "L", "pct_chg": "pct_chg"}
@@ -67,8 +66,8 @@ class DingtalkSendMsg(object):
         if kwargs.get("type", '') == 'ticker_trigger_msg':
             data_list = kwargs.get("data_list", [])
             msg_title = kwargs.get("msg_title", '')
-            comm_info_dict = kwargs.get('comm_info_dict',None)
-            send_msg = self.handle_ticker_trigger_msg(data_list, msg_title,comm_info_dict)
+            comm_info_dict = kwargs.get('comm_info_dict', None)
+            send_msg = self.handle_ticker_trigger_msg(data_list, msg_title, comm_info_dict)
             if send_msg:
                 return requests.post(self.url, send_msg, headers=self.__headers).json()
         return None
