@@ -284,6 +284,7 @@ class BasicAnalysis(object):
             yaxis_opts=opts.AxisOpts(
                 axistick_opts=opts.AxisTickOpts(is_show=True),
                 splitline_opts=opts.SplitLineOpts(is_show=True),
+                is_scale=True
             ),
         )
         line.add_xaxis(x_labels)

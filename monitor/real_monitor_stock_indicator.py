@@ -5,10 +5,9 @@ from utils.actions import show_data
 from data.global_micro_data import *
 from indicator.talib_indicator import common_indictator_cal
 from monitor.real_common import construct_indicator_send_msg, comm_indicator_send_msg_by_email,st_peak_data
-from utils.send_msg import MailSender
 from utils.tool import *
 from monitor.indicator_config import buy_indicator_config,sell_indicator_config
-
+from monitor.dingtalk_msg import DingtalkSendMsg
 def real_monitor_stock_and_cal_indicator():
     code_name = 'code'
     start_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
@@ -34,7 +33,8 @@ def real_monitor_stock_and_cal_indicator():
                                sort_key=sort_key)
     cols = ['high', 'close', 'low', 'volume', 'code', 'open', 'pct_chg']
     data.index = pd.to_datetime(data[sort_key])
-    sender = MailSender()
+    #sender = MailSender()
+    sender = DingtalkSendMsg()
     while True:
         stock_zh_a_spot_em_df = try_get_action(ak.stock_zh_a_spot_em, try_count=3)
         c_cols = {'代码': "code", '成交量': "volume", '最高': "high", '最低': "low", '最新价': "close",
@@ -59,28 +59,35 @@ def real_monitor_stock_and_cal_indicator():
             show_data(new_data.tail(1))
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), buy_indicator_config)
             name = code_dict.get(code)
+
+            is_add = False
             for indicator_name in ret_send_msg.keys():
                 if indicator_name not in ['row_data','other_show_indicator']:
                     combine_name = f"{name}_{indicator_name}"
                     if buy_trigger_count.get(combine_name, 0) < 2:
-                        construct_buy_msg_list.append(ret_send_msg)
+                        is_add = True
                         buy_trigger_count[combine_name] = buy_trigger_count.get(combine_name, 0) + 1
-
+            if is_add:
+                construct_buy_msg_list.append(ret_send_msg)
             ret_send_msg = construct_indicator_send_msg(new_data.tail(1), sell_indicator_config)
+            is_add = False
             for indicator_name in ret_send_msg.keys():
                 if indicator_name not in ['row_data','other_show_indicator']:
                     combine_name = f"{name}_{indicator_name}"
                     if sell_trigger_count.get(combine_name, 0) < 2:
-                        construct_sell_msg_list.append(ret_send_msg)
+                        is_add = True
                         sell_trigger_count[combine_name] = sell_trigger_count.get(combine_name, 0) + 1
+            if is_add:
+                construct_sell_msg_list.append(ret_send_msg)
+            print('ret_send_msg ',ret_send_msg)
         trigger_json_data  = {}
         if len(construct_buy_msg_list) > 0:
-            #comm_indicator_send_msg_by_email(construct_buy_msg_list, sender, msg_title='实时股票指标触发买入的信号')
+            sender.send_msg(type='ticker_trigger_msg',data_list=construct_buy_msg_list,msg_title='实时股票指标触发买入的信号')
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
 
         if len(construct_sell_msg_list) > 0:
-            #comm_indicator_send_msg_by_email(construct_sell_msg_list, sender, msg_title='实时股票指标触发卖出的信号')
+            sender.send_msg(type='ticker_trigger_msg',data_list=construct_sell_msg_list,msg_title='实时股票指标触发卖出的信号')
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
         if len(trigger_json_data.keys())>0:

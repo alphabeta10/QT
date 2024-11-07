@@ -1,14 +1,12 @@
 import time
 
-from utils.send_msg import MailSender
 from utils.actions import show_data
 from data.global_micro_data import *
 from indicator.talib_indicator import common_indictator_cal
 from utils.tool import *
-import os
 from monitor.real_common import *
 from monitor.indicator_config import buy_indicator_config,sell_indicator_config
-pd.set_option('display.precision', 4)
+from dingtalk_msg import DingtalkSendMsg
 
 
 def real_monitor_futures_and_cal_indicator():
@@ -57,7 +55,7 @@ def real_monitor_futures_and_cal_indicator():
     print(f"cf code {cf_code}")
     print(f"ff code {ff_code}")
     r_col = ['high', 'current_price', 'low', 'volume', 'symbol','open']
-    sender = MailSender()
+    sender = DingtalkSendMsg()
     while True:
         cf_futures_zh_spot_df = None
         ff_futures_zh_spot_df = None
@@ -103,7 +101,6 @@ def real_monitor_futures_and_cal_indicator():
                 new_data['position'] = futures_cf['stop_price'] / (
                             new_data['atr14'] * futures_cf['stop_time'] * futures_cf['contract_chg_price'])
                 show_data(new_data.tail(1))
-
                 ret_send_msg = construct_indicator_send_msg(new_data.tail(1), buy_indicator_config)
 
                 if len(ret_send_msg.keys()) > 0 and buy_trigger_count.get(name, 0) < 2:
@@ -116,12 +113,12 @@ def real_monitor_futures_and_cal_indicator():
                     sell_trigger_count[name] = sell_trigger_count.get(name, 0) + 1
         trigger_json_data = {}
         if len(construct_buy_msg_list) > 0:
-            comm_indicator_send_msg_by_email(construct_buy_msg_list, sender, msg_title='实时指期货标触发买入的信号',comm_info_dict=comm_info_dict)
+            sender.send_msg(type='ticker_trigger_msg', data_list=construct_buy_msg_list,msg_title='实时指期货标触发买入的信号',comm_info_dict=comm_info_dict)
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
 
         if len(construct_sell_msg_list) > 0:
-            comm_indicator_send_msg_by_email(construct_sell_msg_list, sender, msg_title='实时期货指标触发卖出的信号',comm_info_dict=comm_info_dict)
+            sender.send_msg(type='ticker_trigger_msg', data_list=construct_sell_msg_list,msg_title='实时期货指标触发卖出的信号',comm_info_dict=comm_info_dict)
             trigger_json_data['sell'] = sell_trigger_count
             trigger_json_data['buy'] = buy_trigger_count
         if len(trigger_json_data.keys()) > 0:

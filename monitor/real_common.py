@@ -162,7 +162,11 @@ def comm_indicator_send_msg_by_email(msg_dict_data_list, sender, msg_title='å®žæ
     html_msg += "</table>"
 
     if html_msg != '':
-        sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
+        try:
+            sender.send_html_data(['905198301@qq.com'], ['2394023336@qq.com'], msg_title, html_msg)
+        except Exception as e:
+            print(e)
+            print(html_msg)
 
 
 def st_peak_data(data: pd.DataFrame, time_key, before_peak=-6, before_low=-6):
