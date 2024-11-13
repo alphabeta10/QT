@@ -2,21 +2,23 @@ import akshare as ak
 from utils.actions import try_get_action
 from pymongo import UpdateOne
 from data.mongodb import get_mongo_table
-from datetime import datetime
+from datetime import datetime,timedelta
 
 
 
-def ths_concept_daily_data(start_year='2020'):
-    concept_data_col = get_mongo_table(collection='concept_data')
+def ths_industry_daily_data(start_date=None):
+    concept_data_col = get_mongo_table(collection='industry_data')
     col_mapping = {'日期': "time", '开盘价': "open", '最高价': "high",
                    '最低价': "low", '收盘价': "close", '成交量': "amount", '成交额': 'vol'}
-    concept_name_info = ak.stock_board_concept_name_ths()
+    if start_date is None:
+        start_date = (datetime.now() - timedelta(days=5)).strftime('%Y%m%d')
+    concept_name_info = ak.stock_board_industry_name_ths()
     for concept_index in concept_name_info.index:
         concept_ele = concept_name_info.loc[concept_index]
-        name = concept_ele['概念名称']
-        code = concept_ele['代码']
-        stock_board_concept_hist_ths_df = try_get_action(ak.stock_board_concept_hist_ths, try_count=3,
-                                                         start_year=start_year, symbol=name)
+        name = concept_ele['name']
+        code = concept_ele['code']
+        stock_board_concept_hist_ths_df = try_get_action(ak.stock_board_industry_index_ths, try_count=3,
+                                                         start_date=start_date,end_date=datetime.now().strftime("%Y%m%d"), symbol=name)
         request_update = []
         if stock_board_concept_hist_ths_df is not None:
             for index in stock_board_concept_hist_ths_df.index:
@@ -44,14 +46,10 @@ def ths_concept_daily_data(start_year='2020'):
 
 
 def col_create_index():
-    concept_data = get_mongo_table(collection="concept_data")
+    concept_data = get_mongo_table(collection="industry_data")
     concept_data.create_index([("code", 1), ("time", 1)], unique=True, background=True)
 
 
 if __name__ == '__main__':
-    start_year = 2024
-    cur_year = int(datetime.now().strftime("%Y"))
-    while start_year <= cur_year:
-        print(f"handle year={start_year}")
-        ths_concept_daily_data(start_year=str(start_year))
-        start_year += 1
+    col_create_index()
+    ths_industry_daily_data('20200101')

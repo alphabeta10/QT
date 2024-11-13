@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from data.stock_daily_data import save_stock_info_data,handle_stock_daily_data,stock_dzjy_main,handle_stock_cyq_main
 from data.stock_index_data import index_data
-from data.stock_concept_data import ths_concept_daily_data
+from data.stock_industry_data import ths_industry_daily_data
 from data.stock_margin_data import handle_simple_sz_margin_data,handle_margin_sz_sh_total_data,handle_sz_sh_margin_detail_daily
 from data.stock_seq_daily import stock_ggcg
 from datetime import datetime
@@ -32,7 +32,7 @@ def stock_concept_main(start_year=None):
     cur_year = int(datetime.now().strftime("%Y"))
     while start_year <= cur_year:
         print(f"handle year={start_year}")
-        ths_concept_daily_data(start_year=str(start_year))
+        ths_industry_daily_data(start_year=str(start_year))
         start_year += 1
 def stock_margin_main():
     """
