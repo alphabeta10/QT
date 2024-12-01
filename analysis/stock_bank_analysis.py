@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime,timedelta
 from utils.tool import sort_dict_data_by
 from pyecharts.charts import Page, Tab
-
+from utils.actions import show_data
 
 class BankAnalysis(BasicAnalysis):
 
@@ -109,6 +109,7 @@ class BankAnalysis(BasicAnalysis):
         temp_chart = []
         self.df_to_chart(data, temp_chart)
         tab.add(temp_chart[0], '分数')
+        show_data(data)
         tab.render(f"{self.name}.html")
 
 

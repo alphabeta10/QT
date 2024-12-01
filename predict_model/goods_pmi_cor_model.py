@@ -13,6 +13,7 @@ warnings.filterwarnings('ignore')
 
 def corr_pmi_goods_data():
     """
+
     计算强相关的商品和pmi数据
     :return:
     """
@@ -27,6 +28,8 @@ def corr_pmi_goods_data():
     projection = {"_id": False}
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
+    show_data(data[data['value']==''])
+    data = data[data['value']!='']
     data[['value']] = data[['value']].astype(float)
     nc = data['name'].value_counts()
     filter_dict = {k: v for k, v in dict(nc).items() if v > 300}

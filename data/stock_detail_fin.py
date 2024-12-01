@@ -110,22 +110,26 @@ def get_stock_em_metric_data(request_update:list,code=None):
         "Cookie": "_trs_uv=ld8nyuch_6_10t8; wzws_sessionid=oGYenO+AMTQuMTU1LjEzOS4xNTOBMDJhYWFhgmZjNWVlMQ==; u=2; JSESSIONID=DIfu5jBC7Rk_wHgprZXDGNikJl7W0d6pkaMD7LMCQZX8rb7Z4oge!460167158; wzws_cid=0fd9f5b2faab8659d5dd69df23c2814722c6acaff4f558615968963c3a9392071577c0015b12aaeedf5ab7b5701849eca6564a3d1be89a7794c7e7d5c3f6fd637fe956cb95f77ec62ef646d8643596e3"}
     response = requests.get(url, headers=headers)
     if response.status_code==200:
-        df = pd.DataFrame(response.json()['data'])
-        for index in df.index:
-            dict_data = dict(df.loc[index])
-            dict_data['data_type'] = "stock_em_metric"
-            dict_data['code'] = dict_data['SECURITY_CODE']
-            dict_data['date'] = str(dict_data['REPORT_DATE'])[0:10]
-            new_dict = {}
-            for k, v in dict_data.items():
-                if str(v) in ['None', 'nan']:
-                    pass
-                else:
-                    new_dict[k] = str(v)
-            request_update.append(UpdateOne(
-                {"code": new_dict['code'], "date": new_dict['date'], "data_type": new_dict['data_type']},
-                {"$set": new_dict},
-                upsert=True))
+        try:
+            df = pd.DataFrame(response.json()['data'])
+            for index in df.index:
+                dict_data = dict(df.loc[index])
+                dict_data['data_type'] = "stock_em_metric"
+                dict_data['code'] = dict_data['SECURITY_CODE']
+                dict_data['date'] = str(dict_data['REPORT_DATE'])[0:10]
+                new_dict = {}
+                for k, v in dict_data.items():
+                    if str(v) in ['None', 'nan']:
+                        pass
+                    else:
+                        new_dict[k] = str(v)
+                request_update.append(UpdateOne(
+                    {"code": new_dict['code'], "date": new_dict['date'], "data_type": new_dict['data_type']},
+                    {"$set": new_dict},
+                    upsert=True))
+        except Exception as e:
+            print(e)
+            print(response.json())
 
 def handle_em_stock_metric(codes=None):
     if codes is None:

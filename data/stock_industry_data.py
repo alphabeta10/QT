@@ -1,4 +1,8 @@
 import akshare as ak
+import os
+import sys
+#可以在该目录之前执行该程序，否则会报引用工程包不存在
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from utils.actions import try_get_action
 from pymongo import UpdateOne
 from data.mongodb import get_mongo_table
@@ -51,5 +55,4 @@ def col_create_index():
 
 
 if __name__ == '__main__':
-    col_create_index()
-    ths_industry_daily_data('20200101')
+    ths_industry_daily_data()
