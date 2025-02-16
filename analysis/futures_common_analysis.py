@@ -271,5 +271,5 @@ if __name__ == '__main__':
     with open('fg.futures.json',encoding='utf8',mode='r') as f:
         chain_config = json.load(f)
         print(chain_config)
-        fg_analysis = FuturesCommonAnalysis(code='FG0', name='玻璃', long_short_code='fg2501',
+        fg_analysis = FuturesCommonAnalysis(code='FG0', name='玻璃', long_short_code='fg2505',
                                     import_condition=None, chain_config=chain_config)

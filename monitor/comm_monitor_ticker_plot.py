@@ -187,8 +187,8 @@ def daily_market_plot_notice():
     sort_key = "date"
     mail_theme = '大盘走势'
     #股指期货多空比和大盘相关
-    index_future_long_short_rate_image()
-    common_plot_send_mail(database, collection, sort_key, mail_theme, market_config,is_index_future_send=True)
+    #index_future_long_short_rate_image()
+    common_plot_send_mail(database, collection, sort_key, mail_theme, market_config,is_index_future_send=False)
 
 
 def daily_stock_plot_notice():
@@ -243,6 +243,7 @@ def daily_future_plot_notice():
         "乙二醇主连": {"code": "EG0", "cid": "EG0", "header": "乙二醇成交量以及走势图"},
         "螺纹钢主连": {"code": "RB0", "cid": "RB0", "header": "螺纹钢成交量以及走势图"},
         "纯碱主连": {"code": "SA0", "cid": "SA0", "header": "纯碱成交量以及走势图"},
+        "沥青主连": {"code": "BU0", "cid": "BU0", "header": "沥青成交量以及走势图"},
     }
     name_stram_dict = {}
     mail_msg = ""

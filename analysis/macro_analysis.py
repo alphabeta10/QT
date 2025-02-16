@@ -1006,6 +1006,7 @@ if __name__ == '__main__':
     # enter_big_model_analysis_macro()
     # df = cn_pmi_analysis()
     # print(df)
-    cn_macro = CNMacroAnalysis()
-    cn_macro.generator_analysis_html()
+    # cn_macro = CNMacroAnalysis()
+    # cn_macro.generator_analysis_html()
+    big_model_macro_data()
     pass

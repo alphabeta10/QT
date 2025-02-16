@@ -4,7 +4,7 @@ from datetime import datetime,timedelta
 import requests
 
 from utils.tool import load_json_data,mongo_bulk_write_data,get_data_from_mongo
-from utils.actions import try_get_action
+from utils.actions import try_get_action, show_data
 from data.comm_real_news_data import get_all_detail_data,get_100ppi_detail_new_data
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
@@ -156,13 +156,15 @@ class BasicMonitor(object):
         统计发送邮件
         :return:
         """
-        pass
+        data = get_all_detail_data(self.names)
+        print(data)
+
 
 
 if __name__ == '__main__':
-    names = ['WTI原油', 'Brent原油','玻璃']
+    names = ['WTI原油', 'Brent原油','玻璃','沥青','乙二醇']
     basic = BasicMonitor(names=names)
-    basic.handle_model_analysis()
+    basic.sender()
 
 
 
