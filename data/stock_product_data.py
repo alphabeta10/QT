@@ -1,20 +1,20 @@
 import akshare as ak
 import json
 import pandas as pd
-from utils.actions import try_get_action
+from utils.actions import try_get_action, show_data
 from data.stock_detail_fin import get_stock_info_data
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 from tqdm import tqdm
 
-rename_cols = {"报告期":"date","分类方向":"class_dire","分类":"class"}
+rename_cols = {"报告日期":"date","分类类型":"class_dire","主营构成":"class",'股票代码':'code'}
 
-def get_zygc_ym(code='000001'):
-    stock_zygc_ym_df = try_get_action(ak.stock_zygc_ym,try_count=3,symbol=code)
+def get_zygc_em(code='000001'):
+    stock_zygc_ym_df = try_get_action(ak.stock_zygc_em,try_count=1,symbol=code)
     if stock_zygc_ym_df is not None and stock_zygc_ym_df.empty is False:
-        stock_zygc_ym_df['code'] = code
         return stock_zygc_ym_df
+    print(f'error get data from {code}')
     return None
 
 
@@ -23,14 +23,17 @@ def product_data_to_mongo():
     business = get_mongo_table(collection='business')
     for code in tqdm(codes):
         if "sz" in code or "sh" in code:
-            code = code[2:]
-            pd_data = get_zygc_ym(code)
+            code = code.upper()
+            pd_data = get_zygc_em(code)
             if pd_data is not None:
                 request_update = []
                 pd_data = pd_data.rename(columns=rename_cols)
                 for index in pd_data.index:
                     dict_data = dict(pd_data.loc[index])
-                    dict_data['code'] = code
+                    dict_data['date'] = str(dict_data['date'])
+                    dict_data['主营收入'] = float(dict_data['主营收入'])
+                    dict_data['主营成本'] = float(dict_data['主营成本'])
+                    dict_data['主营利润'] = float(dict_data['主营利润'])
                     request_update.append(UpdateOne(
                         {"code": dict_data['code'], "date": dict_data['date'],"class_dire":dict_data['class_dire'],"class":dict_data['class']},
                         {"$set": dict_data},
@@ -67,7 +70,7 @@ def get_product_list(pd_data:pd.DataFrame):
 def construct_graph():
     code_list = ['600111', '000629', '600989', '600884', '002709', '600132', '603589', '600600', '000895',"605117","002459"]
     for code in code_list:
-        pd_data = get_zygc_ym(code)
+        pd_data = get_zygc_em(code)
         if pd_data is not None:
             pd_data = pd_data.rename(columns=rename_cols)
             product_list,report_dict = get_product_list(pd_data)

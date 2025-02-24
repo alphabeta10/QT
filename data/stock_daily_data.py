@@ -9,7 +9,7 @@ from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from tqdm import tqdm
 from utils.actions import try_get_action
-
+from utils.tool import mongo_bulk_write_data
 
 def save_stock_info_data():
     token = '6a951bc342c8605185d761808e76eafa61064f774ad6a6bcf862b2a9'
@@ -55,7 +55,7 @@ def handle_stock_daily_data(codes=None, start_date=None,
     print(f"start={start_date},end={end_date}")
     update_request = []
     for code in tqdm(codes):
-        stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_hist, try_count=3, symbol=code, period="daily",
+        stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_hist,try_count=3,symbol=code, period="daily",
                                             start_date=start_date, end_date=end_date,
                                             adjust="qfq")
 
@@ -216,6 +216,42 @@ def handle_stock_cyq_main():
                   (update_result.upserted_count, update_result.modified_count),
                   flush=True)
             update_request.clear()
+
+
+
+def handle_report_data(before_day=2):
+    """
+    公司公告数据
+    :param before_day:
+    :return:
+    """
+    start_date_str = (datetime.now() - timedelta(days=before_day)).strftime("%Y%m%d")
+    now_date_int = int(datetime.now().strftime("%Y%m%d"))
+    while(int(start_date_str)<=now_date_int):
+        df_data = ak.stock_notice_report(symbol='全部', date=start_date_str)
+        request_update = []
+        three_code_db = get_mongo_table(collection='three_code_db')
+        col_mapping = {"代码":'metric_code','网址':'sub_metric_code','名称':'name','公告日期':'time'}
+        df_data = df_data.rename(columns=col_mapping)
+        if df_data is not None:
+            for index in df_data.index:
+                dict_data = dict(df_data.loc[index])
+                dict_data['data_type'] = "stock_report"
+                dict_data['time'] = str(dict_data.get("time", "")).replace("-", "")
+                request_update.append(UpdateOne(
+                    {"data_type": dict_data['data_type'], "metric_code": dict_data['metric_code'],
+                     "sub_metric_code": dict_data['sub_metric_code'], "time": dict_data['time']},
+                    {"$set": dict_data},
+                    upsert=True))
+                if len(request_update) > 100:
+                    mongo_bulk_write_data(three_code_db, request_update)
+                    request_update.clear()
+            if len(request_update) > 0:
+                mongo_bulk_write_data(three_code_db, request_update)
+                request_update.clear()
+        start_date_str = (datetime.strptime(start_date_str,'%Y%m%d')+timedelta(days=1)).strftime("%Y%m%d")
+
+
 
 
 def col_create_index():

@@ -16,7 +16,8 @@ from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 import jieba.analyse
 import schedule
-
+from data.stock_daily_data import get_stock_info_data
+from tqdm import tqdm
 global_hour_before = "小时前"
 en_global_hour_before = "hoursago"
 
@@ -30,6 +31,9 @@ google_search_url = "https://www.google.com/search?q={}&newwindow=1&biw=1306&bih
 def get_stock_news(stock='000001'):
     stock_news_em_df = try_get_action(ak.stock_news_em, try_count=3, stock=stock)
     return stock_news_em_df
+
+def stock_news_to_db():
+    get_stock_news()
 
 
 def get_js_stock_news(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S')):
@@ -174,7 +178,33 @@ def find_data():
     print(sorted(datas.items(),key=lambda x:(x[1],x[0]),reverse=True))
 
 
+def handle_new_stock_data(symbols =None):
+    if symbols is not None:
+        for symbol in symbols:
+            stock_news_em_df = try_get_action(ak.stock_news_em,try_count=3,symbol=symbol)
+            datas = []
+            news = get_mongo_table(database='stock', collection='news')
+            for index in stock_news_em_df.index:
+                data = dict(stock_news_em_df.loc[index])
+                pub_time = str(data['发布时间'])
+                key_world = str(data['关键词'])
+                title = data['新闻标题']
+                content = data['新闻内容']
+                source_title = data['文章来源']
+                source_url = data['新闻链接']
+                dict_data = {"key_world":key_world,"title":title,"content":content,"pub_time":pub_time,"source_title":source_title,"source_url":source_url}
+                dict_data['data_type'] = key_world
+                datas.append(UpdateOne(
+                    {"title": dict_data['title'], "data_type": dict_data['data_type'], "content": content},
+                    {"$set": dict_data},
+                    upsert=True))
+            if len(datas) > 0:
+                mongo_bulk_write_data(news, datas)
 
+def stock_em_news_main():
+    codes = get_stock_info_data()
+    for code in tqdm(codes):
+        handle_new_stock_data(code)
 
 
 if __name__ == '__main__':

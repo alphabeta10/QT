@@ -7,6 +7,7 @@ from data.stock_index_data import index_data
 from data.stock_industry_data import ths_industry_daily_data
 from data.stock_margin_data import handle_simple_sz_margin_data,handle_margin_sz_sh_total_data,handle_sz_sh_margin_detail_daily
 from data.stock_seq_daily import stock_ggcg
+from data.stock_news import stock_em_news_main
 from datetime import datetime
 def stock_basic_main():
     """
@@ -14,6 +15,7 @@ def stock_basic_main():
     :return:
     """
     handle_stock_cyq_main()
+    stock_em_news_main()
 def stock_index_main():
     """
     A股指数数据

@@ -44,7 +44,7 @@ def handle_data(df_data: pd.DataFrame, data_type, data_date):
             }
 
             request_update.append(UpdateOne(
-                {"code": dict_data['code'], "date": data_date, "date_type": data_type},
+                {"code": dict_data['code'], "date": data_date, "data_type": data_type},
                 {"$set": dict_data},
                 upsert=True))
     elif data_type == 'zcfz':
@@ -214,7 +214,7 @@ def get_data():
         print(ele)
 
 if __name__ == '__main__':
-    handle_fin_data(start_date='2024-01-01')
+    handle_fin_data(start_date='2010-01-01')
 
 
 

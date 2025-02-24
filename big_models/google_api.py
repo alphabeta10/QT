@@ -60,6 +60,9 @@ def simple_big_gen_model_fn(model,request_txt:str,is_ret_json=True):
         return response.text
 
 
+
+
+
 def google_big_gen_model_comm_fn(data_df: pd.DataFrame, model, request_txt:str):
     """
     google模型，返回是json格式数据

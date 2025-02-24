@@ -70,5 +70,5 @@ def stock_vol_and_name(codes = None):
 
 
 if __name__ == '__main__':
-    stock_indicator(codes=['000422'])
-    stock_vol_and_name(codes=['000422'])
+    stock_indicator()
+    stock_vol_and_name()
