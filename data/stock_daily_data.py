@@ -263,6 +263,6 @@ def col_create_index():
 
 
 if __name__ == '__main__':
-    #save_stock_info_data()
+    save_stock_info_data()
     handle_stock_daily_data()
     stock_dzjy_main()
