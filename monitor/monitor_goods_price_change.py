@@ -9,7 +9,7 @@ def comm_construct_html_data(goods_name_list: list = None, goods_type=None):
     if goods_type is None:
         goods_type = '监控商品最新消息如下'
     if goods_name_list is None:
-        goods_name_list = ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物', '黄金', '白银', 'WTI原油', 'Brent原油']
+        goods_name_list = ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物', '黄金', '白银', 'WTI原油', 'Brent原油','轻质纯碱','重质纯碱']
     goods_condition = {"$in": goods_name_list}
     for ele in goods.find({"name": goods_condition, "data_type": "goods_price"}, projection={'_id': False}).sort(
             "time"):
@@ -123,7 +123,7 @@ def monitor_goods_price_change(goods_name_list=None):
 def daily_monitor_goods():
     goods_configs = [{"goods_type": "能源商品监控", "goods_list": ['WTI原油', 'Brent原油']},
                      {"goods_type": "避险商品监控", "goods_list": ['黄金', '白银']},
-                     {"goods_type": "建材商品监控", "goods_list": ['螺纹钢', '玻璃','沥青']},
+                     {"goods_type": "建材商品监控", "goods_list": ['螺纹钢', '玻璃','沥青','轻质纯碱','重质纯碱']},
                      {"goods_type": "包装材料商品监控",
                       "goods_list": ['针叶木浆', '阔叶木浆', '瓦楞原纸','乙二醇']},
                      {"goods_type": "有色金属监控", "goods_list": ['铜', '铝', '锡', '氧化镝', '金属镝', '镨钕氧化物']},

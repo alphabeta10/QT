@@ -15,7 +15,7 @@ def stock_basic_main():
     :return:
     """
     handle_stock_cyq_main()
-    stock_em_news_main()
+    #stock_em_news_main()
 def stock_index_main():
     """
     A股指数数据
