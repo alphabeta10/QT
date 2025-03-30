@@ -11,3 +11,5 @@ if __name__ == '__main__':
     x = kl_manager_rate(p,q,b)
     print(x*cash)
 
+
+

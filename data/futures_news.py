@@ -34,7 +34,7 @@ def get_futures_new_data():
                 if a.text is not None:
                     title = a.text.replace(" ","").replace("\n","")
             news_list = get_detail_news(url,year,before_year,month)
-            print(f"handle {title}")
+            print(f"handle {title} url={url}")
             if len(news_list)==0:
                 print(f"handle {title} is no data {url}")
             for news in news_list:
@@ -103,7 +103,7 @@ def special_handle():
     for title,url in url_dict.items():
         news_list = get_detail_news(url, year, before_year, month)
         title = ''
-        print(f"handle {title}")
+        print(f"handle {title} url={url}")
         if len(news_list) == 0:
             print(f"handle {title} is no data {url}")
         for news in news_list:

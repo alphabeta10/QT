@@ -100,6 +100,70 @@ def get_all_monitor_price_data():
     if len(datas) > 0:
         mongo_bulk_write_data(goods, datas)
 
+
+def get_all_monitor_price_data02():
+    """
+    获取商品价格数据
+    :return:
+    """
+    goods = get_mongo_table(database='stock', collection='goods')
+    url = 'http://www.100ppi.com/monitor/'
+    respond = requests.get(url, headers={
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+        "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
+    html = respond.content
+    html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    list01_div = soup.find_all("div", 'list01')
+    titbk_div = soup.find_all("div", "titbk")
+    list02_div = soup.find_all("div", "list02")
+    name_url_dict = {}
+    for resource_div in list01_div:
+        a_s = resource_div.find_all("a")
+        for a in a_s:
+            href = a['href']
+            name = a.text.replace(' ', '').replace("\n", '')
+            url = f'https://www.100ppi.com{href}'
+            name_url_dict.setdefault(name, set())
+            name_url_dict[name].add(url)
+    for resource_div in list02_div:
+        a_s = resource_div.find_all("a")
+        for a in a_s:
+            href = a['href']
+            name = a.text.replace(' ', '').replace("\n", '')
+            url = f'https://www.100ppi.com{href}'
+            name_url_dict.setdefault(name, set())
+            name_url_dict[name].add(url)
+
+    for name, set_ in name_url_dict.items():
+        if len(list(set_)) > 1:
+            print(name, list(set_))
+
+    datas = []
+    year = datetime.now().strftime("%Y")
+    for name, url_set in name_url_dict.items():
+        url = list(url_set)[0]
+        respond = requests.get(url, headers={
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+            "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
+        html = respond.content
+        html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
+        soup = BeautifulSoup(html_doc, 'html.parser')
+        price_spans = soup.find_all("span", "price-fb01_1")
+        time_li = soup.find_all("li", "post_date_li")
+        price = price_spans[0].text.replace(' ', '').replace("\n", '')
+        time = time_li[0].text.strip().replace("\n", '').replace("更新时间：", "").replace("-", "")[0:4]
+        date1 = f"{year}{time}"
+        print(name + "," + price + "," + date1)
+
+        dict_data = {"name": name, "time": date1, "value": price, "data_type": "goods_price"}
+        datas.append(UpdateOne(
+            {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
+            {"$set": dict_data},
+            upsert=True))
+    if len(datas) > 0:
+        mongo_bulk_write_data(goods, datas)
+
 def find_data():
     goods = get_mongo_table(database='stock', collection='goods')
     datas = []
@@ -132,6 +196,6 @@ def create_index():
 
 
 if __name__ == '__main__':
-    get_all_monitor_price_data()
+    get_all_monitor_price_data02()
     find_data()
     back_data()
