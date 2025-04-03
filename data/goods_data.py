@@ -151,16 +151,21 @@ def get_all_monitor_price_data02():
         soup = BeautifulSoup(html_doc, 'html.parser')
         price_spans = soup.find_all("span", "price-fb01_1")
         time_li = soup.find_all("li", "post_date_li")
-        price = price_spans[0].text.replace(' ', '').replace("\n", '')
-        time = time_li[0].text.strip().replace("\n", '').replace("更新时间：", "").replace("-", "")[0:4]
-        date1 = f"{year}{time}"
-        print(name + "," + price + "," + date1)
+        if price_spans and time_li and len(price_spans)>0 and len(time_li)>0:
+            price = price_spans[0].text.replace(' ', '').replace("\n", '')
+            time = time_li[0].text.strip().replace("\n", '').replace("更新时间：", "").replace("-", "")[0:4]
+            date1 = f"{year}{time}"
+            print(name + "," + price + "," + date1)
 
-        dict_data = {"name": name, "time": date1, "value": price, "data_type": "goods_price"}
-        datas.append(UpdateOne(
-            {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
-            {"$set": dict_data},
-            upsert=True))
+            dict_data = {"name": name, "time": date1, "value": price, "data_type": "goods_price"}
+            datas.append(UpdateOne(
+                {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
+                {"$set": dict_data},
+                upsert=True))
+        else:
+            print(f'----{name} not found data----')
+            print(url)
+            print(f'----{name} not found data---')
     if len(datas) > 0:
         mongo_bulk_write_data(goods, datas)
 
