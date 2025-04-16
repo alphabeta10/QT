@@ -9,7 +9,6 @@ from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from datetime import datetime
 from utils.tool import mongo_bulk_write_data
-import pandas as pd
 import matplotlib.pyplot as plt
 
 # 设置中文显示不乱码

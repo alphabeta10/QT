@@ -32,7 +32,7 @@ def get_all_monitor_price_data():
     :return:
     """
     goods = get_mongo_table(database='stock', collection='goods')
-    url = 'http://www.100ppi.com/monitor/'
+    url = 'https://www.100ppi.com/monitor2/'
     respond = requests.get(url, headers={
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
         "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
@@ -201,6 +201,6 @@ def create_index():
 
 
 if __name__ == '__main__':
-    get_all_monitor_price_data02()
+    get_all_monitor_price_data()
     find_data()
     back_data()
