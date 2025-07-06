@@ -44,35 +44,44 @@ def get_stock_info_data():
         new_codes.append(code)
     return new_codes
 
+def get_stock_info_data_zh_code():
+    ticker_info = get_mongo_table(collection='ticker_info')
+    tickers_cursor = ticker_info.find(projection={'_id': False, 'ts_code': True})
+    new_codes = []
+    for ticker in tickers_cursor:
+        ts_code = ticker['ts_code']
+        code, lr = ts_code.split(".")
+        new_codes.append([code,lr.lower()])
+    return new_codes
 
 def handle_stock_daily_data(codes=None, start_date=None,
                             end_date=datetime.now().strftime("%Y%m%d")):
     if codes is None:
-        codes = get_stock_info_data()
+        codes = get_stock_info_data_zh_code()
     if start_date is None:
         start_date = (datetime.now()-timedelta(days=5)).strftime("%Y%m%d")
     tiker_daily = get_mongo_table(collection="ticker_daily")
     print(f"start={start_date},end={end_date}")
     update_request = []
-    for code in tqdm(codes):
-        stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_hist,try_count=3,symbol=code, period="daily",
+    for code_market in tqdm(codes):
+        code = code_market[1]+code_market[0]
+        stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_daily,try_count=3,symbol=code,
                                             start_date=start_date, end_date=end_date,
                                             adjust="qfq")
-
         if stock_zh_a_hist_df is not None:
             for index in stock_zh_a_hist_df.index:
                 data = stock_zh_a_hist_df.loc[index]
-                day = str(data['日期'])
-                open = float(data['开盘'])
-                high = float(data['最高'])
-                low = float(data['最低'])
-                close = float(data['收盘'])
-                volume = int(data['成交量'])
-                amount = float(data['成交额'])
-                amplitude = float(data['振幅'])
-                pct_chg = float(data['涨跌幅'])
-                change = float(data['涨跌额'])
-                turnover_rate = float(data['换手率'])
+                day = str(data['date'])
+                open = float(data['open'])
+                high = float(data['high'])
+                low = float(data['low'])
+                close = float(data['close'])
+                volume = int(data['volume'])
+                amount = float(data['amount'])
+                amplitude = float(0)
+                pct_chg = float(0)
+                change = float(0)
+                turnover_rate = float(data['turnover'])
                 dict_data = {
                     'time': day,
                     "open": open,
@@ -80,7 +89,7 @@ def handle_stock_daily_data(codes=None, start_date=None,
                     "low": low,
                     "close": close,
                     "volume": volume,
-                    "code": code,
+                    "code": code_market[0],
                     "amount": amount,
                     "amplitude": amplitude,
                     "pct_chg": pct_chg,
@@ -88,7 +97,7 @@ def handle_stock_daily_data(codes=None, start_date=None,
                     "turnover_rate": turnover_rate
                 }
                 update_request.append(
-                    UpdateOne({"code": code, 'time': day},
+                    UpdateOne({"code": code_market[0], 'time': day},
                               {"$set": dict_data},
                               upsert=True)
                 )
@@ -98,6 +107,8 @@ def handle_stock_daily_data(codes=None, start_date=None,
                       (update_result.upserted_count, update_result.modified_count),
                       flush=True)
                 update_request.clear()
+        else:
+            print(f"error int code {code_market}")
     if len(update_request) > 0:
         update_result = tiker_daily.bulk_write(update_request, ordered=False)
         print('插入：%4d条, 更新：%4d条' %

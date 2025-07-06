@@ -4,6 +4,7 @@ from data.mongodb import get_mongo_table
 from utils.actions import try_get_action
 from pymongo import UpdateOne
 from datetime import datetime
+from utils.tool import mongo_bulk_write_data
 
 def handle_data(df_data: pd.DataFrame, data_type, data_date):
     request_update = []
@@ -129,9 +130,9 @@ def handle_data(df_data: pd.DataFrame, data_type, data_date):
             code = data['股票代码']
             name = data['股票简称']
             net_per_share = data['每股收益']
-            total_revenue = data['营业收入-营业收入']
-            total_revenue_cylce_in = data['营业收入-同比增长']
-            total_revenue_q_same_in = data['营业收入-季度环比增长']
+            total_revenue = data['营业总收入-营业总收入']
+            total_revenue_cylce_in = data['营业总收入-同比增长']
+            total_revenue_q_same_in = data['营业总收入-季度环比增长']
             net_profit = data['净利润-净利润']
             net_profit_cycle_in = data['净利润-同比增长']
             net_profit_q_same_in = data['净利润-季度环比增长']
@@ -204,6 +205,64 @@ def handle_fin_data(start_date='2010-01-01', end_date=datetime.now().strftime("%
                     print('data_type:%s 插入：%4d条, 更新：%4d条' %
                           (data_type,update_result.upserted_count, update_result.modified_count),
                           flush=True)
+def handle_fin_main_indicator_ths_data(symbols=None, data_type=None):
+    cols = ['code', '报告期', '净利润', '净利润同比增长率', '扣非净利润', '扣非净利润同比增长率', '营业总收入',
+            '营业总收入同比增长率',
+            '基本每股收益', '每股净资产', '每股资本公积金', '每股未分配利润', '每股经营现金流', '销售净利率',
+            '销售毛利率',
+            '净资产收益率', '净资产收益率-摊薄', '营业周期', '存货周转率', '存货周转天数', '应收账款周转天数',
+            '流动比率',
+            '速动比率', '保守速动比率', '产权比率', '资产负债率', 'data_type']
+    percent_col = ['净利润同比增长率','扣非净利润同比增长率','营业总收入同比增长率','销售净利率','销售毛利率','净资产收益率','净资产收益率-摊薄','资产负债率']
+    fin_col = get_mongo_table(collection='fin_simple')
+    data_type_mapping = {"按报告期":"ths_main_indicator_cur", "按年度":"ths_main_indicator_year", "按单季度":"ths_main_indicator_quarter"}
+    if symbols is None:
+        symbols = ['300308', '000001']
+    if data_type is None:
+        data_type = '按年度'
+    request_update = []
+    for symbol in symbols:
+        indicator_df = try_get_action(ak.stock_financial_abstract_ths, try_count=3, symbol=symbol, indicator=data_type)
+        if indicator_df is not None:
+            for index in indicator_df.index:
+                dict_data = dict(indicator_df.iloc[index])
+                dict_data['code'] = symbol
+                dict_data['data_type'] = data_type_mapping.get(data_type)
+                ele_dict = {}
+                for col in cols:
+                    value = dict_data.get(col)
+                    if col=='报告期' and data_type=='按年度':
+                        value = str(value)+"-01-01"
+                    if col in percent_col and value is not None:
+                        if isinstance(value,bool):
+                            value = None
+                        else:
+                            value = value.replace("%","")
+                            value = float(value)
+                    if isinstance(value,bool):
+                        value = None
+                    if col=='报告期':
+                        col = 'date'
+                    ele_dict[col] = value
+                request_update.append(UpdateOne(
+                    {"code": ele_dict['code'], "date": ele_dict['date'], "data_type": ele_dict['data_type']},
+                    {"$set": ele_dict},
+                    upsert=True))
+            if len(request_update) > 1000:
+                mongo_bulk_write_data(fin_col,request_update)
+                request_update.clear()
+        if len(request_update) > 0:
+            mongo_bulk_write_data(fin_col, request_update)
+            request_update.clear()
+    if len(request_update) > 0:
+        mongo_bulk_write_data(fin_col, request_update)
+        request_update.clear()
+
+def handle_ths_main_indicator_data(symbols=None):
+    data_types = ["按报告期", "按年度", "按单季度"]
+    for dt in data_types:
+        handle_fin_main_indicator_ths_data(symbols=symbols,data_type=dt)
+
 def create_index():
     fin_col = get_mongo_table(collection='fin_simple')
     fin_col.create_index([("code", 1), ("data_type", 1), ("date", 1)], unique=True, background=True)
@@ -214,7 +273,9 @@ def get_data():
         print(ele)
 
 if __name__ == '__main__':
-    handle_fin_data(start_date='2010-01-01')
+    handle_fin_data(start_date='2024-01-01')
+    #handle_ths_main_indicator_data()
+
 
 
 

@@ -244,6 +244,7 @@ def daily_future_plot_notice():
         "螺纹钢主连": {"code": "RB0", "cid": "RB0", "header": "螺纹钢成交量以及走势图"},
         "纯碱主连": {"code": "SA0", "cid": "SA0", "header": "纯碱成交量以及走势图"},
         "沥青主连": {"code": "BU0", "cid": "BU0", "header": "沥青成交量以及走势图"},
+        "尿素主连": {"code": "UR0", "cid": "UR0", "header": "尿素成交量以及走势图"},
     }
     name_stram_dict = {}
     mail_msg = ""

@@ -23,7 +23,7 @@ from data.comm_real_news_data import get_all_detail_data
 
 
 def handle_goods_price_data():
-    names = ['玻璃','沥青','轻质纯碱']
+    names = ['玻璃','沥青','轻质纯碱','乙二醇']
     _,sell_url_dict = get_all_detail_data(names=names)
     sell_buy_order = get_mongo_table(database='futures', collection='sell_buy_order')
     for name,url in sell_url_dict.items():
