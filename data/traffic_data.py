@@ -159,7 +159,7 @@ def get_week_result_data(url, year, last_year):
         td_result = 0
         gk_result = 0
         gk_teu_result = 0
-        for ele in split_datas[1:]:
+        for ele in split_datas[:]:
             if "铁路货运" in ele:
                 get_res = re.findall("(\d+\\.?\d+)万吨", ele)
                 tl_result = get_res[0]

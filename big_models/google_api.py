@@ -23,6 +23,9 @@ def handle_model_table_data(pd_data: pd.DataFrame):
             # if ele.replace(" ","")!="":
             ele_list.append(ele)
         row_ele = "| " + " | ".join(ele_list) + " |"
+        temp_str = input_table_str+row_ele+"\n"
+        if len(temp_str)>200000:
+            break
         input_table_str += row_ele + "\n"
     return input_table_str
 

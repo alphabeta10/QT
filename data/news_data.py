@@ -4,6 +4,9 @@ import os
 #可以在该目录之前执行该程序，否则会报引用工程包不存在
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import time
+
+
+
 from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data

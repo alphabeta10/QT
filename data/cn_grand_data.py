@@ -2,8 +2,6 @@ import time
 import pandas as pd
 import requests
 import json
-from bs4 import BeautifulSoup
-from selenium import webdriver
 import urllib3
 import matplotlib.pyplot as plt
 from utils.actions import show_data
