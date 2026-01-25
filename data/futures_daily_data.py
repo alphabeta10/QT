@@ -12,7 +12,11 @@ def get_all_main_contract_code():
     symbols = ['czce', 'dce', 'shfe', 'cffex', 'gfex']
     ret_syms = []
     for symbol in symbols:
-        ret_syms += ak.match_main_contract(symbol=symbol).split(",")
+        syms = try_get_action(ak.match_main_contract,symbol=symbol,try_count=3)
+        if syms is not None:
+            ret_syms += syms.split(",")
+        else:
+            print(f"get main contract error for {symbol}")
     return ret_syms
 def handle_futures_daily_data(symbols=None):
     if symbols is None:
