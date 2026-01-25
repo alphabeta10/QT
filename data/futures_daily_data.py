@@ -303,7 +303,7 @@ def handel_futures_long_short_data_dce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date, vars_list=codes)
+        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date)
         if data is not None:
             for k, v in data.items():
                 sum_long_open_interest = v['long_open_interest'].sum()
@@ -455,7 +455,7 @@ def handel_futures_long_short_data_czce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_czce_rank_table, try_count=3, date=date)
+        data = try_get_action(ak.get_rank_table_czce, try_count=3, date=date)
         if data is not None:
             for k, v in data.items():
                 v['long_open_interest'] = v.apply(
@@ -498,7 +498,7 @@ def handel_futures_long_short_data_czce(dates: list, codes: list):
 
 
 def futures_long_short_rate_codes():
-    futures_rule_df = ak.futures_rule(date="20240315")
+    futures_rule_df = ak.futures_rule(date="20260123")
     dict_codes = {}
     for index in futures_rule_df.index:
         dict_data = dict(futures_rule_df.loc[index])

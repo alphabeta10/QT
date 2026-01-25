@@ -34,10 +34,11 @@ def get_all_monitor_price_data():
     goods = get_mongo_table(database='stock', collection='goods')
     url = 'https://www.100ppi.com/monitor2/'
     respond = requests.get(url, headers={
-        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
-        "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "accept-language": "en-US,en;q=0.9"})
     html = respond.content
     html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
+    print(html_doc)
     soup = BeautifulSoup(html_doc, 'html.parser')
     search_div = soup.find_all("div", 'right fl')
 
@@ -113,6 +114,7 @@ def get_all_monitor_price_data02():
         "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
     html = respond.content
     html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
+    print(html_doc)
     soup = BeautifulSoup(html_doc, 'html.parser')
     list01_div = soup.find_all("div", 'list01')
     titbk_div = soup.find_all("div", "titbk")
@@ -201,6 +203,6 @@ def create_index():
 
 
 if __name__ == '__main__':
-    get_all_monitor_price_data()
+    get_all_monitor_price_data02()
     find_data()
     back_data()
