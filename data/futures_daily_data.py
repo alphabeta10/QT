@@ -307,7 +307,7 @@ def handel_futures_long_short_data_dce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date)
+        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date,vars_list=codes)
         if data is not None:
             for k, v in data.items():
                 sum_long_open_interest = v['long_open_interest'].sum()
@@ -516,30 +516,33 @@ def futures_long_short_rate_codes():
 
 
 def enter_futrures_long_short_main(before_days=5):
-    tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
-    trade_dates = []
-    month_dates = set()
-    now_int = int(datetime.now().strftime("%Y%m%d"))
-    before_day_int = int((datetime.now() - timedelta(days=before_days)).strftime("%Y%m%d"))
-    for index in tool_trade_date_hist_sina_df.index:
-        trade_date = tool_trade_date_hist_sina_df.loc[index]['trade_date']
-        date_str = str(trade_date).replace("-", "")
-        if int(date_str) > before_day_int and int(date_str) <= now_int:
-            trade_dates.append(date_str)
-            month_dates.add(date_str[:6])
+    tool_trade_date_hist_sina_df = try_get_action(ak.tool_trade_date_hist_sina,try_count=3)
+    if tool_trade_date_hist_sina_df is not None:
+        trade_dates = []
+        month_dates = set()
+        now_int = int(datetime.now().strftime("%Y%m%d"))
+        before_day_int = int((datetime.now() - timedelta(days=before_days)).strftime("%Y%m%d"))
+        for index in tool_trade_date_hist_sina_df.index:
+            trade_date = tool_trade_date_hist_sina_df.loc[index]['trade_date']
+            date_str = str(trade_date).replace("-", "")
+            if int(date_str) > before_day_int and int(date_str) <= now_int:
+                trade_dates.append(date_str)
+                month_dates.add(date_str[:6])
 
-    dict_codes = futures_long_short_rate_codes()
-    fn_mapping = {
-        "大商所": handel_futures_long_short_data_dce,
-        "郑商所": handel_futures_long_short_data_czce,
-        "上期所": handel_futures_long_short_data_shfe,
-        "广期所": handel_futures_long_short_data_gfex,
-        "中金所": handel_futures_long_short_data_cffex,
-    }
-    for k, fn in fn_mapping.items():
-        print(f"handle {k}")
-        codes = [ele['code'] for ele in dict_codes[k] if '期权' not in ele['symbol']]
-        fn(trade_dates, codes)
+        dict_codes = futures_long_short_rate_codes()
+        fn_mapping = {
+            # "大商所": handel_futures_long_short_data_dce,
+            "郑商所": handel_futures_long_short_data_czce,
+            "上期所": handel_futures_long_short_data_shfe,
+            "广期所": handel_futures_long_short_data_gfex,
+            "中金所": handel_futures_long_short_data_cffex,
+        }
+        for k, fn in fn_mapping.items():
+            print(f"handle {k}")
+            codes = [ele['code'] for ele in dict_codes[k] if '期权' not in ele['symbol']]
+            fn(trade_dates,codes)
+    else:
+        print("error for get trade date")
 
 
 def col_create_index():
