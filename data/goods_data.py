@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import warnings
 warnings.filterwarnings('ignore')
+import asyncio
+from crawlee.crawlers import PlaywrightCrawler, PlaywrightCrawlingContext
 
 
 def handle_day(date_str,c_month,c_year,before_year):
@@ -34,11 +36,10 @@ def get_all_monitor_price_data():
     goods = get_mongo_table(database='stock', collection='goods')
     url = 'https://www.100ppi.com/monitor2/'
     respond = requests.get(url, headers={
-        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "accept-language": "en-US,en;q=0.9"})
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+        "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
     html = respond.content
     html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
-    print(html_doc)
     soup = BeautifulSoup(html_doc, 'html.parser')
     search_div = soup.find_all("div", 'right fl')
 
@@ -114,7 +115,6 @@ def get_all_monitor_price_data02():
         "accept-language": "an,zh-CN;q=0.9,zh;q=0.8,en;q=0.7"})
     html = respond.content
     html_doc = str(html, 'utf-8')  # html_doc=html.decode("utf-8","ignore")
-    print(html_doc)
     soup = BeautifulSoup(html_doc, 'html.parser')
     list01_div = soup.find_all("div", 'list01')
     titbk_div = soup.find_all("div", "titbk")
@@ -171,6 +171,80 @@ def get_all_monitor_price_data02():
     if len(datas) > 0:
         mongo_bulk_write_data(goods, datas)
 
+def data_to_db(html):
+    goods = get_mongo_table(database='stock', collection='goods')
+    html_doc = html  # html_doc=html.decode("utf-8","ignore")
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    search_div = soup.find_all("div", 'right fl')
+
+    headers = search_div[0]
+    tables = headers.find_all('table')
+    year = datetime.now().strftime("%Y")
+    before_year = str(int(year) - 1)
+    month = datetime.now().strftime("%m")
+    datas = []
+    goods_name_dict = {}
+    for table in tables:
+        trs = table.find_all('tr')
+        headtds = trs[0].find_all('td')
+        date1 = headtds[2].text.replace(' ', '')
+        date1 = handle_day(date1, month, year, before_year)
+
+        date2 = headtds[3].text.replace(' ', '')
+        date2 = handle_day(date2, month, year, before_year)
+
+        date3 = headtds[4].text.replace(' ', '')
+        date3 = handle_day(date3, month, year, before_year)
+        goods_name = None
+        for tr in trs[1:]:
+
+            tds = tr.find_all("td")
+            if len(tds) == 5:
+                name = tds[0].text.replace(' ', '').replace("\n", '')
+                metric = tds[1].text.replace(' ', '').replace("\n", '')
+                va1 = tds[2].text.replace(' ', '').replace("\n", '')
+                va2 = tds[3].text.replace(' ', '').replace("\n", '')
+                va3 = tds[4].text.replace(' ', '').replace("\n", '')
+                dict_data = {"name": name, "metric": metric, "time": date1, "value": va1, "data_type": "goods_price"}
+                datas.append(UpdateOne(
+                    {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
+                    {"$set": dict_data},
+                    upsert=True))
+                dict_data = {"name": name, "metric": metric, "time": date2, "value": va2, "data_type": "goods_price"}
+                datas.append(UpdateOne(
+                    {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
+                    {"$set": dict_data},
+                    upsert=True))
+                dict_data = {"name": name, "metric": metric, "time": date3, "value": va3, "data_type": "goods_price"}
+                datas.append(UpdateOne(
+                    {"name": dict_data['name'], "time": dict_data['time'], "data_type": dict_data['data_type']},
+                    {"$set": dict_data},
+                    upsert=True))
+                if goods_name is None:
+                    goods_name = ''
+                goods_name_dict[goods_name].append(name)
+            elif len(tds) == 1:
+                goods_name = tds[0].text.replace(' ', '').replace("\n", '')
+                goods_name_dict[goods_name] = []
+    goods_name_dict['name'] = "goods_meta"
+    goods_name_dict['time'] = "29990101"
+    goods_name_dict['data_type'] = "goods_class"
+    datas.append(UpdateOne(
+        {"name": goods_name_dict['name'], "time": goods_name_dict['time'], "data_type": goods_name_dict['data_type']},
+        {"$set": goods_name_dict},
+        upsert=True))
+    if len(datas) > 0:
+        mongo_bulk_write_data(goods, datas)
+
+async def crawlee_craw_goods_data() -> None:
+    crawler = PlaywrightCrawler(browser_type='chromium')
+    @crawler.router.default_handler
+    async def request_handler(context: PlaywrightCrawlingContext) -> None:
+        page = context.page
+        html_data = await page.content()
+        data_to_db(html_data)
+    await crawler.run(['https://www.100ppi.com/monitor2/'])
+
 def find_data():
     goods = get_mongo_table(database='stock', collection='goods')
     datas = []
@@ -203,6 +277,6 @@ def create_index():
 
 
 if __name__ == '__main__':
-    get_all_monitor_price_data02()
+    asyncio.run(crawlee_craw_goods_data())
     find_data()
     back_data()

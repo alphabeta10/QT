@@ -63,7 +63,7 @@ def get_detail_data(url,name):
             response = requests.get(detail_url,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'})
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                mb_6_divs = soup.find_all('div', class_='mb-6 ml-2')
+                mb_6_divs = soup.find_all('div', class_='dis-flex w-qb')
                 if mb_6_divs:
                     for ele in mb_6_divs:
                         text = ele.find('p').text
@@ -94,7 +94,7 @@ def get_detail_data(url,name):
                             {"$set": dict_data},
                             upsert=True))
                 else:
-                    print(f'{name}未找到 {url}')
+                    print(f'{name}未找到 {url} {detail_url}')
             else:
                 print(f'{name}未找到 {url}')
         else:
@@ -107,4 +107,4 @@ def get_detail_data(url,name):
     
 if __name__ == '__main__':
     names = ['炼焦煤', '焦炭']
-    get_news_data()
+    get_news_data(names)

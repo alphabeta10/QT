@@ -80,18 +80,19 @@ def global_new_analysis_node(start_date, end_date, model_name='google'):
     data = get_data_from_mongo(database=database, collection=collection, projection=projection, condition=condition,
                                sort_key=sort_key)
     cols = ['title','content','time']
-    ret = handle_model_table_data(data[cols])
-    print(len(ret))
-    messages = [{"role": "system", "content": system_promote}] + [
-        {"role": "user", "content": ret}]
-    model = get_model(name=model_name)
-    model = model.with_structured_output(MacroResult)
-    ret = model.invoke(messages)
-    if isinstance(ret,MacroResult):
-        json_str = ret.model_dump_json()
-        print(json_str)
-    else:
-        print(ret)
+    if data is not None and len(data)>0:
+        ret = handle_model_table_data(data[cols])
+        print(len(ret))
+        messages = [{"role": "system", "content": system_promote}] + [
+            {"role": "user", "content": ret}]
+        model = get_model(name=model_name)
+        model = model.with_structured_output(MacroResult)
+        ret = model.invoke(messages)
+        if isinstance(ret,MacroResult):
+            json_str = ret.model_dump_json()
+            print(json_str)
+        else:
+            print(ret)
 
 
 def generator_day_llm_analysis_global_news():
@@ -99,7 +100,7 @@ def generator_day_llm_analysis_global_news():
     before_day = 7
     day_list = []
     for i in range(before_day):
-        before_day = now - timedelta(i + 1)
+        before_day = now - timedelta(i)
         start_date_str = before_day.strftime("%Y-%m-%d 00:00:00")
         end_date_str = before_day.strftime("%Y-%m-%d 23:59:59")
         day_list.append([start_date_str, end_date_str])
