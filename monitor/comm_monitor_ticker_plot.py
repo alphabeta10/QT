@@ -7,7 +7,11 @@ from monitor.real_common import cal_linear_data_fn
 from indicator.talib_indicator import adj_obv,common_indictator_cal
 
 # 设置中文显示不乱码
-plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+# plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+# 解决中文乱码：将默认字体设置为Windows自带的黑体(SimHei)
+plt.rcParams['font.sans-serif'] = ['SimHei']
+# 解决负号 '-' 显示为方块的问题
+plt.rcParams['axes.unicode_minus'] = False
 import warnings
 import os
 import akshare as ak
@@ -239,6 +243,7 @@ def daily_future_plot_notice():
     mail_theme = '期货走势图'
     code_name = 'symbol'
     ticker_config = {
+        "焦煤主连": {"code": "JM0", "cid": "JM0", "header": "焦煤成交量以及走势图"},
         "玻璃主连": {"code": "FG0", "cid": "FG0", "header": "玻璃成交量以及走势图"},
         "乙二醇主连": {"code": "EG0", "cid": "EG0", "header": "乙二醇成交量以及走势图"},
         "螺纹钢主连": {"code": "RB0", "cid": "RB0", "header": "螺纹钢成交量以及走势图"},

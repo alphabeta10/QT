@@ -1,5 +1,10 @@
 import sys
 import os
+
+import pandas as pd
+
+from data.board_data import show_data
+
 #可以在该目录之前执行该程序，否则会报引用工程包不存在
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import akshare as ak
@@ -15,40 +20,46 @@ def index_data(dict_list=None,start_date = None):
             start_date = (datetime.now()-timedelta(days=15)).strftime("%Y%m%d")
         stock_zh_index_spot_df = try_get_action(ak.stock_zh_index_spot_sina,try_count=3)
         if stock_zh_index_spot_df is not None:
+            stock_zh_index_spot_df.to_csv("index.csv",index=False)
             index_table = get_mongo_table(database='stock', collection='index_data')
             for index in tqdm(stock_zh_index_spot_df.index):
                 code = stock_zh_index_spot_df.loc[index]['代码']
                 name = stock_zh_index_spot_df.loc[index]['名称']
-                stock_zh_index_daily_df = try_get_action(ak.stock_zh_index_daily_em,try_count=3,symbol=code,start_date=start_date)
-                if stock_zh_index_daily_df is not None:
-                    update_request = []
-                    for index in stock_zh_index_daily_df.index:
-                        data = stock_zh_index_daily_df.loc[index]
-                        date = str(data['date'])
-                        open = float(data['open'])
-                        high = float(data['high'])
-                        low = float(data['low'])
-                        close = float(data['close'])
-                        volume = int(data['volume'])
-                        amount = float(data['amount'])
-                        dict_data = {
-                            "date":date,
-                            "code":code,
-                            "name":name,
-                            "open":open,
-                            "high":high,
-                            "low":low,
-                            "close":close,
-                            "volume":volume,
-                            'amount':amount
-                        }
-                        update_request.append(
-                            UpdateOne(
-                                {"code": dict_data['code'],"date":dict_data['date']},
-                                {"$set": dict_data},
-                                upsert=True)
-                        )
-                    mongo_bulk_write_data(index_table,update_request)
+                if code in ['sh000001','sz399001']:
+                    #stock_zh_index_daily_df = try_get_action(ak.stock_zh_index_daily_em,try_count=3,symbol=code)
+                    stock_zh_index_daily_df = try_get_action(ak.stock_zh_index_daily,try_count=3,symbol=code)
+                    stock_zh_index_daily_tx_df = try_get_action(ak.stock_zh_index_daily_tx,try_count=3,symbol=code,start_date=start_date)
+                    stock_zh_index_daily_df = stock_zh_index_daily_df[['date', 'volume']]
+                    merge_df = pd.merge(stock_zh_index_daily_tx_df,stock_zh_index_daily_df,on='date',how='left') if  stock_zh_index_daily_df is not None and stock_zh_index_daily_tx_df is not None else None
+                    if merge_df is not None:
+                        update_request = []
+                        for index in merge_df.index:
+                            data = merge_df.loc[index]
+                            date = str(data['date'])
+                            open = float(data['open'])
+                            high = float(data['high'])
+                            low = float(data['low'])
+                            close = float(data['close'])
+                            volume = int(data['volume'])
+                            amount = float(data['amount'])
+                            dict_data = {
+                                "date":date,
+                                "code":code,
+                                "name":name,
+                                "open":open,
+                                "high":high,
+                                "low":low,
+                                "close":close,
+                                "volume":volume,
+                                'amount':amount
+                            }
+                            update_request.append(
+                                UpdateOne(
+                                    {"code": dict_data['code'],"date":dict_data['date']},
+                                    {"$set": dict_data},
+                                    upsert=True)
+                            )
+                        mongo_bulk_write_data(index_table,update_request)
 
 
 

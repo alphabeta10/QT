@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 def future_basic_info_data_main():
     # 行情数据
-    symbols = ['B0', 'FG0', 'EG0', 'RB0', 'I0', 'UR0', 'MA0', 'BU0','SA0']
+    symbols = ['B0', 'FG0', 'EG0', 'RB0', 'I0', 'UR0', 'MA0', 'BU0','SA0','JM0']
     symbols += get_all_main_contract_code()
     symbols = list(set(symbols))
     print("start future daily data")
