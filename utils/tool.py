@@ -68,7 +68,7 @@ def get_data_from_mongo(database='stock', collection='goods', condition=None, pr
 
 
 def comm_read_stock(file_name):
-    with open(file_name, mode='r') as f:
+    with open(file_name, mode='r',encoding='utf8') as f:
         lines = f.readlines()
         lines = [line.replace("\n", "") for line in lines if len(line.split(",")) == 2]
         code_dict = {line.split(",")[0]: line.split(",")[1] for line in lines}
