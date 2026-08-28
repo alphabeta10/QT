@@ -3,6 +3,7 @@ from utils.tool import get_data_from_mongo
 from utils.actions import show_data
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 # 设置中文显示不乱码
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
@@ -10,6 +11,24 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+
+# 检测 0 轴穿越
+def detect_zero_cross(dif_series):
+    dif = np.array(dif_series)
+    cross_up = (dif[:-1] <= 0) & (dif[1:] > 0)
+    cross_down = (dif[:-1] >= 0) & (dif[1:] < 0)
+    cross_up = np.concatenate([np.array([False]), cross_up])
+    cross_down = np.concatenate([np.array([False]), cross_down])
+    return cross_up, cross_down
+
+# 金叉 / 死叉
+def detect_golden_dead(dif_sr, dea_sr):
+    s1, s2 = np.array(dif_sr), np.array(dea_sr)
+    golden = (s1[:-1] <= s2[:-1]) & (s1[1:] > s2[1:])
+    dead = (s1[:-1] >= s2[:-1]) & (s1[1:] < s2[1:])
+    golden = np.concatenate([np.array([False]), golden])
+    dead = np.concatenate([np.array([False]), dead])
+    return golden, dead
 
 def adj_obv(high, low, close, volume):
     """
@@ -35,6 +54,11 @@ def adj_obv(high, low, close, volume):
             obv_list.append(cur_vol)
     return obv_list
 
+def trend_indicator(df:pd.DataFrame):
+
+    pass
+
+
 def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     mfi_timeperiod = 14
     b_line_timeperiod = 40
@@ -45,14 +69,26 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
         data[f'H_line_user_{user_b_line_timeperiod}'], data[f'M_line_user_{user_b_line_timeperiod}'], data[f'L_line_user_{user_b_line_timeperiod}'] = ta.BBANDS(data.close, timeperiod=user_b_line_timeperiod,
                                                                             nbdevup=2, nbdevdn=2,
                                                                             matype=0)
+    data['volume'] = data['volume'].astype(float)
     data['mfi'] = ta.MFI(data.high, data.low, data.close, data.volume, timeperiod=mfi_timeperiod)
-    data['1年均线'] = ta.SMA(data.close, timeperiod=240)
+    data['1年均线'] = ta.SMA(data.close, timeperiod=250)  #判断牛熊指标
     data['半年均线'] = ta.SMA(data.close, timeperiod=120)
     if 'ma_timeperiod' in kwargs.keys():
         ma_timeperiod = kwargs['ma_timeperiod']
         data[f'自定义{ma_timeperiod}日均线'] = ta.SMA(data.close, timeperiod=ma_timeperiod)
-    macd, macdsignal, macdhist = ta.MACD(data.close, fastperiod=12, slowperiod=26, signalperiod=9)
-    data['macd'] = macdhist
+    #趋势指标
+    dif, dea, macd_hist = ta.MACD(data.close, fastperiod=12, slowperiod=26, signalperiod=9)
+    data['DIF'] = dif
+    data['DEA'] = dea
+    data['MACD'] = macd_hist * 2  # 乘以2对齐国内软件显示
+    data['ma250'] = ta.SMA(data.close, timeperiod=250)  # 判断牛熊指标收盘价均线250
+    data['ma60'] = ta.SMA(data.close, timeperiod=60)  # 均线60
+    data['ma25'] = ta.SMA(data.close, timeperiod=25)  # 均线25
+    data['volume60'] = ta.SMA(data.volume, timeperiod=60)  # 成交量60均线
+    data['volume5'] = ta.SMA(data.volume, timeperiod=5)  # 成交量6均线
+    data['zero_axi_up'],data['zero_axi_dow'] = detect_zero_cross(data['DIF']) # 检测 0 轴穿越
+    data['golden_cross'], data['dead_cross'] = detect_golden_dead(data['DIF'], data['DEA']) # 金叉 / 死叉
+
     data['rsi12'] = ta.RSI(data.close, timeperiod=12)
     data['rsi6'] = ta.RSI(data.close, timeperiod=6)
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,

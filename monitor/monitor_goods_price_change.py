@@ -121,7 +121,7 @@ def monitor_goods_price_change(goods_name_list=None):
 
 
 def daily_monitor_goods():
-    goods_configs = [{"goods_type": "能源商品监控", "goods_list": ['WTI原油', 'Brent原油','炼焦煤']},
+    goods_configs = [{"goods_type": "能源商品监控", "goods_list": ['WTI原油', 'Brent原油','炼焦煤','动力煤']},
                      {"goods_type": "避险商品监控", "goods_list": ['黄金', '白银']},
                      {"goods_type": "建材商品监控", "goods_list": ['螺纹钢', '玻璃','沥青','轻质纯碱','重质纯碱','尿素']},
                      {"goods_type": "包装材料商品监控",

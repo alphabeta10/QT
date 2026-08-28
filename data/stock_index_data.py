@@ -66,7 +66,6 @@ def index_data(dict_list=None,start_date = None):
         if stock_zh_index_spot_df is not None:
             last_index_data = stock_zh_index_spot_df[stock_zh_index_spot_df['代码'].isin(index_codes)]
             his_index_amt_dict_data = get_code_by_date(get_db_start_date_str,last_index_data,last_trade_date)
-
             stock_zh_index_spot_df.to_csv("index.csv",index=False)
             index_table = get_mongo_table(database='stock', collection='index_data')
             for index in tqdm(stock_zh_index_spot_df.index):

@@ -193,8 +193,9 @@ def find_data():
 
 
 if __name__ == '__main__':
-    craw_lian_rmb()
-    global_micro_data()
-    us_monetary_data_to_mongo()
-    jp_cross_boarder_data_to_db()
-    get_us_treasury_debt()
+    # craw_lian_rmb()
+    # global_micro_data()
+    # us_monetary_data_to_mongo()
+    # jp_cross_boarder_data_to_db()
+    # get_us_treasury_debt()
+    find_data()

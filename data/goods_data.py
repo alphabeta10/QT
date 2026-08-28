@@ -248,7 +248,7 @@ async def crawlee_craw_goods_data() -> None:
 def find_data():
     goods = get_mongo_table(database='stock', collection='goods')
     datas = []
-    goods_name = '轻质纯碱'
+    goods_name = '尿素'
     for ele in goods.find({"name":goods_name,"data_type":"goods_price"},projection={'_id': False}).sort("time"):
         datas.append(ele)
         print(ele)

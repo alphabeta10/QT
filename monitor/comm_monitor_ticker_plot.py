@@ -352,5 +352,5 @@ def del_file(path_data):
 if __name__ == '__main__':
     del_file('plot')
     daily_market_plot_notice()
-    # daily_stock_plot_notice()
+    daily_stock_plot_notice()
     daily_future_plot_notice()
