@@ -84,7 +84,7 @@ def index_data(dict_list=None,start_date = None):
                             low = float(data['low'])
                             close = float(data['close'])
                             volume = int(data['amount'])*100
-                            amount = float(his_index_amt_dict_data.get(date).get(code))
+                            amount = float(his_index_amt_dict_data.get(date,his_index_amt_dict_data.get(last_trade_date)).get(code,0))
                             dict_data = {
                                 "date":date,
                                 "code":code,

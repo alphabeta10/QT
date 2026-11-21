@@ -62,6 +62,7 @@ def trend_indicator(df:pd.DataFrame):
 def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     mfi_timeperiod = 14
     b_line_timeperiod = 40
+    custom_atr_window = kwargs.get("custom_atr_window",20)
     if 'mfi_timeperiod' in kwargs.keys():
         mfi_timeperiod = kwargs['mfi_timeperiod']
     if 'b_line_timeperiod' in kwargs.keys():
@@ -94,6 +95,7 @@ def common_indictator_cal(data: pd.DataFrame, *args, **kwargs):
     data['K'], data['D'] = ta.STOCH(data.high, data.low, data.close, fastk_period=9, slowk_period=5, slowk_matype=1,
                                     slowd_period=5, slowd_matype=1)
     data['atr14'] = ta.ATR(data.high, data.low, data.close, timeperiod=14)
+    data['custom_atr_window'] = ta.ATR(data.high,data.low,data.close,timeperiod=custom_atr_window)
     data['ADOSC'] = ta.ADOSC(data.high, data.low, data.close, data.volume, fastperiod=3, slowperiod=10)
     data['ADX'] = ta.ADX(data.high, data.low, data.close, timeperiod=14)
     data['minus_di'] = ta.MINUS_DI(data.high, data.low, data.close, timeperiod=14)

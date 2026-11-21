@@ -1,0 +1,235 @@
+{"标题": "title", "摘要": "content", "发布时间": "time"
+
+给你mongodb地址 mongodb://192.168.10.6:27017 账户和密码无，数据库stock，
+新闻表是all_news，新闻数据是各类新闻数据可能有股票相关的数据，也可能没有，新闻数据schema格式如下：
+{"title":"标题","content":"新闻内容“,"time":"发布时间","data_type":"数据来源对应值分别是 cls：财联社,em：东方财富,sina：新浪,futu：富途,ths：同花顺"}
+行情表ticker_daily，行情数据如果是查询股票，股票代码必须是字符串，格式例如平安银行是000001，时间格式YYYYMMDD,行情数据schema格式如下：
+{"time":"交易日时间","open":"开盘价", "high": "最高价", "low":"最低价","close":"收盘价","volume":"成交量","code":"股票代码，代码格式例如平安银行000001","amount":"成交额","turnover_rate": "换手率" }
+根据我提供的数据请你分析一下平安银行交易策略
+
+
+
+给你mongodb地址 mongodb://localhost:27017 账户和密码无，数据库stock，
+行情表ticker_daily，行情数据如果是查询股票，股票代码必须是字符串，格式例如平安银行是000001，时间格式YYYYMMDD,行情数据schema格式如下：
+{"time":"交易日时间","open":"开盘价", "high": "最高价", "low":"最低价","close":"收盘价","volume":"成交量","code":"股票代码，代码格式例如平安银行000001","amount":"成交额","turnover_rate": "换手率" }
+根据我提供的数据请你分析一下平安银行技术面
+import pymongo
+client = pymongo.MongoClient('mongodb://192.168.10.6:27017/')
+stock = client['stock']
+col = stock['ticker_daily']
+stock.command('ping')
+
+
+def get_mongo_table(url='mongodb://localhost:27017/',database='stock',collection='ticker_daily'):
+    """
+    获取mongo数据报表
+    :param url: mongo url
+    :param database: mongo 数据库
+    :param collection: mongo 集合数据
+    :return:
+    """
+    client = pymongo.MongoClient(url)
+    stock = client[database]
+    col = stock[collection]
+    return col
+
+
+我本地有mongodb存有指数数据，mongodb如下：
+url=mongodb://localhost:27017/
+database=stock
+collection=index_data
+schema 是
+{
+  "date": "日期",
+  "code": "指数代码",
+  "close": "收盘价",
+  "high": "最高价",
+  "low": "最低价",
+  "name": "指数名称",
+  "open": "开盘价",
+  "volume": "成交量"
+}
+指数代码对应的名称如下：
+{
+"sh000001":"上证指数",
+"sz399001":"深证成指",
+"sz399300":"沪深300",
+"sz399006":"创业板指",
+"sh000688":"科创50",
+"sh000905":"中证500",
+"sz399852":"中证1000"
+}
+以上指数从价格、广度、量能、资金、估值、技术、情绪七个维度综合判断当前市场处于啥情况，是否值得入场，还是持有，观望，你可以调用a-stock-data skill获取资金等数据
+
+本地mongodb存有政策要闻和最新政策信息，mongodb如下：
+url=mongodb://localhost:27017/
+database=stock
+collection=policy_data
+schema 是
+{
+"title": "标题",
+"publish_time": "发布时间，时间格式是yyyy-MM-dd",
+"url": "url地址",
+"content": "具体详情",
+"source": "来源，可以是要闻和最新政策"
+}
+根据我提供的mongodb信息，你去读取最发布时间最近半年的政策和政策要闻数据,并分析该政策涉及最新的top10行业，行业按政策和政策要闻涉及重要程度从大到小排序。并给出理由
+涉及这些行业有那些A股上市的股票可以推荐也列出来并给出理由，推荐的股票再调用stock-seven-dimensions skill生成分析报告，调用market-dashboard给出当前A股市场环境
+结合市场和股票分析，给出股票入场，持有，观望等决策
+
+
+本地mongodb存有最新各个平台来的新闻数据，mongodb如下：
+url=mongodb://localhost:27017/
+database=stock
+collection=all_news
+schema 是
+{
+"data_type":"数据来源值对应的mapping cls：财联社，em：东方财富新闻，sina：新浪，futu：富途牛牛，ths：同花顺新闻"
+"title":"新闻标题 data_type=sina 这个值没有"
+"content":"新闻内容"
+"time":"时间,格式可能是2025-09-20 22:09:47和2025-09-20"
+}
+读取今天新闻数据,完成以下两个风险和投资机会分析任务：
+1.风险分析可以重地缘冲突升级，国际货币政策转向，国际市场结构性脆等分析。
+2.新闻涉及行业的投资机会也给出top10的行业，并给出分析理由。
+
+并给出理由
+涉及这些行业有那些A股上市的股票可以推荐也列出来并给出理由，这些股票必须根据财报，估值指标分析。
+
+本地mongodb存有国家统计局数据，mongodb如下：
+url=mongodb://localhost:27017/
+database=govstats
+collection=data_info
+schema如下：
+{
+  "_id": "主键",
+  "category": "类别",
+  "indicator_path": "指标名称路径",
+  "period": "日期",
+  "indicator_name": "指标名称",
+  "value": "指标值",
+  "updated_at": "更新时间"
+}
+
+
+汇川技术这只股票快要公布财报了，我想预测他的第二季度的财报同比是否增长还是下跌，
+你可以调用a-stock-data skill 拿到公告数据和财报数据以及行业数据，
+我这边也可以提供给你国家统计数据，国家统计局的指标元数据stat_indicator_name.csv中，
+你可以根据股票行业相关产业，可以关联国家统计局数据作为辅组，国家统计局数据mongodb如下：
+url=mongodb://localhost:27017/
+database=govstats
+collection=data_info
+schema如下：
+{
+  "_id": "主键",
+  "category": "类别",
+  "indicator_path": "指标名称路径",
+  "period": "日期",
+  "indicator_name": "指标名称",
+  "value": "指标值",
+  "updated_at": "更新时间"
+}
+
+
+本地mongodb存有国家统计局数据，mongodb如下：
+url=mongodb://localhost:27017/
+database=stock
+collection=goods_trade_price
+
+
+
+
+本地mongodb存有最新各个平台来的新闻数据，mongodb如下：
+ url=mongodb://localhost:27017/
+ database=stock
+ collection=all_news
+ schema 是
+ {
+ "data_type":"数据来源值对应的mapping cls：财联社，em：东方财富新闻，sina：新浪，futu：富途牛牛，ths：同花顺新闻"
+ "title":"新闻标题 data_type=sina 这个值没有"
+ "content":"新闻内容"
+ "time":"时间,格式可能是2025-09-20 22:09:47和2025-09-20"
+ }
+ 读取最新一周新闻数据,完成以下三个任务：
+ 1.风险分析可以重地缘冲突升级，国际货币政策转向，国际市场结构性脆等分析。
+ 2.新闻涉及行业的投资机会也给出top10的行业，并给出分析理由。
+ 3.根据最新新闻给出当前A股市场多空评分和理由，评分：0到100。
+
+
+
+
+
+伊利股份这只股票快要公布财报了，我想预测他的第二季度的财报同比是否增长还是下跌，
+你可以调用a-stock-data skill 拿到公告数据和财报数据以及行业数据，
+我这边也可以提供给你国家统计数据，国家统计局的指标元数据stat_indicator_name.csv中，
+你可以根据股票行业相关产业，可以关联国家统计局数据作为辅组，国家统计局数据mongodb如下：
+url=mongodb://localhost:27017/
+database=govstats
+collection=data_info
+schema如下：
+{
+"_id": "主键",
+"category": "类别",
+"indicator_path": "指标名称路径",
+"period": "日期",
+"indicator_name": "指标名称",
+"value": "指标值",
+"updated_at": "更新时间"
+}
+
+
+
+
+给我开发一个A股财报分析的md的skill财报数据如下：
+import akshare as ak
+stock_financial_report_sina_df = ak.stock_financial_report_sina(stock="sh600600", symbol="资产负债表")
+print(stock_financial_report_sina_df)
+参数如下：
+stock str stock="sh600600"；带市场标识的股票代码
+symbol str symbol="现金流量表"; choice of {"资产负债表", "利润表", "现金流量表"}
+如果akshare没有就用pip install akshare --upgrade
+财报分析方法如下：
+第一步：定性分析——先看“生意”，再看“数字”
+财报是结果，商业模式才是原因。看财报前，必须先回答三个问题：
+    1.怎么赚钱？ 卖产品、卖服务，还是靠流量变现？（如茅台靠品牌溢价，京东方靠规模成本）
+    2.生意做多大？ 行业天花板高不高？（成长股看空间，价值股看稳定性）
+    3.产业链地位？ 对上/下游有没有话语权？（决定应收账款和预收账款）
+
+
+能源
+    核能
+    水电
+    光电
+    火电
+
+
+本地mongodb存有新闻数据信息，mongodb如下：
+url=mongodb://localhost:27017/
+database=stock
+collection=all_news
+schema 是
+{
+"data_type":"数据来源值对应的mapping cls：财联社，em：东方财富新闻，sina：新浪，futu：富途牛牛，ths：同花顺新闻"
+"title":"新闻标题 data_type=sina 这个值没有"
+"content":"新闻内容"
+"time":"时间,格式可能是2025-09-20 22:09:47和2025-09-20"
+}
+根据我提供的mongodb信息，你去读最新一个月的新闻数据,
+同时国家统计局的指标元数据stat_indicator_name.csv中，
+国家统计局数据mongodb如下：
+url=mongodb://localhost:27017/
+database=govstats
+collection=data_info
+schema如下：
+{
+"_id": "主键",
+"category": "类别",
+"indicator_path": "指标名称路径",
+"period": "日期",
+"indicator_name": "指标名称",
+"value": "指标值",
+"updated_at": "更新时间"
+}也可以从网上搜索数据。
+根据这些数据可以五个维度分析，维度如下：货币政策，地缘政治，经济基本面，市场技术面，资金与情绪，五个维度的信号，
+来判断当前A股是多头还是空头，并给出多空分数，分数范围是0-100之间
+

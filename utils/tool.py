@@ -87,3 +87,20 @@ def sort_dict_data_by(dict_data, by='key', reverse=False):
         return dict(sorted(dict_data.items(), key=operator.itemgetter(0), reverse=reverse))  # 按照key值升序
     else:
         return dict(sorted(dict_data.items(), key=operator.itemgetter(1), reverse=reverse))  # 按照value值升序
+
+
+def df_nearest(row, cand,compared_col,fn=None,**kwargs):
+    d = (row[cand] - row[compared_col]).abs()
+    if fn:
+        score = fn(d.idxmin(),**kwargs)
+        return pd.Series({
+            f'{compared_col}_nearest_col': d.idxmin(),
+            f'{compared_col}_nearest_val': row[cand][d.idxmin()],
+            f'{compared_col}_min_diff':    d.min(),
+            f"{compared_col}_score":score
+        })
+    return pd.Series({
+        f'{compared_col}_nearest_col': d.idxmin(),
+        f'{compared_col}_nearest_val': row[cand][d.idxmin()],
+        f'{compared_col}_min_diff': d.min(),
+    })

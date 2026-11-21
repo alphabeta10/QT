@@ -562,3 +562,6 @@ def create_futures_basic_info_index():
 
 if __name__ == '__main__':
     handle_futures_daily_data()
+    handel_futures_long_short_data_dce(dates=['20261008'])
+    futures_dce_detail_dict = ak.futures_dce_position_rank(date="20261008")
+    print(futures_dce_detail_dict)

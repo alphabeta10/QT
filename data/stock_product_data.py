@@ -7,6 +7,7 @@ from data.mongodb import get_mongo_table
 from pymongo import UpdateOne
 from utils.tool import mongo_bulk_write_data
 from tqdm import tqdm
+from datetime import datetime,timedelta
 
 rename_cols = {"报告日期":"date","分类类型":"class_dire","主营构成":"class",'股票代码':'code'}
 
@@ -17,12 +18,30 @@ def get_zygc_em(code='000001'):
     print(f'error get data from {code}')
     return None
 
+def get_code_by_date(date_str:str):
+    ticker_daily = get_mongo_table(collection="business")
+    condition = {"date":date_str}
+    ticker_cursor = ticker_daily.find(condition,projection={"_id":False,"code":True,})
+    codes = []
+    for ticker in ticker_cursor:
+        ts_code = ticker['code']
+        if ts_code not in codes:
+            codes.append(ts_code)
+    return codes
 
-def product_data_to_mongo():
+def product_data_to_mongo(indb_str=None):
     codes = get_stock_info_data()
     business = get_mongo_table(collection='business')
+    if indb_str is None:
+        if datetime.now().month>7:
+            indb_str = datetime.now().strftime("%Y-06-30")
+        else:
+            indb_str = str(datetime.now().year-1)+"-12-31"
+
+    in_db_codes = get_code_by_date(indb_str)
+    print("in db len is ",len(in_db_codes))
     for code in tqdm(codes):
-        if "sz" in code or "sh" in code:
+        if ("sz" in code or "sh" in code) and code[2:] not in in_db_codes:
             code = code.upper()
             pd_data = get_zygc_em(code)
             if pd_data is not None:
@@ -86,5 +105,5 @@ def create_index():
 
 
 if __name__ == '__main__':
-    product_data_to_mongo()
+    product_data_to_mongo(indb_str='2026-06-30')
 

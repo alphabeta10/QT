@@ -1,3 +1,10 @@
+import base64
+import hashlib
+import hmac
+import os
+import time
+import urllib.parse
+
 import requests
 import json
 
@@ -6,6 +13,22 @@ class DingtalkSendMsg(object):
     def __init__(self):
         self.__headers = {'Content-Type': 'application/json;charset=utf-8'}
         self.url = 'https://oapi.dingtalk.com/robot/send?access_token=b166ec191ac5b18c1228c5b8165125bbc629e7dbdf655e6629c73052a6c7cb15'
+        # 机器人若开启“加签”安全设置，需配置密钥（SEC 开头），否则钉钉会返回 310000
+        self.secret = os.getenv("DINGTALK_SECRET", "SEC1e9fad1e6803fa40185cb33686f042185cb397694053dc07e23d5534f3d7ad02")
+
+    def __get_send_url(self):
+        """存在加签密钥时，按钉钉规则拼接 timestamp 与 sign。"""
+        if not self.secret:
+            return self.url
+        timestamp = str(round(time.time() * 1000))
+        string_to_sign = f"{timestamp}\n{self.secret}"
+        hmac_code = hmac.new(
+            self.secret.encode("utf-8"),
+            string_to_sign.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).digest()
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+        return f"{self.url}&timestamp={timestamp}&sign={sign}"
 
     def handle_ticker_trigger_msg(self, msg_dict_data_list: list, msg_title=None, comm_info_dict=None):
 
@@ -62,6 +85,35 @@ class DingtalkSendMsg(object):
             return json.dumps(json_text)
         return None
 
+    def handle_etf_cash_flow_msg(self, msg_text, msg_title=None):
+        """
+        组装宽基 ETF 资金流监控消息。
+
+        :param msg_text: 消息正文（markdown），由监控脚本负责组织
+        :param msg_title: 消息标题
+        :return: 钉钉请求 JSON 字符串
+        """
+        if not msg_text:
+            return None
+
+        title = msg_title or "宽基ETF资金流监控"
+        send_msg = ""
+        if msg_title:
+            send_msg += f"#### {msg_title} \n"
+        send_msg += f"{msg_text}\n"
+
+        json_text = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": title,
+                "text": send_msg
+            },
+            "at": {
+                "isAtAll": False
+            }
+        }
+        return json.dumps(json_text)
+
     def send_msg(self, **kwargs):
         if kwargs.get("type", '') == 'ticker_trigger_msg':
             data_list = kwargs.get("data_list", [])
@@ -69,7 +121,13 @@ class DingtalkSendMsg(object):
             comm_info_dict = kwargs.get('comm_info_dict', None)
             send_msg = self.handle_ticker_trigger_msg(data_list, msg_title, comm_info_dict)
             if send_msg:
-                return requests.post(self.url, send_msg, headers=self.__headers).json()
+                return requests.post(self.__get_send_url(), send_msg, headers=self.__headers).json()
+        elif kwargs.get("type", '') == 'monitor_eft_cash_flow':
+            msg_text = kwargs.get("msg_text", '')
+            msg_title = kwargs.get("msg_title", '宽基ETF资金流监控')
+            send_msg = self.handle_etf_cash_flow_msg(msg_text, msg_title)
+            if send_msg:
+                return requests.post(self.__get_send_url(), send_msg, headers=self.__headers).json()
         return None
 
 
