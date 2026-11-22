@@ -41,7 +41,7 @@ def product_data_to_mongo(indb_str=None):
     in_db_codes = get_code_by_date(indb_str)
     print("in db len is ",len(in_db_codes))
     for code in tqdm(codes):
-        if ("sz" in code or "sh" in code) and code[2:] not in in_db_codes:
+        if ("SZ" in code.upper() or "SH" in code.upper()) and code[2:] not in in_db_codes:
             code = code.upper()
             pd_data = get_zygc_em(code)
             if pd_data is not None:
@@ -57,8 +57,13 @@ def product_data_to_mongo(indb_str=None):
                         {"code": dict_data['code'], "date": dict_data['date'],"class_dire":dict_data['class_dire'],"class":dict_data['class']},
                         {"$set": dict_data},
                         upsert=True))
-                mongo_bulk_write_data(business,request_update)
-
+                try:
+                    mongo_bulk_write_data(business,request_update)
+                except Exception as e:
+                    print(e)
+                    print(pd_data)
+        else:
+            pass
 
 
 
