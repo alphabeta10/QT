@@ -39,7 +39,7 @@ def product_data_to_mongo(indb_str=None):
             indb_str = str(datetime.now().year-1)+"-12-31"
 
     in_db_codes = get_code_by_date(indb_str)
-    print("in db len is ",len(in_db_codes))
+    print("in db len is ",len(in_db_codes),in_db_codes)
     for code in tqdm(codes):
         if ("SZ" in code.upper() or "SH" in code.upper()) and code[2:] not in in_db_codes:
             code = code.upper()
@@ -61,6 +61,7 @@ def product_data_to_mongo(indb_str=None):
                     mongo_bulk_write_data(business,request_update)
                 except Exception as e:
                     print(e)
+                    print(f"error code {code}")
                     print(pd_data)
         else:
             pass

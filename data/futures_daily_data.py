@@ -12,9 +12,11 @@ def get_all_main_contract_code():
     symbols = ['czce', 'dce', 'shfe', 'cffex', 'gfex']
     ret_syms = []
     for symbol in symbols:
-        syms = try_get_action(ak.match_main_contract,symbol=symbol,try_count=3)
+        syms = try_get_action(ak.futures_main_contract_sina,symbol=symbol,try_count=3)
+        print(syms)
         if syms is not None:
-            ret_syms += syms.split(",")
+            pass
+            # ret_syms += syms.split(",")
         else:
             print(f"get main contract error for {symbol}")
     return ret_syms
@@ -269,13 +271,16 @@ def handel_futures_long_short_data_cffex(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_cffex_rank_table, try_count=3, date=date, vars_list=codes)
+        data = try_get_action(ak.futures_rank_table_cffex, try_count=3, date=date, symbols=codes)
         if data is not None:
-            for k, v in data.items():
-                sum_long_open_interest = v['long_open_interest'].sum()
-                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
-                sum_short_open_interest = v['short_open_interest'].sum()
-                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+            sum_df = data.groupby(['symbol'])[['long_open_interest', 'long_open_interest_chg', 'short_open_interest',
+                                               'short_open_interest_chg']].sum()
+            for k in sum_df.index:
+                v = dict(sum_df.loc[k])
+                sum_long_open_interest = v['long_open_interest']
+                sum_long_open_interest_chg = v['long_open_interest_chg']
+                sum_short_open_interest = v['short_open_interest']
+                sum_short_open_interest_chg = v['short_open_interest_chg']
 
                 long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
                 position_result = {}
@@ -307,13 +312,16 @@ def handel_futures_long_short_data_dce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.futures_dce_position_rank, try_count=3, date=date,vars_list=codes)
+        data = try_get_action(ak.futures_position_rank_dce, try_count=3, date=date,symbols=codes)
         if data is not None:
-            for k, v in data.items():
-                sum_long_open_interest = v['long_open_interest'].sum()
-                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
-                sum_short_open_interest = v['short_open_interest'].sum()
-                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+            sum_df = data.groupby(['symbol'])[['long_open_interest', 'long_open_interest_chg', 'short_open_interest',
+                                               'short_open_interest_chg']].sum()
+            for k in sum_df.index:
+                v = dict(sum_df.loc[k])
+                sum_long_open_interest = v['long_open_interest']
+                sum_long_open_interest_chg = v['long_open_interest_chg']
+                sum_short_open_interest = v['short_open_interest']
+                sum_short_open_interest_chg = v['short_open_interest_chg']
 
                 long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
                 position_result = {}
@@ -345,13 +353,16 @@ def handel_futures_long_short_data_shfe(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_shfe_rank_table, try_count=3, date=date, vars_list=codes)
+        data = try_get_action(ak.futures_rank_table_shfe, try_count=3, date=date, symbols=codes)
         if data is not None:
-            for k, v in data.items():
-                sum_long_open_interest = v['long_open_interest'].sum()
-                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
-                sum_short_open_interest = v['short_open_interest'].sum()
-                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+            sum_df = data.groupby(['symbol'])[['long_open_interest', 'long_open_interest_chg', 'short_open_interest',
+                                               'short_open_interest_chg']].sum()
+            for k in sum_df.index:
+                v = dict(sum_df.loc[k])
+                sum_long_open_interest = v['long_open_interest']
+                sum_long_open_interest_chg = v['long_open_interest_chg']
+                sum_short_open_interest = v['short_open_interest']
+                sum_short_open_interest_chg = v['short_open_interest_chg']
 
                 long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
                 position_result = {}
@@ -383,22 +394,16 @@ def handel_futures_long_short_data_gfex(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.futures_gfex_position_rank, try_count=3, date=date, vars_list=codes)
+        data = try_get_action(ak.futures_position_rank_gfex, try_count=3, date=date, symbols=codes)
         if data is not None:
-            for k, v in data.items():
-                v['long_open_interest'] = v.apply(lambda ele: int(str(ele['long_open_interest']).replace(",", "")),
-                                                  axis=1)
-                v['long_open_interest_chg'] = v.apply(
-                    lambda ele: int(str(ele['long_open_interest_chg']).replace(",", "")), axis=1)
-                v['short_open_interest'] = v.apply(lambda ele: int(str(ele['short_open_interest']).replace(",", "")),
-                                                   axis=1)
-                v['short_open_interest_chg'] = v.apply(
-                    lambda ele: int(str(ele['short_open_interest_chg']).replace(",", "")), axis=1)
-
-                sum_long_open_interest = v['long_open_interest'].sum()
-                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
-                sum_short_open_interest = v['short_open_interest'].sum()
-                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+            sum_df = data.groupby(['symbol'])[['long_open_interest', 'long_open_interest_chg', 'short_open_interest',
+                                               'short_open_interest_chg']].sum()
+            for k in sum_df.index:
+                v = dict(sum_df.loc[k])
+                sum_long_open_interest = v['long_open_interest']
+                sum_long_open_interest_chg = v['long_open_interest_chg']
+                sum_short_open_interest = v['short_open_interest']
+                sum_short_open_interest_chg = v['short_open_interest_chg']
 
                 long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
                 position_result = {}
@@ -459,26 +464,15 @@ def handel_futures_long_short_data_czce(dates: list, codes: list):
     futures_basic_info = get_mongo_table(database='futures', collection='futures_basic_info')
     for date in dates:
         print(f"handle date={date}")
-        data = try_get_action(ak.get_rank_table_czce, try_count=3, date=date)
+        data = try_get_action(ak.futures_rank_table_czce, try_count=3, date=date)
         if data is not None:
-            for k, v in data.items():
-                v['long_open_interest'] = v.apply(
-                    lambda ele: int(str(ele['long_open_interest']).replace(",", "")) if str(
-                        ele['long_open_interest']) != '-' else 0, axis=1)
-                v['long_open_interest_chg'] = v.apply(
-                    lambda ele: int(str(ele['long_open_interest_chg']).replace(",", "")) if str(
-                        ele['long_open_interest_chg']) != '-' else 0, axis=1)
-                v['short_open_interest'] = v.apply(
-                    lambda ele: int(str(ele['short_open_interest']).replace(",", "")) if str(
-                        ele['short_open_interest']) != '-' else 0, axis=1)
-                v['short_open_interest_chg'] = v.apply(
-                    lambda ele: int(str(ele['short_open_interest_chg']).replace(",", "")) if str(
-                        ele['short_open_interest_chg']) != '-' else 0, axis=1)
-
-                sum_long_open_interest = v['long_open_interest'].sum()
-                sum_long_open_interest_chg = v['long_open_interest_chg'].sum()
-                sum_short_open_interest = v['short_open_interest'].sum()
-                sum_short_open_interest_chg = v['short_open_interest_chg'].sum()
+            sum_df = data.groupby(['symbol'])[['long_open_interest','long_open_interest_chg','short_open_interest','short_open_interest_chg']].sum()
+            for k in sum_df.index:
+                v = dict(sum_df.loc[k])
+                sum_long_open_interest = v['long_open_interest']
+                sum_long_open_interest_chg = v['long_open_interest_chg']
+                sum_short_open_interest = v['short_open_interest']
+                sum_short_open_interest_chg = v['short_open_interest_chg']
 
                 long_short_rate = round(sum_long_open_interest / sum_short_open_interest, 4)
                 position_result = {}
@@ -502,7 +496,7 @@ def handel_futures_long_short_data_czce(dates: list, codes: list):
 
 
 def futures_long_short_rate_codes():
-    futures_rule_df = ak.futures_rule(date="20260123")
+    futures_rule_df = ak.futures_trading_rule_gtja(date="20260123")
     dict_codes = {}
     for index in futures_rule_df.index:
         dict_data = dict(futures_rule_df.loc[index])
@@ -516,7 +510,7 @@ def futures_long_short_rate_codes():
 
 
 def enter_futrures_long_short_main(before_days=5):
-    tool_trade_date_hist_sina_df = try_get_action(ak.tool_trade_date_hist_sina,try_count=3)
+    tool_trade_date_hist_sina_df = try_get_action(ak.calendar_trade_date_hist_sina,try_count=3)
     if tool_trade_date_hist_sina_df is not None:
         trade_dates = []
         month_dates = set()
@@ -538,8 +532,9 @@ def enter_futrures_long_short_main(before_days=5):
             "中金所": handel_futures_long_short_data_cffex,
         }
         for k, fn in fn_mapping.items():
-            print(f"handle {k}")
             codes = [ele['code'] for ele in dict_codes[k] if '期权' not in ele['symbol']]
+            print(f"handle {k}",codes)
+
             fn(trade_dates,codes)
     else:
         print("error for get trade date")
@@ -562,6 +557,3 @@ def create_futures_basic_info_index():
 
 if __name__ == '__main__':
     handle_futures_daily_data()
-    handel_futures_long_short_data_dce(dates=['20261008'])
-    futures_dce_detail_dict = ak.futures_dce_position_rank(date="20261008")
-    print(futures_dce_detail_dict)

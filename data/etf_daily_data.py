@@ -51,7 +51,7 @@ def get_trade_calendar():
     返回:
         list[str]: 交易日列表，格式 YYYY-MM-DD，升序。
     """
-    calendar_df = ak.tool_trade_date_hist_sina()
+    calendar_df = ak.calendar_trade_date_hist_sina()
     trade_dates = [str(x)[:10] for x in calendar_df["trade_date"]]
     return sorted(trade_dates)
 

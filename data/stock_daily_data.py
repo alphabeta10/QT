@@ -83,8 +83,8 @@ def handle_stock_daily_data(codes=None, start_date=None,
     for code_market in tqdm(codes):
         code = code_market[1]+code_market[0]
         if code_market[0] not in in_db_codes:
-            stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_daily,try_count=1,symbol=code,
-                                                start_date=start_date, end_date=end_date,
+            stock_zh_a_hist_df = try_get_action(ak.stock_zh_a_hist_sina,try_count=1,symbol=code,
+                                                start_date=start_date, end_date=end_date,period= "daily",
                                                 adjust="qfq")
             if stock_zh_a_hist_df is not None:
                 for index in stock_zh_a_hist_df.index:
@@ -185,7 +185,7 @@ def handle_stock_dzjy_mrtj(start_date=datetime.now().strftime("%Y%m01"), end_dat
 
 
 def stock_dzjy_main():
-    tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
+    tool_trade_date_hist_sina_df = ak.calendar_trade_date_hist_sina()
     trade_dates = []
     start_date = (datetime.now()-timedelta(days=10)).strftime("%Y%m%d")
     now_int = int(datetime.now().strftime("%Y%m%d"))
